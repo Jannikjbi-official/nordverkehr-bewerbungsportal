@@ -67,8 +67,7 @@ function buttonRows(buttons: APIButtonComponentWithURL[]): APIActionRowComponent
 
 /** Gesamtaufruf: alle offenen Stellen, Voraussetzungen, Statusübersicht – ein Block. */
 export function buildJobsMessage(positions: JobPosition[], opts: Opts): RESTPostAPIChannelMessageJSONBody {
-  const visible = positions.filter((p) => p.status !== "HIDDEN");
-  const open = visible.filter((p) => p.status === "OPEN");
+  const open = positions.filter((p) => p.status === "OPEN");
 
   const parts: string[] = [
     "## Wir suchen neue Teammitglieder!",
@@ -89,9 +88,8 @@ export function buildJobsMessage(positions: JobPosition[], opts: Opts): RESTPost
 
   parts.push(
     "",
-    "📊 **Statusübersicht – Offene Stellen:**",
-    ...visible.map((p) => `${jobEmoji(p.icon)} ${p.title}: ${p.status === "OPEN" ? "🟢 Offen" : "🔴 Geschlossen"}`),
-    "",
+    // Geschlossene Stellen tauchen bewusst nicht auf (wie auf der Website)
+    ...(open.length ? ["📊 **Statusübersicht – Offene Stellen:**", ...open.map((p) => `${jobEmoji(p.icon)} ${p.title}: 🟢 Offen`), ""] : []),
     "Wenn du dich angesprochen fühlst, bewirb dich direkt im **Bewerbungsportal** – Login mit Discord, dauert ca. 15–25 Minuten. Wir freuen uns auf dich! 🎉",
     "",
     "Euer Nordverkehr-Team",

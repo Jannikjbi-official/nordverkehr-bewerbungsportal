@@ -169,7 +169,7 @@ export const HELP: HelpSection[] = [
       {
         id: "stellenaufruf",
         term: "Stellenaufruf",
-        text: "Der Post „Wir suchen neue Teammitglieder!“ im Discord wird aus den Positionen erzeugt: offene Stellen mit Beschreibung und Aufgaben, gemeinsame Voraussetzungen, Statusübersicht (🟢 offen / 🔴 geschlossen) und Knöpfe zur Bewerbung. Ändert ein Admin eine Position, **bearbeitet** der Bot den Post automatisch – es kommt kein neuer. Zusätzlich gibt es **Einzelaufrufe** „Wir suchen …!“ pro Stelle in einem eigenen Kanal. Posten, aktualisieren und Vorschau unter „Positionen & Fragen“.",
+        text: "Der Post „Wir suchen neue Teammitglieder!“ im Discord wird aus den Positionen erzeugt: offene Stellen mit Beschreibung und Aufgaben, gemeinsame Voraussetzungen, Statusübersicht der offenen Stellen (geschlossene tauchen nicht auf) und Knöpfe zur Bewerbung. Ändert ein Admin eine Position, **bearbeitet** der Bot den Post automatisch – es kommt kein neuer. Zusätzlich gibt es **Einzelaufrufe** „Wir suchen …!“ pro Stelle in einem eigenen Kanal. Posten, aktualisieren und Vorschau unter „Positionen & Fragen“.",
       },
       {
         id: "bestaetigung",

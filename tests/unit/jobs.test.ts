@@ -32,10 +32,11 @@ describe("Stellenaufruf", () => {
     expect(t).toContain("## Wir suchen neue Teammitglieder!");
   });
 
-  it("offene Stellen ausführlich, geschlossene nur in der Statusübersicht", () => {
+  it("nur offene Stellen – geschlossene tauchen gar nicht auf", () => {
     expect(t).toContain(POSITIONS.find((p) => p.slug === "support")!.description);
     expect(t).not.toContain(POSITIONS.find((p) => p.slug === "eventteam")!.description);
-    expect(t).toMatch(/Eventteam: 🔴 Geschlossen/);
+    expect(t).not.toContain("Eventteam");
+    expect(t).not.toContain("Geschlossen");
     expect(t).toMatch(/Support: 🟢 Offen/);
     expect(t).toContain("Mindestalter 18 Jahre");
   });
