@@ -92,7 +92,15 @@ export const GENERAL_SECTIONS: SeedSection[] = [
       },
     ],
   },
-  {
+];
+
+/**
+ * Früher allgemeine Szenarien (für alle Stellen gleich). Seit 11/2026 hat jede
+ * Stelle eigene Szenarien – dieser Abschnitt wird nur noch von den Migrationen
+ * gebraucht (Altbestände erkennen und archivieren).
+ */
+export const RETIRED_GENERAL_SCENARIOS: SeedSection =
+{
     key: "scenarios",
     title: "Szenarien",
     description: "Es gibt keine perfekte Antwort. Wir wollen sehen, wie du denkst.",
@@ -119,8 +127,10 @@ export const GENERAL_SECTIONS: SeedSection[] = [
         maxLength: 2000,
       },
     ],
-  },
-];
+  };
+
+const SZENARIO_HINWEIS = "Es gibt keine perfekte Antwort. Wir wollen sehen, wie du denkst.";
+const scenario = (key: string, label: string) => ({ key, label, type: "SCENARIO" as const, minLength: 80, maxLength: 2000 });
 
 /** Fachfragen je Position (Slug → Abschnitte). Keine Wiederholung allgemeiner Fragen! */
 export const POSITION_SECTIONS: Record<string, SeedSection[]> = {
@@ -143,13 +153,6 @@ export const POSITION_SECTIONS: Record<string, SeedSection[]> = {
           options: ["Noch keine", "Unter 50", "50–500", "Über 500"],
         },
         {
-          key: "support.voice_issue",
-          label: "Ein Spieler hört ingame niemanden – SaltyChat verbindet nicht. Wie gehst du die Fehlersuche Schritt für Schritt an?",
-          type: "SCENARIO",
-          minLength: 80,
-          maxLength: 2000,
-        },
-        {
           key: "support.escalation",
           label: "Welche Tickets löst du selbst – und wann gibst du eins an Moderation oder Leitung weiter?",
           type: "LONG_TEXT",
@@ -164,19 +167,22 @@ export const POSITION_SECTIONS: Record<string, SeedSection[]> = {
         },
       ],
     },
+    {
+      key: "support.szenarien",
+      title: "Szenarien",
+      description: SZENARIO_HINWEIS,
+      questions: [
+        scenario("support.scenario_impatient", "Ein Spieler beleidigt dich im Ticket, weil seine Whitelist-Anfrage noch nicht bearbeitet ist. Wie reagierst du?"),
+        scenario("support.voice_issue", "Ein Spieler hört ingame niemanden – SaltyChat verbindet nicht. Wie gehst du die Fehlersuche Schritt für Schritt an?"),
+        scenario("support.scenario_unsure", "Ein Spieler fragt im Ticket, ob seine Aktion regelkonform war – du bist dir selbst nicht sicher. Was antwortest du?"),
+      ],
+    },
   ],
   moderator: [
     {
       key: "moderator.fach",
       title: "Moderation",
       questions: [
-        {
-          key: "moderator.powergaming",
-          label: "Während einer Verfolgungsjagd fällt dir Powergaming auf. Wann und wie greifst du ein?",
-          type: "SCENARIO",
-          minLength: 100,
-          maxLength: 2000,
-        },
         {
           key: "moderator.rules_knowledge",
           label: "Wie gut kennst du unser Regelwerk?",
@@ -191,19 +197,22 @@ export const POSITION_SECTIONS: Record<string, SeedSection[]> = {
           maxLength: 1500,
         },
         {
-          key: "moderator.explain_decision",
-          label: "Ein Spieler ist mit deiner Entscheidung nicht einverstanden und will darüber diskutieren. Wie erklärst du sie ihm?",
-          type: "SCENARIO",
-          minLength: 80,
-          maxLength: 2000,
-        },
-        {
           key: "moderator.hold_back",
           label: "Woran merkst du, dass du besser nicht eingreifst, weil das RP gerade gut läuft?",
           type: "LONG_TEXT",
           minLength: 60,
           maxLength: 1500,
         },
+      ],
+    },
+    {
+      key: "moderator.szenarien",
+      title: "Szenarien",
+      description: SZENARIO_HINWEIS,
+      questions: [
+        scenario("moderator.powergaming", "Während einer Verfolgungsjagd fällt dir Powergaming auf. Wann und wie greifst du ein?"),
+        scenario("moderator.scenario_friend", "Ein guter Freund von dir verstößt ingame gegen eine Regel und du bist gerade der einzige Moderator online. Wie gehst du vor?"),
+        scenario("moderator.explain_decision", "Ein Spieler ist mit deiner Entscheidung nicht einverstanden und will darüber diskutieren. Wie erklärst du sie ihm?"),
       ],
     },
   ],
@@ -236,6 +245,15 @@ export const POSITION_SECTIONS: Record<string, SeedSection[]> = {
         },
       ],
     },
+    {
+      key: "entwickler.szenarien",
+      title: "Szenarien",
+      description: SZENARIO_HINWEIS,
+      questions: [
+        scenario("entwickler.scenario_live_bug", "Am Abend legt ein Bug ein wichtiges System auf dem Live-Server lahm, viele Spieler sind online. Wie gehst du vor?"),
+        scenario("entwickler.scenario_review", "Ein anderer Entwickler kritisiert deinen Code im Review deutlich und will einen anderen Ansatz. Wie reagierst du?"),
+      ],
+    },
   ],
   media: [
     {
@@ -266,6 +284,15 @@ export const POSITION_SECTIONS: Record<string, SeedSection[]> = {
         },
       ],
     },
+    {
+      key: "media.szenarien",
+      title: "Szenarien",
+      description: SZENARIO_HINWEIS,
+      questions: [
+        scenario("media.scenario_consent", "In deinem besten Clip ist ein Spieler zu sehen, der nicht gezeigt werden möchte. Was tust du?"),
+        scenario("media.scenario_negative", "Unter einem Post sammeln sich negative Kommentare über den Server. Wie gehst du damit um?"),
+      ],
+    },
   ],
   mapper: [
     {
@@ -286,6 +313,15 @@ export const POSITION_SECTIONS: Record<string, SeedSection[]> = {
           helpText: "Bis zu 5 Bilder (JPG, PNG, WebP), je max. 8 MB. Metadaten werden automatisch entfernt.",
         },
         { key: "mapper.portfolio", label: "Portfolio-Link (optional)", type: "URL", required: false, placeholder: "https://…" },
+      ],
+    },
+    {
+      key: "mapper.szenarien",
+      title: "Szenarien",
+      description: SZENARIO_HINWEIS,
+      questions: [
+        scenario("mapper.scenario_performance", "Deine neue Map sieht richtig gut aus, verursacht aber bei einigen Spielern Ruckler. Wie gehst du vor?"),
+        scenario("mapper.scenario_changes", "Kurz vor Release möchte das Team an deinem Interior noch größere Änderungen. Wie reagierst du?"),
       ],
     },
   ],
@@ -309,19 +345,21 @@ export const POSITION_SECTIONS: Record<string, SeedSection[]> = {
           maxLength: 2000,
         },
         {
-          key: "eventteam.crowd",
-          label: "Am Eventabend kommen doppelt so viele Spieler wie geplant und es wird chaotisch. Was tust du?",
-          type: "SCENARIO",
-          minLength: 80,
-          maxLength: 2000,
-        },
-        {
           key: "eventteam.feedback",
           label: "Wie sammelst du nach einem Event Feedback ein – und was machst du mit Kritik?",
           type: "LONG_TEXT",
           minLength: 60,
           maxLength: 1500,
         },
+      ],
+    },
+    {
+      key: "eventteam.szenarien",
+      title: "Szenarien",
+      description: SZENARIO_HINWEIS,
+      questions: [
+        scenario("eventteam.crowd", "Am Eventabend kommen doppelt so viele Spieler wie geplant und es wird chaotisch. Was tust du?"),
+        scenario("eventteam.scenario_disruption", "Während deines Events stören ein paar Spieler absichtlich den Ablauf. Was machst du?"),
       ],
     },
   ],

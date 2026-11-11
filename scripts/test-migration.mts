@@ -172,7 +172,9 @@ try {
 
   // 4) Rohdaten: allgemeine Abschnitte nur noch einmal aktiv
   const activeGeneral = await db.formSection.findMany({ where: { positionId: null, NOT: { archived: true } }, include: { questions: { where: { archived: false } } } });
-  check(activeGeneral.length === 3, `3 aktive allgemeine Abschnitte (ist: ${activeGeneral.length})`);
+  check(activeGeneral.length === 2, `2 aktive allgemeine Abschnitte, Szenarien sind jetzt pro Stelle (ist: ${activeGeneral.length})`);
+  const supportScen = await db.formSection.findFirst({ where: { key: "support.szenarien", archived: false }, include: { questions: { where: { archived: false } } } });
+  check(supportScen?.questions.length === 3, `Support hat eigenen Abschnitt „Szenarien“ mit 3 Fragen (ist: ${supportScen?.questions.length})`);
   const activeKeys = (await db.question.findMany({ where: { archived: false, key: { not: null } }, select: { key: true } })).map((q) => q.key!);
   check(new Set(activeKeys).size === activeKeys.length, "jeder aktive Key genau einmal");
 
@@ -204,8 +206,8 @@ try {
   check(callname.length === 1 && callname[0].archived, "„Wie sollen wir dich nennen?“ archiviert (Antworten bleiben)");
   const tickets = await db.question.findFirst({ where: { key: "support.tickets", archived: false } });
   check(tickets?.label.includes("Tickets") === true && tickets.options.length === 4, "Support-Erfahrung → Ticket-Frage mit neuen Optionen");
-  const insult = await db.question.findFirst({ where: { key: "scenario_insult", archived: false } });
-  check(insult?.label.startsWith("Jemand beleidigt dich") === true, "Beleidigungs-Szenario neutral formuliert");
+  const insult = await db.question.findFirst({ where: { key: "scenario_insult" } });
+  check(insult?.archived === true, "allgemeines Beleidigungs-Szenario archiviert (Antworten bleiben)");
 
   // 8) Zweiter Lauf ist ein No-op
   check((await runMigrations(db, { log: () => {} })).length === 0, "zweiter Lauf tut nichts");

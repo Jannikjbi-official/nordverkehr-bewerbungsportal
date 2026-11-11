@@ -77,7 +77,7 @@ export const HELP: HelpSection[] = [
       {
         id: "fragen",
         term: "Basisfragen & Fachfragen",
-        text: "**Basisfragen** (Über dich, Erfahrung & Motivation, Szenarien) beantworten alle einmal – bei der nächsten Bewerbung werden sie vorausgefüllt. **Fachfragen** gibt es pro Stelle. Admins pflegen beides unter „Positionen & Fragen“; der Builder warnt, wenn eine Frage schon ähnlich existiert.",
+        text: "**Basisfragen** (Über dich, Erfahrung & Motivation) beantworten alle einmal – bei der nächsten Bewerbung werden sie vorausgefüllt. **Fachfragen** und **Szenarien** gibt es pro Stelle, passend zu ihren Aufgaben. Admins pflegen beides unter „Positionen & Fragen“; der Builder warnt, wenn eine Frage schon ähnlich existiert.",
       },
     ],
   },

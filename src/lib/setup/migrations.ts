@@ -13,6 +13,7 @@ import {
   LEGACY_SECTION_TITLES,
   POSITION_SECTIONS,
   RETIRED_KEYS,
+  RETIRED_GENERAL_SCENARIOS,
   normalizeLabel,
   type SeedQuestion,
 } from "@/lib/setup/questions";
@@ -39,7 +40,7 @@ interface Options {
 const CONTENT_UPDATES = ["scenario_insult", "support.tickets", "entwickler.platforms", "entwickler.project", "experience_teams"];
 
 const seedByKey = new Map<string, SeedQuestion>();
-for (const s of [...GENERAL_SECTIONS, ...Object.values(POSITION_SECTIONS).flat()]) for (const q of s.questions) seedByKey.set(q.key, q);
+for (const s of [...GENERAL_SECTIONS, RETIRED_GENERAL_SCENARIOS, ...Object.values(POSITION_SECTIONS).flat()]) for (const q of s.questions) seedByKey.set(q.key, q);
 // Aktuelle Seed-Texte zählen ebenfalls als bekannte Texte
 const LABEL_TO_KEY: Record<string, string> = { ...LEGACY_LABELS };
 for (const [key, q] of seedByKey) LABEL_TO_KEY[normalizeLabel(q.label)] ??= key;
@@ -324,12 +325,89 @@ async function addSpecificQuestions(db: PrismaClient, opts: Options) {
   return added;
 }
 
+/**
+ * Szenarien pro Stelle (11/2026): Die allgemeinen Szenarien (für alle gleich)
+ * werden archiviert – Antworten bleiben über den Snapshot erhalten. Jede Stelle
+ * bekommt einen eigenen Abschnitt „Szenarien“; vorhandene Szenario-Fachfragen
+ * ziehen dorthin um, neue werden ergänzt.
+ */
+async function scenariosPerPosition(db: PrismaClient, opts: Options) {
+  const dry = !!opts.dryRun;
+  const log = opts.log ?? (() => {});
+  const report = { archived: [] as string[], sections: [] as string[], moved: [] as string[], added: [] as string[] };
+
+  // a) Allgemeinen Abschnitt "Szenarien" samt Fragen archivieren
+  const general = await db.formSection.findMany({ where: { key: "scenarios", positionId: null, archived: false }, select: { id: true } });
+  for (const s of general) {
+    report.archived.push("Allgemeine Szenarien");
+    if (dry) continue;
+    await db.question.updateMany({ where: { sectionId: s.id }, data: { archived: true } });
+    await db.formSection.update({ where: { id: s.id }, data: { archived: true } });
+  }
+  // Einzelne allgemeine Szenario-Fragen, die woanders gelandet sind
+  for (const q of RETIRED_GENERAL_SCENARIOS.questions) {
+    const found = await db.question.findMany({ where: { key: q.key, archived: false }, select: { id: true } });
+    if (found.length && !dry) await db.question.updateMany({ where: { key: q.key }, data: { archived: true } });
+  }
+
+  // b) Pro Stelle: Abschnitt "Szenarien" + Fragen
+  for (const [slug, sections] of Object.entries(POSITION_SECTIONS)) {
+    const seed = sections.find((s) => s.key === `${slug}.szenarien`);
+    if (!seed) continue;
+    const position = await db.position.findUnique({ where: { slug }, select: { id: true, typeId: true } });
+    if (!position) continue; // Position gelöscht
+    let section = await db.formSection.findFirst({ where: { key: seed.key } });
+    if (section?.archived) continue; // bewusst entfernt
+    if (!section) {
+      report.sections.push(slug);
+      if (dry) continue;
+      const max = await db.formSection.aggregate({ _max: { sortOrder: true }, where: { positionId: position.id } });
+      section = await db.formSection.create({
+        data: { key: seed.key, typeId: position.typeId, positionId: position.id, title: seed.title, description: seed.description ?? null, sortOrder: (max._max.sortOrder ?? 100) + 1 },
+      });
+    }
+    for (const [i, q] of seed.questions.entries()) {
+      const existing = await db.question.findFirst({ where: { key: q.key }, select: { id: true, archived: true, sectionId: true } });
+      if (existing?.archived) continue; // bewusst archiviert
+      if (existing) {
+        if (existing.sectionId !== section.id) {
+          report.moved.push(q.key);
+          if (!dry) await db.question.update({ where: { id: existing.id }, data: { sectionId: section.id, sortOrder: i } });
+        }
+        continue;
+      }
+      report.added.push(q.key);
+      if (dry) continue;
+      await db.question.create({
+        data: {
+          key: q.key,
+          sectionId: section.id,
+          label: q.label,
+          type: q.type,
+          required: q.required ?? true,
+          helpText: q.helpText ?? null,
+          placeholder: q.placeholder ?? null,
+          minLength: q.minLength ?? null,
+          maxLength: q.maxLength ?? null,
+          minValue: q.minValue ?? null,
+          maxValue: q.maxValue ?? null,
+          options: q.options ?? [],
+          sortOrder: i,
+        },
+      });
+    }
+  }
+  log(`Szenarien pro Stelle: ${JSON.stringify(report)}`);
+  return report;
+}
+
 const MIGRATIONS: { id: string; run: (db: PrismaClient, opts: Options) => Promise<unknown> }[] = [
   { id: "2026-11-questions-v2", run: migrateQuestionsV2 },
   { id: "2026-11-claims", run: backfillClaimFields },
   // Fehlende optionale Felder → null, damit Filter wie `liftedAt: null` (Sperren!) greifen
   { id: "2026-11-explicit-nulls", run: (db, o) => (o.dryRun ? Promise.resolve(0) : backfillNulls(db)) },
   { id: "2026-11-fachfragen-v2", run: addSpecificQuestions },
+  { id: "2026-11-szenarien-pro-stelle", run: scenariosPerPosition },
 ];
 
 const LOCK_KEY = "lock:migrations";

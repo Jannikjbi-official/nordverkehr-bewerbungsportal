@@ -173,7 +173,8 @@ tests/unit/            Vitest (Rollenprüfung, Routen, Nachrichtenversand, Schut
 
 ## Fragen-Struktur
 
-- **Allgemeine Fragen** (Über dich, Erfahrung & Motivation, Szenarien) gibt es genau einmal, sie gelten für alle Positionen.
+- **Allgemeine Fragen** (Über dich, Erfahrung & Motivation) gibt es genau einmal, sie gelten für alle Positionen.
+- **Szenarien** sind pro Stelle eigene, passend zu ihren Aufgaben (Abschnitt `<slug>.szenarien`).
 - **Positionen** haben nur fachliche Fragen („Fachfragen“). Heißt ein Abschnitt wie die Position, wird er als „Fachfragen“ angezeigt.
 - Jede Frage hat einen **eindeutigen Key** (`about_me`, `support.tickets`). Das Formular entfernt Duplikate per Key bzw. Text; der Builder warnt bei gleichem Key oder ähnlichem Text.
 - Antworten auf allgemeine Fragen werden nach dem Absenden im **Bewerberprofil** gemerkt und bei der nächsten Bewerbung vorausgefüllt („Deine Angaben“ – mit „Anpassen“).

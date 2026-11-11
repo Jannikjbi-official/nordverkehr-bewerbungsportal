@@ -3,7 +3,7 @@ import { assembleForm, duplicateCheck, type RawSection } from "@/lib/application
 import { KEY_PATTERN, findSimilarQuestions, similarity, suggestKey } from "@/lib/applications/similarity";
 import { generalComplete, mergeProfile, prefillFromProfile, profileAnswersFrom } from "@/lib/applications/profile";
 import { GENERAL_SECTIONS, POSITIONS, type SeedSection } from "@/lib/setup/seed-data";
-import { LEGACY_LABELS, normalizeLabel } from "@/lib/setup/questions";
+import { LEGACY_LABELS, RETIRED_GENERAL_SCENARIOS, normalizeLabel } from "@/lib/setup/questions";
 import type { FormQuestion } from "@/lib/applications/form";
 
 let n = 0;
@@ -46,6 +46,18 @@ describe("Seed-Fragen: eindeutige Struktur", () => {
     expect(new Set(sKeys).size).toBe(sKeys.length);
   });
 
+  it("jede Stelle hat eigene Szenarien, keine allgemeinen mehr", () => {
+    expect(GENERAL_SECTIONS.flatMap((s) => s.questions).some((q) => q.type === "SCENARIO")).toBe(false);
+    for (const p of POSITIONS) {
+      const sz = p.sections.find((s) => s.key === `${p.slug}.szenarien`);
+      expect(sz, p.slug).toBeDefined();
+      expect(sz!.questions.length, p.slug).toBeGreaterThanOrEqual(2);
+      expect(sz!.questions.every((q) => q.type === "SCENARIO")).toBe(true);
+    }
+    const labels = POSITIONS.flatMap((p) => p.sections.flatMap((s) => s.questions.filter((q) => q.type === "SCENARIO").map((q) => q.label)));
+    expect(new Set(labels).size).toBe(labels.length);
+  });
+
   it("positionsspezifische Keys tragen den Slug als Präfix", () => {
     for (const p of POSITIONS) for (const s of p.sections) for (const q of s.questions) expect(q.key.startsWith(`${p.slug}.`), q.key).toBe(true);
   });
@@ -58,7 +70,7 @@ describe("Seed-Fragen: eindeutige Struktur", () => {
   });
 
   it("Legacy-Texte zeigen auf existierende Keys", () => {
-    const keys = new Set(all.flatMap((s) => s.questions.map((q) => q.key)));
+    const keys = new Set([...all, RETIRED_GENERAL_SCENARIOS].flatMap((s) => s.questions.map((q) => q.key)));
     for (const [label, key] of Object.entries(LEGACY_LABELS)) {
       expect(label).toBe(normalizeLabel(label));
       if (!["callname", "eventteam.experience"].includes(key)) expect(keys.has(key), key).toBe(true);

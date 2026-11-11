@@ -67,6 +67,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     items: [
       { kind: "neu", text: "**Bewerben in Schritten** – Login mit Discord, automatisches Speichern, Bestätigung per DM, Status im Dashboard." },
       { kind: "neu", text: "**Basis- & Fachfragen** – Basisfragen einmal für alle, pro Stelle eigene Fachfragen. Basisantworten werden beim nächsten Mal vorausgefüllt." },
+      { kind: "neu", text: "**Szenarien pro Stelle** – jede Stelle hat eigene, passende Situationen statt für alle die gleichen." },
       { kind: "neu", text: "**Team-Bereich** – Tabelle & Board, Abstimmung, Kommentare, Notizen, Sperren, Statistiken, Audit-Log." },
       { kind: "neu", text: "**Claimen** – oben in jeder Bewerbung sehen, wer sie betreut. Übernehmen und Freigeben per Klick." },
       { kind: "neu", text: "**Nachrichten** – Bausteine mit Platzhaltern, Betreff aus dem Baustein, senden als du oder als Team." },
