@@ -28,6 +28,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Alle Discord-Nachrichten des Bots (DMs, Bewerbungs-Kanal, Bot-Logs, Changelog) im neuen Discord-Layout (Components V2) – die Vorschau im Portal zeigt es genauso.",
       "Fehler behoben: Sperren, „ungelesen“-Zähler und das Aufräumen alter Uploads griffen bei manchen Einträgen nicht (MongoDB-Eigenheit bei leeren Feldern).",
       "Dieses Changelog: im Team-Bereich und automatisch im Changelog-Kanal.",
+      "Einstellungen → „Discord-Zustellung prüfen“: Testnachricht pro Kanal mit genauer Fehlermeldung, Changelog erneut posten, Liste fehlgeschlagener Zustellungen.",
     ],
   },
   {

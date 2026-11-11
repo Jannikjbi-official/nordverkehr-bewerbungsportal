@@ -28,6 +28,7 @@ export const prismaOutboxStore: OutboxStore = {
     });
   },
   async reschedule(job, error, runAt) {
+    console.warn("[outbox] neuer Versuch geplant", job.type, error);
     await db.outboxJob.update({
       where: { id: job.id },
       data: { status: "PENDING", attempts: { increment: 1 }, lastError: error, runAt, lockedAt: null },
@@ -35,6 +36,8 @@ export const prismaOutboxStore: OutboxStore = {
   },
   async fail(job, error, { dmClosed }) {
     const status = dmClosed ? "DM_CLOSED" : "FAILED";
+    const pl = job.payload as OutboxPayload;
+    console.warn("[outbox] fehlgeschlagen", job.type, pl.type === "CHANNEL_MESSAGE" ? `Kanal ${pl.channelId}` : "", error);
     await db.$transaction(async (tx) => {
       await tx.outboxJob.update({
         where: { id: job.id },

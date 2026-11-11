@@ -243,3 +243,55 @@ export async function reorderQuestionsAction(ids: string[]): Promise<ActionResul
   revalidatePath("/team/positionen", "layout");
   return { ok: true };
 }
+
+// ─── Discord-Diagnose ─────────────────────────────────────────
+
+const CHANNEL_KIND = z.enum(["applications", "botLog", "changelog"]);
+const CHANNEL_LABEL = { applications: "Bewerbungs-Kanal", botLog: "Bot-Log-Kanal", changelog: "Changelog-Kanal" } as const;
+
+/** Testnachricht direkt (ohne Warteschlange) senden – zeigt den genauen Discord-Fehler. */
+export async function discordTestAction(kind: z.input<typeof CHANNEL_KIND>): Promise<ActionResult<{ message: string }>> {
+  const { user } = await requireAdmin();
+  const k = CHANNEL_KIND.safeParse(kind);
+  if (!k.success) return { ok: false, error: "Ungültig." };
+  const { getSettings } = await import("@/lib/settings");
+  const s = await getSettings();
+  const channelId =
+    k.data === "applications" ? s["discord.applicationsChannelId"] : k.data === "botLog" ? s["discord.botLogChannelId"] || process.env.DISCORD_LOG_CHANNEL_ID : s["discord.changelogChannelId"];
+  if (!channelId) return { ok: false, error: `Für den ${CHANNEL_LABEL[k.data]} ist keine Kanal-ID eingetragen.` };
+  try {
+    const { getDiscordApi } = await import("@/lib/discord/client");
+    const { buildBotLogMessage } = await import("@/lib/messages/embed");
+    await getDiscordApi().postMessage(
+      channelId,
+      buildBotLogMessage(`🧪 Testnachricht für den **${CHANNEL_LABEL[k.data]}** – ausgelöst von ${user.globalName || user.username} im Bewerbungsportal.`),
+    );
+    return { ok: true, data: { message: `Gesendet an ${channelId}.` } };
+  } catch (err) {
+    return { ok: false, error: `Discord: ${err instanceof Error ? err.message : String(err)}` };
+  }
+}
+
+/** Neuesten (oder angegebenen) Changelog-Eintrag erneut posten und das Ergebnis zurückgeben. */
+export async function repostChangelogAction(entryId?: string): Promise<ActionResult<{ message: string }>> {
+  await requireAdmin();
+  const { CHANGELOG } = await import("@/lib/changelog");
+  const entry = entryId ? CHANGELOG.find((e) => e.id === entryId) : CHANGELOG[0];
+  if (!entry) return { ok: false, error: "Eintrag nicht gefunden." };
+  const { repostChangelogEntry } = await import("@/lib/discord/changelog-post");
+  const jobId = await repostChangelogEntry(db, entry.id);
+  if (!jobId) return { ok: false, error: "Changelog-Posts sind ausgeschaltet oder kein Kanal eingetragen." };
+  const job = await db.outboxJob.findUnique({ where: { id: jobId }, select: { status: true, lastError: true } });
+  if (job?.status === "DONE") return { ok: true, data: { message: `„${entry.title}“ wurde gepostet.` } };
+  return { ok: false, error: `Nicht gepostet (${job?.status ?? "?"}): ${job?.lastError ?? "unbekannter Fehler"}` };
+}
+
+/** Ausstehende Zustellungen jetzt senden. */
+export async function flushOutboxAction(): Promise<ActionResult<{ message: string }>> {
+  await requireAdmin();
+  const { runOutbox, releaseStuckJobs } = await import("@/lib/discord/outbox-db");
+  await releaseStuckJobs(2);
+  const n = await runOutbox({ limit: 25 });
+  revalidatePath("/team/einstellungen");
+  return { ok: true, data: { message: n ? `${n} Zustellung(en) verarbeitet.` : "Nichts fällig." } };
+}

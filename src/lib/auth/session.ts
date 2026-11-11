@@ -40,6 +40,9 @@ async function touchTeamActivity(user: CurrentUser) {
     const { after } = await import("next/server");
     after(async () => {
       const { runOutbox } = await import("@/lib/discord/outbox-db");
+      const { postNewChangelogEntries } = await import("@/lib/discord/changelog-post");
+      // Neue Changelog-Einträge (falls der Serverstart es nicht geschafft hat)
+      await postNewChangelogEntries(db).catch((e) => console.error("[changelog]", e));
       await runOutbox({ limit: 10 }).catch(() => {});
     });
   } catch {

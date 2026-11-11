@@ -11,7 +11,14 @@ import { buildChangelogMessage } from "@/lib/messages/embed";
 import { getSettings } from "@/lib/settings";
 import { publicEnv } from "@/lib/env";
 
-export async function postNewChangelogEntries(db: PrismaClient) {
+/** Einen Eintrag (erneut) posten – für den Button in den Einstellungen. Gibt die Job-ID zurück. */
+export async function repostChangelogEntry(db: PrismaClient, id: string) {
+  await db.setting.deleteMany({ where: { key: `changelog:${id}` } });
+  const posted = await postNewChangelogEntries(db, { only: id });
+  return posted[0] ?? null;
+}
+
+export async function postNewChangelogEntries(db: PrismaClient, opts: { only?: string } = {}) {
   const s = await getSettings();
   const channelId = s["discord.changelogChannelId"];
   if (!s["discord.changelogEnabled"] || !channelId) return [];
@@ -19,6 +26,7 @@ export async function postNewChangelogEntries(db: PrismaClient) {
   const posted: string[] = [];
   // Älteste zuerst, damit die Reihenfolge im Kanal stimmt
   for (const entry of [...CHANGELOG].reverse()) {
+    if (opts.only && entry.id !== opts.only) continue;
     const key = `changelog:${entry.id}`;
     if (await db.setting.findUnique({ where: { key }, select: { key: true } })) continue;
 
@@ -37,6 +45,9 @@ export async function postNewChangelogEntries(db: PrismaClient) {
       .catch(() => null); // andere Instanz war schneller (Key existiert schon)
     if (job) posted.push(job.id);
   }
-  if (posted.length) await runOutbox({ ids: posted }).catch((e) => console.error("[changelog]", e));
+  if (posted.length) {
+    console.log(`[changelog] ${posted.length} Eintrag/Einträge an Kanal ${channelId} geschickt`);
+    await runOutbox({ ids: posted }).catch((e) => console.error("[changelog]", e));
+  }
   return posted;
 }

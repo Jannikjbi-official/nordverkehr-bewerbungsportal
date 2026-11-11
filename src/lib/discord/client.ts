@@ -51,15 +51,25 @@ export function classifyDiscordError(err: unknown): DiscordRequestError {
     if (code === DISCORD_CODES.CANNOT_DM_USER) {
       return new DiscordRequestError("Der Nutzer hat Direktnachrichten deaktiviert.", "dm_closed", code, err.status);
     }
+    if (code === DISCORD_CODES.UNKNOWN_CHANNEL) {
+      return new DiscordRequestError("Kanal nicht gefunden (10003) – ID falsch oder der Bot sieht den Kanal nicht.", "not_found", code, err.status);
+    }
     if (code === DISCORD_CODES.UNKNOWN_MEMBER || code === DISCORD_CODES.UNKNOWN_USER || err.status === 404) {
-      return new DiscordRequestError("Nicht gefunden.", "not_found", code, err.status);
+      return new DiscordRequestError(`Nicht gefunden (${code}).`, "not_found", code, err.status);
+    }
+    if (code === DISCORD_CODES.MISSING_ACCESS) {
+      return new DiscordRequestError("Kein Zugriff (50001) – der Bot ist nicht im Kanal oder darf ihn nicht sehen.", "forbidden", code, err.status);
+    }
+    if (code === DISCORD_CODES.MISSING_PERMISSIONS) {
+      return new DiscordRequestError("Fehlende Rechte (50013) – der Bot braucht „Nachrichten senden“ in diesem Kanal.", "forbidden", code, err.status);
     }
     if (err.status === 401 || err.status === 403) {
-      return new DiscordRequestError(`Keine Berechtigung (${code}).`, "forbidden", code, err.status);
+      return new DiscordRequestError(`Keine Berechtigung (${code}): ${err.message}`.slice(0, 500), "forbidden", code, err.status);
     }
     if (err.status === 429) return new DiscordRequestError("Rate-Limit.", "rate_limited", code, err.status);
     if (err.status >= 500) return new DiscordRequestError(`Discord-Serverfehler ${err.status}.`, "server", code, err.status);
-    return new DiscordRequestError(err.message, "forbidden", code, err.status);
+    // z. B. 50035 "Invalid Form Body" – Discord nennt das fehlerhafte Feld
+    return new DiscordRequestError(`${err.message} (${code})`.slice(0, 800), "forbidden", code, err.status);
   }
   if (err instanceof RateLimitError) return new DiscordRequestError("Rate-Limit.", "rate_limited", undefined, 429);
   if (err instanceof HTTPError) {
