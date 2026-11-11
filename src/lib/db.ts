@@ -3,7 +3,8 @@ import { PrismaClient } from "@prisma/client";
 /**
  * Eine PrismaClient-Instanz pro Prozess (auch über Hot-Reloads hinweg).
  * Wird lazy erzeugt, damit `next build` ohne Datenbank durchläuft.
- * Datenbank: MongoDB (Replica Set, z. B. MongoDB Atlas) über DATABASE_URL.
+ * Datenbank: MongoDB (Replica Set, z. B. MongoDB Atlas) über DATABASE_URL
+ * (oder die Variable der Vercel-Atlas-Integration, siehe resolveDatabaseUrl).
  */
 const globalForPrisma = globalThis as unknown as { __nvPrisma?: PrismaClient };
 
@@ -22,11 +23,21 @@ export function withDatabaseName(url: string, name = DEFAULT_DB_NAME): string {
   return `${base}/${name}${query}`;
 }
 
+/** Variablennamen, unter denen die Verbindung stehen darf (Vercel-Atlas-Integration legt eigene an). */
+export const DATABASE_URL_KEYS = ["DATABASE_URL", "DATABASE_URL_MONGODB_URI", "MONGODB_URI"] as const;
+
+/** Verbindungs-URL finden und um den Datenbanknamen ergänzen. */
+export function resolveDatabaseUrl(env: Record<string, string | undefined> = process.env): string {
+  for (const key of DATABASE_URL_KEYS) {
+    const v = env[key];
+    if (v && v.trim()) return withDatabaseName(v.trim());
+  }
+  throw new Error(`Keine Datenbank-URL gesetzt (${DATABASE_URL_KEYS.join(" / ")}).`);
+}
+
 export function getDb(): PrismaClient {
   if (!globalForPrisma.__nvPrisma) {
-    const url = process.env.DATABASE_URL;
-    if (!url) throw new Error("DATABASE_URL ist nicht gesetzt.");
-    globalForPrisma.__nvPrisma = new PrismaClient({ datasourceUrl: withDatabaseName(url) });
+    globalForPrisma.__nvPrisma = new PrismaClient({ datasourceUrl: resolveDatabaseUrl() });
   }
   return globalForPrisma.__nvPrisma;
 }

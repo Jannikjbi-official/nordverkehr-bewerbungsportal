@@ -4,14 +4,17 @@
  */
 import "dotenv/config";
 import { spawnSync } from "node:child_process";
-import { withDatabaseName } from "../src/lib/db";
+import { resolveDatabaseUrl } from "../src/lib/db";
 
-const url = process.env.DATABASE_URL;
-if (!url) {
-  console.error("DATABASE_URL ist nicht gesetzt.");
+let url: string;
+try {
+  url = resolveDatabaseUrl();
+} catch (e) {
+  console.error((e as Error).message);
   process.exit(1);
 }
-const env = { ...process.env, DATABASE_URL: withDatabaseName(url) };
+// Prisma CLI liest DATABASE_URL aus dem Schema
+const env = { ...process.env, DATABASE_URL: url };
 const run = (cmd: string, args: string[]) => {
   const r = spawnSync(cmd, args, { stdio: "inherit", env, shell: true });
   if (r.status !== 0) process.exit(r.status ?? 1);

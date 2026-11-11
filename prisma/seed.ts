@@ -10,84 +10,11 @@
 import "dotenv/config";
 import { PrismaClient, type Prisma } from "@prisma/client";
 import type { ApplicationStatus, QuestionType, VoteValue } from "@prisma/client";
-import { GENERAL_SECTIONS, POSITIONS, TEMPLATES, type SeedSection } from "./seed-data";
-import { ensureIndexes } from "../scripts/mongo-indexes";
-import { withDatabaseName } from "../src/lib/db";
+import { resolveDatabaseUrl } from "../src/lib/db";
+import { ensureIndexes } from "../src/lib/setup/indexes";
+import { seedBase } from "../src/lib/setup/base-seed";
 
-const db = new PrismaClient({ datasourceUrl: withDatabaseName(process.env.DATABASE_URL ?? "") });
-
-async function createSections(typeId: string, positionId: string | null, sections: SeedSection[], offset = 0) {
-  for (const [i, s] of sections.entries()) {
-    await db.formSection.create({
-      data: {
-        typeId,
-        positionId,
-        title: s.title,
-        description: s.description,
-        sortOrder: offset + i,
-        questions: {
-          create: s.questions.map((q, qi) => ({
-            label: q.label,
-            type: q.type,
-            required: q.required ?? true,
-            helpText: q.helpText,
-            placeholder: q.placeholder,
-            minLength: q.minLength,
-            maxLength: q.maxLength,
-            minValue: q.minValue,
-            maxValue: q.maxValue,
-            options: q.options ?? [],
-            sortOrder: qi,
-          })),
-        },
-      },
-    });
-  }
-}
-
-async function seedStructure() {
-  const type = await db.applicationType.upsert({
-    where: { key: "team" },
-    create: { key: "team", name: "Team-Bewerbung", description: "Bewerbungen für das Nordverkehr-Team" },
-    update: {},
-  });
-
-  const generalCount = await db.formSection.count({ where: { typeId: type.id, positionId: null } });
-  if (generalCount === 0) {
-    await createSections(type.id, null, GENERAL_SECTIONS);
-    console.log(`✓ ${GENERAL_SECTIONS.length} allgemeine Formular-Schritte`);
-  }
-
-  for (const [i, p] of POSITIONS.entries()) {
-    const exists = await db.position.findUnique({ where: { slug: p.slug } });
-    if (exists) continue;
-    const pos = await db.position.create({
-      data: {
-        typeId: type.id,
-        slug: p.slug,
-        title: p.title,
-        tagline: p.tagline,
-        description: p.description,
-        icon: p.icon,
-        status: p.status,
-        tasks: p.tasks,
-        requirements: p.requirements,
-        sortOrder: i,
-      },
-    });
-    await createSections(type.id, pos.id, p.sections, 100);
-    console.log(`✓ Position ${p.title}`);
-  }
-  return type;
-}
-
-async function seedTemplates() {
-  if ((await db.messageTemplate.count()) > 0) return;
-  await db.messageTemplate.createMany({
-    data: TEMPLATES.map((t, i) => ({ ...t, sortOrder: i })),
-  });
-  console.log(`✓ ${TEMPLATES.length} Nachrichtenbausteine`);
-}
+const db = new PrismaClient({ datasourceUrl: resolveDatabaseUrl() });
 
 // ─── Demo-Daten ──────────────────────────────────────────────
 
@@ -302,8 +229,7 @@ async function seedDemo() {
 
 async function main() {
   await ensureIndexes(db);
-  await seedStructure();
-  await seedTemplates();
+  await seedBase(db, console.log);
   await seedDemo();
 }
 

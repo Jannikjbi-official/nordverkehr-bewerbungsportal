@@ -1,7 +1,7 @@
 /**
  * Inhalte für den Seed. Positionstexte orientieren sich an nordverkehr.xyz/team.
  */
-import type { QuestionType, TemplateCategory, PositionStatus } from "@prisma/client";
+import type { PositionStatus, QuestionType, TemplateCategory } from "@prisma/client";
 
 export interface SeedQuestion {
   key: string;

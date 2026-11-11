@@ -3,6 +3,19 @@ import { db } from "@/lib/db";
 import type { FormSectionDef } from "@/lib/applications/form";
 
 export async function listPublicPositions() {
+  const positions = await queryPublicPositions();
+  if (positions.length > 0) return positions;
+  // Frische Datenbank (z. B. direkt nach dem Verbinden von MongoDB Atlas auf Vercel):
+  // Indizes und Basisdaten einmalig anlegen. Läuft nur, solange noch keine Bewerbungsart existiert.
+  if ((await db.applicationType.count()) === 0) {
+    const { bootstrapDatabase } = await import("@/lib/setup/base-seed");
+    await bootstrapDatabase(db).catch((e) => console.error("[setup] Ersteinrichtung fehlgeschlagen", e));
+    return queryPublicPositions();
+  }
+  return positions;
+}
+
+function queryPublicPositions() {
   return db.position.findMany({
     where: { status: { in: ["OPEN", "CLOSED"] }, type: { key: "team", active: true } },
     orderBy: [{ status: "asc" }, { sortOrder: "asc" }],

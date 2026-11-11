@@ -57,10 +57,14 @@ Das Portal nutzt Transaktionen → MongoDB muss als **Replica Set** laufen. Atla
 
 1. [MongoDB Atlas](https://www.mongodb.com/atlas) → Cluster anlegen, **Region in der EU** (z. B. Frankfurt, `eu-central-1`) – wichtig für den Datenschutz.
 2. *Database Access* → Nutzer mit Rolle *readWrite* auf die Datenbank `nordverkehr`.
-3. *Network Access* → für Vercel `0.0.0.0/0` (Vercel hat keine festen IPs) – Zugriff ist durch Nutzer/Passwort geschützt. Alternativ die [Vercel-Atlas-Integration](https://vercel.com/marketplace/mongodbatlas) nutzen.
+3. *Network Access* → für Vercel `0.0.0.0/0` (Vercel hat keine festen IPs) – Zugriff ist durch Nutzer/Passwort geschützt.
+
+**Am einfachsten:** In Vercel die [MongoDB-Atlas-Integration](https://vercel.com/marketplace/mongodbatlas) installieren (Region Frankfurt). Sie legt den Cluster an und setzt die Variable (z. B. `DATABASE_URL_MONGODB_URI` bei Präfix `DATABASE`). Das Portal akzeptiert `DATABASE_URL`, `DATABASE_URL_MONGODB_URI` und `MONGODB_URI` und ergänzt einen fehlenden Datenbanknamen automatisch (`nordverkehr`).
+
+**Ersteinrichtung auf Vercel:** nichts zu tun. Beim ersten Aufruf der Startseite einer leeren Datenbank legt das Portal Indizes und Basisdaten (Positionen, Fragen, Bausteine – ohne Testbewerbungen) selbst an. Der tägliche Cron `/api/cron/retention` prüft die Indizes zusätzlich (in Vercel unter *Settings → Cron Jobs* auch manuell auslösbar).
 4. Connection String → `DATABASE_URL`, z. B.
    `mongodb+srv://USER:PASS@cluster0.xxxxx.mongodb.net/nordverkehr?retryWrites=true&w=majority`
-5. Einmalig von deinem Rechner aus:
+5. Alternativ einmalig von deinem Rechner aus:
    ```bash
    DATABASE_URL="mongodb+srv://…" npm run db:push
    DATABASE_URL="mongodb+srv://…" SEED_DEMO=false npm run db:seed

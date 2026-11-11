@@ -246,7 +246,9 @@ model Question {
 
 model Application {
   id                   String            @id @default(cuid()) @map("_id")
-  publicId             String?           @unique
+  /// Eindeutig, sobald gesetzt – partieller Unique-Index in scripts/mongo-indexes.ts
+  /// (ein normales @unique würde in MongoDB mehrere Entwürfe ohne ID blockieren)
+  publicId             String?
   userId               String
   user                 User              @relation("Applicant", fields: [userId], references: [id], onDelete: Cascade)
   positionId           String
@@ -289,6 +291,7 @@ model Application {
   comments             Comment[]
   messages             Message[]
 
+  @@index([publicId])
   @@index([status])
   @@index([positionId])
   @@index([userId])

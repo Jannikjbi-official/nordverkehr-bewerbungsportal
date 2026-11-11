@@ -1,35 +1,16 @@
 /**
- * MongoDB-Indizes, die Prisma nicht im Schema abbilden kann.
- * Wird von `npm run db:push` automatisch ausgeführt (idempotent).
+ * MongoDB-Indizes anlegen (idempotent). Wird von `npm run db:push` ausgeführt.
+ * Die Definitionen liegen in src/lib/setup/indexes.ts (auch für die Einrichtung auf Vercel).
  */
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
-import { withDatabaseName } from "../src/lib/db";
+import { resolveDatabaseUrl } from "../src/lib/db";
+import { ensureIndexes } from "../src/lib/setup/indexes";
 
-const OPEN = ["DRAFT", "SUBMITTED", "IN_REVIEW", "INTERVIEW"];
-
-export async function ensureIndexes(db: PrismaClient) {
-  // Pro Discord-Account nur eine offene Bewerbung (inkl. Entwurf) pro Position
-  await db.$runCommandRaw({
-    createIndexes: "Application",
-    indexes: [
-      {
-        key: { userId: 1, positionId: 1 },
-        name: "one_open_per_position",
-        unique: true,
-        partialFilterExpression: { status: { $in: OPEN } },
-      },
-    ],
-  });
-  // Abgelaufene Rate-Limit-Einträge räumt MongoDB selbst auf (TTL)
-  await db.$runCommandRaw({
-    createIndexes: "RateLimit",
-    indexes: [{ key: { resetAt: 1 }, name: "ttl_resetAt", expireAfterSeconds: 3600 }],
-  });
-}
+export { ensureIndexes };
 
 if (process.argv[1]?.includes("mongo-indexes")) {
-  const db = new PrismaClient({ datasourceUrl: withDatabaseName(process.env.DATABASE_URL ?? "") });
+  const db = new PrismaClient({ datasourceUrl: resolveDatabaseUrl() });
   ensureIndexes(db)
     .then(() => console.log("✓ MongoDB-Indizes angelegt"))
     .catch((e) => {

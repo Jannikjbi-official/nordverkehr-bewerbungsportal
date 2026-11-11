@@ -5,7 +5,7 @@ import { z } from "zod";
  * damit `next build` ohne vollständige .env funktioniert.
  */
 const serverSchema = z.object({
-  DATABASE_URL: z.string().min(1),
+  DATABASE_URL: z.string().optional(),
 
   AUTH_SECRET: z.string().min(16).optional(),
   AUTH_DISCORD_ID: z.string().optional(),
