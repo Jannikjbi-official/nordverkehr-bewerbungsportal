@@ -123,6 +123,7 @@ export function SettingsForm({ settings, env, spend, spendMicro }: Props) {
         <div className="space-y-3">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {channelField("discord.jobsChannelId", "Kanal: Stellenaufruf")}
+            {channelField("discord.spotlightChannelId", "Kanal: Einzelaufrufe")}
             {channelField("discord.applicationsChannelId", "Kanal: neue Bewerbungen")}
             {channelField("discord.botLogChannelId", "Kanal: Bot-Logs")}
             {channelField("discord.changelogChannelId", "Kanal: Changelog")}
@@ -130,7 +131,7 @@ export function SettingsForm({ settings, env, spend, spendMicro }: Props) {
           <p className="nv-help">Rechtsklick auf den Kanal in Discord → „Kanal-ID kopieren“ (Entwicklermodus). Der Bot braucht dort „Nachrichten senden“ und „Links einbetten“.</p>
           {toggle("discord.logChannelEnabled", "Neue Bewerbungen im Bewerbungs-Kanal posten")}
           {toggle("discord.botLogEnabled", "Bot-Logs posten", "Statuswechsel, Claims, Team-Nachrichten, Antworten von Bewerbern und Zustellfehler.")}
-          {toggle("discord.jobsAutoUpdate", "Stellenaufruf automatisch aktualisieren", "Ändert sich eine Position (Status, Texte), bearbeitet der Bot seinen Post im Kanal – kein neuer Post.")}
+          {toggle("discord.jobsAutoUpdate", "Stellenaufruf automatisch aktualisieren", "Ändert sich eine Position (Status, Texte), bearbeitet der Bot seine Posts (Gesamt- und Einzelaufrufe) – kein neuer Post.")}
           {toggle("discord.changelogEnabled", "Neue Changelog-Einträge posten", "Jeder Eintrag wird genau einmal gepostet, sobald er live ist.")}
           {toggle("discord.autoRoleOnAccept", "Bei Annahme automatisch die Rolle der Position vergeben", "Rolle pro Position unter „Positionen & Fragen“ eintragen. Der Bot braucht „Rollen verwalten“ und muss über der Rolle stehen.")}
         </div>

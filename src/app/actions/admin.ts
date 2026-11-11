@@ -368,3 +368,19 @@ export async function publishJobsPostAction(mode: "new" | "update"): Promise<Act
     return { ok: false, error: `Discord: ${err instanceof Error ? err.message : String(err)}` };
   }
 }
+
+/** Einzelaufruf „Wir suchen <Stelle>!“ posten oder aktualisieren. */
+export async function publishSpotlightAction(slug: string, mode: "new" | "update"): Promise<ActionResult<{ message: string }>> {
+  const { user } = await requireAdmin();
+  if (!/^[a-z0-9-]{1,60}$/.test(slug) || !["new", "update"].includes(mode)) return { ok: false, error: "Ungültig." };
+  try {
+    const { publishSpotlight } = await import("@/lib/discord/jobs-post");
+    const r = await publishSpotlight(db, slug, { mode, createIfMissing: true });
+    if (!r.ok) return { ok: false, error: r.error };
+    await audit("settings.update", { actorId: user.id, meta: { spotlight: slug, action: r.action } });
+    revalidatePath("/team/positionen");
+    return { ok: true, data: { message: r.action === "updated" ? "Einzelaufruf aktualisiert." : "Einzelaufruf gepostet." } };
+  } catch (err) {
+    return { ok: false, error: `Discord: ${err instanceof Error ? err.message : String(err)}` };
+  }
+}

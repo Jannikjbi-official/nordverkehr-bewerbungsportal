@@ -1,6 +1,9 @@
 /**
- * Stellenaufruf („Wir suchen neue Teammitglieder!“) für Discord – Components V2.
- * Wird komplett aus den Positionen erzeugt (Texte wie auf der Website) und vom
+ * Stellenaufrufe für Discord – Components V2, im Stil eines klassischen Embeds
+ * (ein durchgehender Textblock, Linie, Fußzeile):
+ *  - Gesamtaufruf „Wir suchen neue Teammitglieder!“ mit allen offenen Stellen
+ *  - Einzelaufruf „Wir suchen <Stelle>!“ für eine Position
+ * Beide werden aus den Positionen erzeugt (Texte wie auf der Website) und vom
  * Bot bei Änderungen an den Positionen automatisch aktualisiert.
  */
 import type { APIActionRowComponent, APIButtonComponentWithURL, APIComponentInContainer, RESTPostAPIChannelMessageJSONBody } from "discord-api-types/v10";
@@ -20,6 +23,12 @@ export interface JobPosition {
   acceptRoleId: string | null;
 }
 
+interface Opts {
+  appUrl: string;
+  defaultMinAge: number;
+  updatedAt?: Date;
+}
+
 const ICON_EMOJI: Record<string, string> = {
   headset: "🎧",
   shield: "🛡️",
@@ -31,6 +40,10 @@ const ICON_EMOJI: Record<string, string> = {
 };
 export const jobEmoji = (icon: string) => ICON_EMOJI[icon] ?? "📌";
 
+const NL = "\n";
+const roleOrTitle = (p: JobPosition) => (p.acceptRoleId ? `<@&${p.acceptRoleId}>` : `**${p.title}**`);
+const isHttps = (url: string) => /^https:\/\//.test(url);
+
 /** Anforderungen, die bei allen offenen Stellen gleich sind (z. B. Mindestalter). */
 function commonRequirements(open: JobPosition[], defaultMinAge: number) {
   if (!open.length) return [];
@@ -40,66 +53,90 @@ function commonRequirements(open: JobPosition[], defaultMinAge: number) {
   return common.some((r) => /mindestalter|jahre/i.test(r)) ? common : [ageLine, ...common];
 }
 
-export function buildJobsMessage(
-  positions: JobPosition[],
-  opts: { appUrl: string; defaultMinAge: number; updatedAt?: Date },
-): RESTPostAPIChannelMessageJSONBody {
+function footer(opts: Opts): APIComponentInContainer[] {
+  const stand = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Berlin" }).format(opts.updatedAt ?? new Date());
+  // Wie beim Embed: Linie, dann kleine Zeile
+  return [separator(true, 1), text(`-# Nordverkehr Roleplay · Stand: ${stand}`)];
+}
+
+function buttonRows(buttons: APIButtonComponentWithURL[]): APIActionRowComponent<APIButtonComponentWithURL>[] {
+  const rows: APIActionRowComponent<APIButtonComponentWithURL>[] = [];
+  for (let i = 0; i < buttons.length && i < 25; i += 5) rows.push({ type: 1, components: buttons.slice(i, i + 5) });
+  return rows;
+}
+
+/** Gesamtaufruf: alle offenen Stellen, Voraussetzungen, Statusübersicht – ein Block. */
+export function buildJobsMessage(positions: JobPosition[], opts: Opts): RESTPostAPIChannelMessageJSONBody {
   const visible = positions.filter((p) => p.status !== "HIDDEN");
   const open = visible.filter((p) => p.status === "OPEN");
-  const name = (p: JobPosition) => (p.acceptRoleId ? `<@&${p.acceptRoleId}>` : `**${p.title}**`);
 
-  const children: (APIComponentInContainer | null | false)[] = [
-    text(`## Wir suchen neue Teammitglieder!\n🔍 ${open.length ? "Aktuell suchen wir Unterstützung in folgenden Bereichen:" : "Gerade sind alle Stellen besetzt – schau bald wieder vorbei."}`),
+  const parts: string[] = [
+    "## Wir suchen neue Teammitglieder!",
+    `🔍 ${open.length ? "Aktuell suchen wir Unterstützung in folgenden Bereichen:" : "Gerade sind alle Stellen besetzt – schau bald wieder vorbei."}`,
   ];
 
   // Je offene Stelle: Titel, Beschreibung, Aufgaben (Platz gleichmäßig verteilt)
-  const budget = Math.floor(2200 / Math.max(open.length, 1));
-  for (const [i, p] of open.entries()) {
-    if (i > 0) children.push(separator(false, 1)); // etwas Luft zwischen den Stellen
-    children.push(
-      text(
-        truncate(
-          `${jobEmoji(p.icon)} ${name(p)} – ${p.tagline}\n${p.description}${p.tasks.length ? `\n-# Aufgaben: ${p.tasks.join(" · ")}` : ""}`,
-          budget,
-        ),
-      ),
-    );
+  const budget = Math.floor(2300 / Math.max(open.length, 1));
+  for (const p of open) {
+    const tasks = p.tasks.length ? `${NL}Aufgaben: ${p.tasks.join(", ")}.` : "";
+    parts.push("", truncate(`${jobEmoji(p.icon)} ${roleOrTitle(p)}:${NL}${p.description}${tasks}`, budget));
   }
 
   const reqs = commonRequirements(open, opts.defaultMinAge);
   if (reqs.length) {
-    children.push(separator());
-    children.push(text(`### ✅ Das solltest du mitbringen\n${reqs.map((r) => `- ${r}`).join("\n")}\n-# Weitere Voraussetzungen stehen bei der jeweiligen Stelle im Bewerbungsportal.`));
+    parts.push("", "✅ **Das solltest du mitbringen:**", ...reqs.map((r) => `🔹 ${r}`), "-# Weitere Voraussetzungen stehen bei der jeweiligen Stelle im Bewerbungsportal.");
   }
 
-  children.push(separator());
-  children.push(
-    text(
-      `### 📊 Statusübersicht\n${visible.map((p) => `${jobEmoji(p.icon)} ${p.title}: ${p.status === "OPEN" ? "🟢 Offen" : "🔴 Geschlossen"}`).join("\n")}`,
-    ),
+  parts.push(
+    "",
+    "📊 **Statusübersicht – Offene Stellen:**",
+    ...visible.map((p) => `${jobEmoji(p.icon)} ${p.title}: ${p.status === "OPEN" ? "🟢 Offen" : "🔴 Geschlossen"}`),
+    "",
+    "Wenn du dich angesprochen fühlst, bewirb dich direkt im **Bewerbungsportal** – Login mit Discord, dauert ca. 15–25 Minuten. Wir freuen uns auf dich! 🎉",
+    "",
+    "Euer Nordverkehr-Team",
   );
 
-  children.push(separator());
-  children.push(
-    text(
-      `Wenn du dich angesprochen fühlst, bewirb dich direkt im **Bewerbungsportal** – Login mit Discord, dauert ca. 15–25 Minuten. Wir freuen uns auf dich! 🎉`,
-    ),
-  );
-
-  // Knöpfe: Portal + je offene Stelle (max. 5 pro Reihe, nur https)
-  if (/^https:\/\//.test(opts.appUrl)) {
-    const buttons: APIButtonComponentWithURL[] = [
-      { type: 2, style: 5, label: "Zum Bewerbungsportal", url: opts.appUrl },
-      ...open.map((p) => ({ type: 2 as const, style: 5 as const, label: truncate(`${p.title} bewerben`, 80), url: `${opts.appUrl}/positionen/${p.slug}`, emoji: { name: jobEmoji(p.icon) } })),
-    ];
-    for (let i = 0; i < buttons.length && i < 25; i += 5) {
-      const row: APIActionRowComponent<APIButtonComponentWithURL> = { type: 1, components: buttons.slice(i, i + 5) };
-      children.push(row);
-    }
+  const children: APIComponentInContainer[] = [text(truncate(parts.join(NL), 3800))];
+  if (isHttps(opts.appUrl)) {
+    children.push(
+      ...buttonRows([
+        { type: 2, style: 5, label: "Zum Bewerbungsportal", url: opts.appUrl },
+        ...open.map((p) => ({ type: 2 as const, style: 5 as const, label: truncate(`${p.title} bewerben`, 80), url: `${opts.appUrl}/positionen/${p.slug}`, emoji: { name: jobEmoji(p.icon) } })),
+      ]),
+    );
   }
+  children.push(...footer(opts));
+  return v2Message(BRAND_COLOR, children);
+}
 
-  const stand = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Berlin" }).format(opts.updatedAt ?? new Date());
-  children.push(text(`-# Nordverkehr Roleplay · Stand: ${stand}`));
+/** Einzelaufruf „Wir suchen <Stelle>!“ – wie das Beispiel, ein durchgehender Block. */
+export function buildSpotlightMessage(p: JobPosition, opts: Opts): RESTPostAPIChannelMessageJSONBody {
+  const open = p.status === "OPEN";
+  const parts: string[] = [
+    `## Wir suchen ${roleOrTitle(p)}! ${jobEmoji(p.icon)}`,
+    `${p.tagline} ${p.description}`,
+  ];
+  if (p.tasks.length) parts.push("", "📋 **Deine Aufgaben:**", ...p.tasks.map((t) => `> ${t}`));
+  const reqs = p.requirements.length ? p.requirements : [`Mindestens ${p.minAge ?? opts.defaultMinAge} Jahre alt`];
+  parts.push("", "🔧 **Das solltest du mitbringen:**", ...reqs.map((r) => `> ${r}`));
+  parts.push(
+    "",
+    "📩 **Interesse?**",
+    open
+      ? "Bewirb dich direkt im **Bewerbungsportal** – Login mit Discord, dauert ca. 15–25 Minuten."
+      : "Die Stelle ist gerade geschlossen. Schau bald wieder vorbei – wir melden uns hier, sobald sie wieder offen ist.",
+    "",
+    "Mit freundlichen Grüßen",
+    "Euer Nordverkehr-Team",
+  );
 
+  const children: APIComponentInContainer[] = [text(truncate(parts.join(NL), 3800))];
+  if (open && isHttps(opts.appUrl)) {
+    children.push(
+      ...buttonRows([{ type: 2, style: 5, label: `Jetzt als ${truncate(p.title, 60)} bewerben`, url: `${opts.appUrl}/positionen/${p.slug}`, emoji: { name: jobEmoji(p.icon) } }]),
+    );
+  }
+  children.push(...footer(opts));
   return v2Message(BRAND_COLOR, children);
 }

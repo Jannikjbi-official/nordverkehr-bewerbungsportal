@@ -8,8 +8,8 @@ import { requireAdmin } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 import { publicEnv } from "@/lib/env";
-import { buildJobsMessage, type JobPosition } from "@/lib/messages/jobs";
-import { getJobsPost } from "@/lib/discord/jobs-post";
+import { buildJobsMessage, buildSpotlightMessage, jobEmoji, type JobPosition } from "@/lib/messages/jobs";
+import { getJobsPost, getSpotlights } from "@/lib/discord/jobs-post";
 import { JobsPostButtons } from "@/components/team/JobsPostCard";
 import { V2Preview } from "@/components/team/V2Preview";
 
@@ -39,7 +39,7 @@ export default function PositionsAdminPage() {
 
 async function List() {
   await requireAdmin();
-  const [positions, general, jobsPost, settings] = await Promise.all([
+  const [positions, general, jobsPost, settings, spotlights] = await Promise.all([
     db.position.findMany({
       orderBy: { sortOrder: "asc" },
       include: { _count: { select: { applications: { where: { status: { not: "DRAFT" } } }, sections: true } } },
@@ -47,6 +47,7 @@ async function List() {
     db.formSection.count({ where: { positionId: null, NOT: { archived: true } } }),
     getJobsPost(db),
     getSettings(),
+    getSpotlights(db),
   ]);
   const jobsMessage = buildJobsMessage(positions as unknown as JobPosition[], { appUrl: publicEnv.appUrl, defaultMinAge: settings["applications.minAge"] });
   return (
@@ -100,6 +101,45 @@ async function List() {
             <V2Preview message={jobsMessage} />
           </div>
         </details>
+      </section>
+
+      <section className="nv-card p-5 sm:p-6 space-y-4" aria-labelledby="spot-title">
+        <div>
+          <h2 id="spot-title" className="font-semibold text-lg">Einzelaufrufe pro Stelle</h2>
+          <p className="text-sm text-muted mt-0.5">
+            „Wir suchen …!“ für eine einzelne Stelle im Kanal{" "}
+            <span className="font-mono">{settings["discord.spotlightChannelId"] || "– (in den Einstellungen eintragen)"}</span>. Gepostete Aufrufe
+            {settings["discord.jobsAutoUpdate"] ? " aktualisieren sich automatisch, wenn du die Position änderst." : " aktualisierst du hier von Hand."}
+          </p>
+        </div>
+        <ul className="divide-y divide-[var(--nv-border)]">
+          {positions
+            .filter((p) => p.status !== "HIDDEN")
+            .map((p) => {
+              const post = spotlights[p.slug];
+              const message = buildSpotlightMessage(p as unknown as JobPosition, { appUrl: publicEnv.appUrl, defaultMinAge: settings["applications.minAge"] });
+              return (
+                <li key={p.id} className="py-3 space-y-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="font-medium">
+                        <span aria-hidden>{jobEmoji(p.icon)}</span> {p.title}
+                        {p.status === "CLOSED" && <span className="ml-2 text-xs text-muted">(geschlossen)</span>}
+                      </p>
+                      <p className="text-xs text-muted">{post ? `Gepostet · zuletzt aktualisiert ${formatDayTime(new Date(post.at))}` : "Noch nicht gepostet."}</p>
+                    </div>
+                    <JobsPostButtons posted={!!post} slug={p.slug} compact />
+                  </div>
+                  <details>
+                    <summary className="cursor-pointer text-xs font-medium text-muted hover:text-fg">Vorschau</summary>
+                    <div className="mt-2">
+                      <V2Preview message={message} />
+                    </div>
+                  </details>
+                </li>
+              );
+            })}
+        </ul>
       </section>
     </div>
   );

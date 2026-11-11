@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildJobsMessage, type JobPosition } from "@/lib/messages/jobs";
+import { buildJobsMessage, buildSpotlightMessage, type JobPosition } from "@/lib/messages/jobs";
 import { COMPONENTS_V2, V2_TEXT_LIMIT, v2Text } from "@/lib/messages/embed";
 import { POSITIONS } from "@/lib/setup/seed-data";
 
@@ -64,5 +64,43 @@ describe("Stellenaufruf", () => {
   it("keine offenen Stellen → freundlicher Hinweis", () => {
     const none = buildJobsMessage(positions.map((p) => ({ ...p, status: "CLOSED" as const })), opts);
     expect(v2Text(none)).toContain("alle Stellen besetzt");
+  });
+});
+
+describe("Einzelaufruf pro Stelle", () => {
+  const support = positions.find((p) => p.slug === "support")!;
+
+  it("ein Block: Titel, Aufgaben + Voraussetzungen als Zitat, Interesse, Fußzeile", () => {
+    const m = buildSpotlightMessage(support, opts);
+    const t = v2Text(m);
+    expect(m.flags).toBe(COMPONENTS_V2);
+    expect(t).toContain("## Wir suchen **Support**!");
+    expect(t).toContain("🔧 **Das solltest du mitbringen:**");
+    for (const r of support.requirements) expect(t).toContain(`> ${r}`);
+    expect(t).toContain("📩 **Interesse?**");
+    expect(t).toContain("Nordverkehr Roleplay");
+    // genau ein großer Textblock vor Knöpfen/Fußzeile
+    const kids = JSON.parse(JSON.stringify(m.components))[0].components as { type: number }[];
+    expect(kids[0].type).toBe(10);
+    expect(kids.filter((k) => k.type === 10)).toHaveLength(2); // Inhalt + Fußzeile
+  });
+
+  it("Knopf direkt zur Bewerbung, Rolle als Erwähnung", () => {
+    const m = buildSpotlightMessage({ ...support, acceptRoleId: "123456789012345678" }, opts);
+    expect(v2Text(m)).toContain("## Wir suchen <@&123456789012345678>!");
+    expect(buttons(m)[0].url).toBe("https://bewerbung.nordverkehr.xyz/positionen/support");
+  });
+
+  it("geschlossene Stelle: kein Bewerbungs-Knopf, Hinweis statt Aufruf", () => {
+    const m = buildSpotlightMessage({ ...support, status: "CLOSED" }, opts);
+    expect(buttons(m)).toHaveLength(0);
+    expect(v2Text(m)).toContain("gerade geschlossen");
+  });
+});
+
+describe("Gesamtaufruf als ein Block", () => {
+  it("nur ein Inhalts-Textblock (wie ein Embed)", () => {
+    const kids = JSON.parse(JSON.stringify(buildJobsMessage(positions, opts).components))[0].components as { type: number }[];
+    expect(kids.filter((k) => k.type === 10)).toHaveLength(2); // Inhalt + Fußzeile
   });
 });

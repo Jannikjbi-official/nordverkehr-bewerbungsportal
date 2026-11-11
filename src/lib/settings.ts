@@ -59,6 +59,8 @@ export const settingsSchema = z.object({
   /** Stellenaufruf („Wir suchen neue Teammitglieder!“) – Kanal + automatisch aktualisieren */
   "discord.jobsChannelId": channel("1569736461933084792"),
   "discord.jobsAutoUpdate": bool(true),
+  /** Einzelaufrufe „Wir suchen <Stelle>!“ */
+  "discord.spotlightChannelId": channel("1569736463564808263"),
   /** Neue Changelog-Einträge des Portals posten */
   "discord.changelogEnabled": bool(true),
   "discord.changelogChannelId": channel("1570181667627475146"),
