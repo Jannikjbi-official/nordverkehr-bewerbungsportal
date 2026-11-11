@@ -1,6 +1,7 @@
 "use client";
 
 import { useId } from "react";
+import { Select } from "@/components/Select";
 import { Lightning } from "@phosphor-icons/react/ssr";
 import type { AnswerValue, FormQuestion } from "@/lib/applications/form";
 import { DEFAULT_MAX_LENGTH } from "@/lib/applications/form";
@@ -122,19 +123,16 @@ export function QuestionField({ q, value, error, onChange, uploads, onUploaded }
               {label}
             </label>
             {help}
-            <select
+            <Select
               id={id}
-              className="nv-input mt-1"
+              className="mt-1"
+              placeholder="Bitte wählen …"
+              options={opts.map((o) => ({ value: o, label: o }))}
               value={typeof value === "string" ? value : ""}
-              aria-invalid={!!error}
-              aria-describedby={describedBy}
-              onChange={(e) => onChange(e.target.value)}
-            >
-              <option value="">Bitte wählen …</option>
-              {opts.map((o) => (
-                <option key={o}>{o}</option>
-              ))}
-            </select>
+              invalid={!!error}
+              describedBy={describedBy}
+              onChange={(v) => onChange(v)}
+            />
             {err}
           </div>
         );

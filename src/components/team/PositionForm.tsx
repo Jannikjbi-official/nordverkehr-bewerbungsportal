@@ -1,6 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { Select } from "@/components/Select";
+import { POSITION_STATUS_OPTIONS } from "@/lib/positions-status";
 import { useState, useTransition } from "react";
 import { FloppyDisk, Trash } from "@phosphor-icons/react/ssr";
 import { deletePositionAction, savePositionAction } from "@/app/actions/admin";
@@ -145,11 +147,7 @@ export function PositionForm({ position }: { position: PositionData | null }) {
           <label htmlFor="p-status" className="nv-field-label">
             Status
           </label>
-          <select id="p-status" className="nv-input" value={p.status} onChange={(e) => set("status", e.target.value as PositionData["status"])}>
-            <option value="OPEN">Offen</option>
-            <option value="CLOSED">Geschlossen</option>
-            <option value="HIDDEN">Versteckt</option>
-          </select>
+          <Select id="p-status" options={POSITION_STATUS_OPTIONS} value={p.status} onChange={(v) => set("status", v)} />
         </div>
         <div>
           <label htmlFor="p-age" className="nv-field-label">

@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
+import { Select } from "@/components/Select";
 import { useEffect, useState, useTransition } from "react";
 import { FunnelSimple, MagnifyingGlass, X } from "@phosphor-icons/react/ssr";
 import { STATUS_LABEL } from "@/lib/applications/status";
@@ -65,19 +66,13 @@ export function ApplicationFiltersBar({ positions, current }: { positions: { slu
             onChange={(e) => setQ(e.target.value)}
           />
         </label>
-        <select
-          className="nv-input md:!w-48"
-          aria-label="Position"
+        <Select
+          ariaLabel="Position"
+          className="md:w-52"
+          options={[{ value: "", label: "Alle Positionen" }, ...positions.map((p) => ({ value: p.slug, label: p.title }))]}
           value={current.position ?? ""}
-          onChange={(e) => apply({ position: e.target.value || undefined })}
-        >
-          <option value="">Alle Positionen</option>
-          {positions.map((p) => (
-            <option key={p.slug} value={p.slug}>
-              {p.title}
-            </option>
-          ))}
-        </select>
+          onChange={(v) => apply({ position: v || undefined })}
+        />
         <div className="flex gap-2 items-center min-w-0">
           <label className="sr-only" htmlFor="from">
             Von
@@ -89,11 +84,17 @@ export function ApplicationFiltersBar({ positions, current }: { positions: { slu
           </label>
           <input id="to" type="date" className="nv-input min-w-0 flex-1 md:flex-none md:!w-40" value={current.to ?? ""} onChange={(e) => apply({ to: e.target.value || undefined })} />
         </div>
-        <select className="nv-input md:!w-40" aria-label="Sortierung" value={current.sort} onChange={(e) => apply({ sort: e.target.value })}>
-          <option value="neu">Neueste zuerst</option>
-          <option value="alt">Älteste zuerst</option>
-          <option value="aktiv">Zuletzt aktiv</option>
-        </select>
+        <Select
+          ariaLabel="Sortierung"
+          className="md:w-44"
+          options={[
+            { value: "neu", label: "Neueste zuerst" },
+            { value: "alt", label: "Älteste zuerst" },
+            { value: "aktiv", label: "Zuletzt aktiv" },
+          ]}
+          value={current.sort}
+          onChange={(v) => apply({ sort: v })}
+        />
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <FunnelSimple size={15} className="text-muted" aria-hidden />

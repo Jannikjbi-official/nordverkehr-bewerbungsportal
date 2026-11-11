@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { Select } from "@/components/Select";
 import { useState, useTransition } from "react";
 import { Trash } from "@phosphor-icons/react/ssr";
 import { addNoteAction, banUserAction, deleteNoteAction, liftBanAction } from "@/app/actions/team";
@@ -82,14 +83,19 @@ export function BanForm({ subjectId }: { subjectId: string }) {
           <label htmlFor="ban-days" className="nv-field-label">
             Dauer
           </label>
-          <select id="ban-days" className="nv-input" value={days} onChange={(e) => setDays(e.target.value)}>
-            <option value="7">7 Tage</option>
-            <option value="30">30 Tage</option>
-            <option value="90">90 Tage</option>
-            <option value="180">180 Tage</option>
-            <option value="365">1 Jahr</option>
-            <option value="0">Unbefristet</option>
-          </select>
+          <Select
+            id="ban-days"
+            options={[
+              { value: "7", label: "7 Tage" },
+              { value: "30", label: "30 Tage" },
+              { value: "90", label: "90 Tage" },
+              { value: "180", label: "180 Tage" },
+              { value: "365", label: "1 Jahr" },
+              { value: "0", label: "Unbefristet", hint: "Bis jemand die Sperre aufhebt" },
+            ]}
+            value={days}
+            onChange={setDays}
+          />
         </div>
         <button className="nv-btn nv-btn-danger" disabled={pending || reason.trim().length < 3}>
           Sperren

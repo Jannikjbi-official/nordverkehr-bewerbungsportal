@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { Select } from "@/components/Select";
 import { useState, useTransition } from "react";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -142,13 +143,12 @@ export function TemplateManager({ templates: initial }: { templates: Template[] 
                 <label htmlFor="tpl-cat" className="nv-field-label">
                   Kategorie
                 </label>
-                <select id="tpl-cat" className="nv-input" value={editing.category ?? category} onChange={(e) => setEditing({ ...editing, category: e.target.value as TemplateCategory })}>
-                  {CATEGORY_ORDER.map((c) => (
-                    <option key={c} value={c}>
-                      {CATEGORY_LABEL[c]}
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  id="tpl-cat"
+                  options={CATEGORY_ORDER.map((c) => ({ value: c, label: CATEGORY_LABEL[c] }))}
+                  value={editing.category ?? category}
+                  onChange={(v) => setEditing({ ...editing, category: v as TemplateCategory })}
+                />
               </div>
             </div>
             <div>

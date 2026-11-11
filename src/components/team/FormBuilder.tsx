@@ -16,6 +16,7 @@ import {
 } from "@/app/actions/admin";
 import { QUESTION_TYPE_LABEL, type FormQuestion, type FormSectionDef } from "@/lib/applications/form";
 import { QuestionField } from "@/components/apply/QuestionField";
+import { Select } from "@/components/Select";
 import { KEY_PATTERN, findSimilarQuestions, suggestKey, type ExistingQuestion } from "@/lib/applications/similarity";
 import type { QuestionType } from "@prisma/client";
 
@@ -293,13 +294,7 @@ function QuestionEditor({
           <label htmlFor="q-type" className="nv-field-label">
             Typ
           </label>
-          <select id="q-type" className="nv-input" value={type} onChange={(e) => set("type", e.target.value as QuestionType)}>
-            {TYPES.map((t) => (
-              <option key={t} value={t}>
-                {QUESTION_TYPE_LABEL[t]}
-              </option>
-            ))}
-          </select>
+          <Select id="q-type" options={TYPES.map((t) => ({ value: t, label: QUESTION_TYPE_LABEL[t] }))} value={type} onChange={(v) => set("type", v)} />
         </div>
         <div>
           <label htmlFor="q-help" className="nv-field-label">

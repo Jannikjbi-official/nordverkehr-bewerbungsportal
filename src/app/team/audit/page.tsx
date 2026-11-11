@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { requireTeam } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { AUDIT_LABELS } from "@/lib/audit";
+import { AuditFilter } from "@/components/team/AuditFilter";
 import { formatDayTime } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Audit-Log" };
@@ -47,20 +48,7 @@ async function AuditList({ searchParams }: Pick<PageProps<"/team/audit">, "searc
 
   return (
     <div className="space-y-4">
-      <form className="flex gap-2 max-w-md">
-        <label htmlFor="aktion" className="sr-only">
-          Aktion
-        </label>
-        <select id="aktion" name="aktion" className="nv-input" defaultValue={action ?? ""}>
-          <option value="">Alle Aktionen</option>
-          {Object.entries(AUDIT_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v}
-            </option>
-          ))}
-        </select>
-        <button className="nv-btn nv-btn-ghost">Filtern</button>
-      </form>
+      <AuditFilter labels={AUDIT_LABELS} current={action ?? ""} />
       <div className="nv-card overflow-hidden">
         <div className="nv-scroll-x">
           <table className="nv-table w-full text-sm min-w-[640px]">
