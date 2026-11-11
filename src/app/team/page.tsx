@@ -4,6 +4,7 @@ import { ArrowRight, ArrowUUpLeft, CalendarCheck, Megaphone, ChatCircleDots, Dis
 import { Avatar, Notice, Stat, StatusBadge, formatDay, formatDayTime, formatRelative } from "@/components/ui";
 import { publishedEntries, versionLabel } from "@/lib/changelog";
 import { DiscordMarkdown } from "@/components/DiscordMarkdown";
+import { AckWithdrawalButton } from "@/components/team/AckWithdrawalButton";
 import { requireTeam } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { ACTIVE_STATUSES, FOLLOW_UP_DAYS } from "@/lib/applications/status";
@@ -50,7 +51,13 @@ async function Overview({ searchParams }: Pick<PageProps<"/team">, "searchParams
       take: 6,
     }),
     db.application.findMany({
-      where: { status: "WITHDRAWN", withdrawnInReview: true, decidedAt: { gte: daysAgo(FOLLOW_UP_DAYS) } },
+      where: {
+        status: "WITHDRAWN",
+        withdrawnInReview: true,
+        decidedAt: { gte: daysAgo(FOLLOW_UP_DAYS) },
+        // noch nicht bestätigt (Feld null oder bei älteren Einträgen gar nicht gesetzt)
+        OR: [{ withdrawAckAt: null }, { withdrawAckAt: { isSet: false } }],
+      },
       include: { user: true, position: true },
       orderBy: { decidedAt: "desc" },
       take: 6,
@@ -117,12 +124,14 @@ async function Overview({ searchParams }: Pick<PageProps<"/team">, "searchParams
             <h2 className="flex items-center gap-2 font-semibold">
               <ArrowUUpLeft size={18} className="text-[var(--tone-warn)]" aria-hidden /> Während der Bearbeitung zurückgezogen
             </h2>
-            <p className="text-xs text-muted mt-0.5">Der Bewerber kann {FOLLOW_UP_DAYS} Tage lang noch auf Rückfragen antworten.</p>
+            <p className="text-xs text-muted mt-0.5">
+              Der Bewerber kann {FOLLOW_UP_DAYS} Tage lang noch auf Rückfragen antworten. Ist alles geklärt, bestätige den Rückzug.
+            </p>
           </header>
           <ul className="space-y-1">
             {withdrawn.map((a) => (
-              <li key={a.id}>
-                <Link href={`/team/bewerbungen/${a.id}`} className="flex items-start gap-3 rounded-lg px-2 py-2 -mx-2 hover:bg-card-hover">
+              <li key={a.id} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Link href={`/team/bewerbungen/${a.id}`} className="flex flex-1 min-w-0 items-start gap-3 rounded-lg px-2 py-2 -mx-2 hover:bg-card-hover">
                   <Avatar discordId={a.user.discordId} avatar={a.user.avatar} size={30} />
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-medium truncate">
@@ -132,6 +141,7 @@ async function Overview({ searchParams }: Pick<PageProps<"/team">, "searchParams
                   </span>
                   <span className="text-xs text-muted whitespace-nowrap">{a.decidedAt ? formatRelative(a.decidedAt) : ""}</span>
                 </Link>
+                <AckWithdrawalButton applicationId={a.id} />
               </li>
             ))}
           </ul>

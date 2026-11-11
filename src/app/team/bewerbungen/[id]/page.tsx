@@ -17,6 +17,7 @@ import {
 import { MessageComposer } from "@/components/team/MessageComposer";
 import { ClaimBox } from "@/components/team/ClaimBox";
 import { HelpLink } from "@/components/team/HelpLink";
+import { AckWithdrawalButton } from "@/components/team/AckWithdrawalButton";
 import { avatarUrl } from "@/lib/discord/snowflake";
 import { AiPanel } from "@/components/team/AiPanel";
 import { TagPills } from "@/components/team/TagPills";
@@ -62,6 +63,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
     },
   });
   if (!app || app.status === "DRAFT") notFound();
+  const ackBy = app.withdrawAckById ? await db.user.findUnique({ where: { id: app.withdrawAckById }, select: { globalName: true, username: true } }) : null;
 
   const [settings, templates, vars, otherApps, activeBan, applicantAccess] = await Promise.all([
     getSettings(),
@@ -141,10 +143,17 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
       {app.status === "WITHDRAWN" && app.withdrawnInReview && (
         <Notice tone="warn" icon={WarningCircle} title="Während der Bearbeitung zurückgezogen">
           {app.withdrawReason ? <>„{app.withdrawReason}“</> : "Ohne Begründung."}{" "}
-          {canFollowUp(app)
-            ? `Du kannst unten nachfragen – der Bewerber kann bis ${formatDay(new Date(app.decidedAt!.getTime() + FOLLOW_UP_DAYS * 86_400_000))} antworten.`
-            : "Die Frist für Rückfragen ist abgelaufen."}{" "}
+          {app.withdrawAckAt
+            ? `Rückzug bestätigt am ${formatDay(app.withdrawAckAt)}${ackBy ? ` von ${ackBy.globalName || ackBy.username}` : ""}.`
+            : canFollowUp(app)
+              ? `Du kannst unten nachfragen – der Bewerber kann bis ${formatDay(new Date(app.decidedAt!.getTime() + FOLLOW_UP_DAYS * 86_400_000))} antworten.`
+              : "Die Frist für Rückfragen ist abgelaufen."}{" "}
           <HelpLink id="rueckzug" />
+          {!app.withdrawAckAt && (
+            <div className="mt-2">
+              <AckWithdrawalButton applicationId={app.id} />
+            </div>
+          )}
         </Notice>
       )}
 

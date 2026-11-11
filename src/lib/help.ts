@@ -72,7 +72,7 @@ export const HELP: HelpSection[] = [
       {
         id: "rueckzug",
         term: "Zurückziehen während der Bearbeitung",
-        text: "Wird eine Bewerbung schon bearbeitet (in Prüfung, im Gespräch oder geclaimt) und der Bewerber zieht zurück, muss er kurz begründen. Die Bewerbung erscheint dann oben im Team-Dashboard. **14 Tage** lang könnt ihr noch nachfragen und der Bewerber kann antworten – die KI antwortet in dieser Zeit nicht.",
+        text: "Wird eine Bewerbung schon bearbeitet (in Prüfung, im Gespräch oder geclaimt) und der Bewerber zieht zurück, muss er kurz begründen. Die Bewerbung erscheint dann oben im Team-Dashboard. **14 Tage** lang könnt ihr noch nachfragen und der Bewerber kann antworten – die KI antwortet in dieser Zeit nicht. Ist alles geklärt, klickt **„Rückzug bestätigen“**: Der Bewerber bekommt eine kurze Bestätigung (Portal + DM), die Bewerbung verschwindet aus dem Dashboard und Rückfragen sind beendet.",
       },
       {
         id: "fragen",

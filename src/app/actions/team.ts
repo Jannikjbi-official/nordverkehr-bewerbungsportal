@@ -8,7 +8,7 @@ import { requireAdmin, requireTeam } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 import { rateLimit } from "@/lib/rate-limit";
 import { runOutbox } from "@/lib/discord/outbox-db";
-import { changeStatus, sendTeamMessage, setClaim } from "@/lib/team/service";
+import { acknowledgeWithdrawal, changeStatus, sendTeamMessage, setClaim } from "@/lib/team/service";
 import { UserFacingError } from "@/lib/applications/service";
 import type { ActionResult } from "@/app/actions/application";
 
@@ -314,6 +314,21 @@ export async function retagAction(applicationId: string): Promise<ActionResult<{
     return { ok: true, data: { tags } };
   } catch (err) {
     if (err instanceof AiError) return { ok: false, error: err.message };
+    return fail(err);
+  }
+}
+
+/** Rückzug während der Bearbeitung bestätigen (raus aus dem Dashboard, Bewerber wird informiert). */
+export async function acknowledgeWithdrawalAction(applicationId: string): Promise<ActionResult> {
+  const { user } = await requireTeam();
+  if (!id.safeParse(applicationId).success) return { ok: false, error: "Ungültig." };
+  try {
+    const r = await acknowledgeWithdrawal({ applicationId, actor: user });
+    kick(r.jobIds);
+    revalidatePath("/team");
+    revalidatePath(`/team/bewerbungen/${applicationId}`);
+    return { ok: true };
+  } catch (err) {
     return fail(err);
   }
 }

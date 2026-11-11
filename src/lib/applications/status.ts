@@ -43,10 +43,14 @@ export function isInProcessing(app: { status: ApplicationStatus; claimedById?: s
 /** Nach einem Rückzug während der Bearbeitung bleibt der Chat so lange offen (Rückfragen des Teams). */
 export const FOLLOW_UP_DAYS = 14;
 
-export function canFollowUp(app: { status: ApplicationStatus; withdrawnInReview?: boolean; decidedAt?: Date | null }, now = Date.now()) {
+export function canFollowUp(
+  app: { status: ApplicationStatus; withdrawnInReview?: boolean; decidedAt?: Date | null; withdrawAckAt?: Date | null },
+  now = Date.now(),
+) {
   return (
     app.status === "WITHDRAWN" &&
     !!app.withdrawnInReview &&
+    !app.withdrawAckAt && // nach der Bestätigung durch das Team ist das Gespräch beendet
     !!app.decidedAt &&
     now - app.decidedAt.getTime() < FOLLOW_UP_DAYS * 86_400_000
   );

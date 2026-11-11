@@ -72,7 +72,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       { kind: "neu", text: "**Claimen** – oben in jeder Bewerbung sehen, wer sie betreut. Übernehmen und Freigeben per Klick." },
       { kind: "neu", text: "**Nachrichten** – Bausteine mit Platzhaltern, Betreff aus dem Baustein, senden als du oder als Team." },
       { kind: "neu", text: "**Discord** – Bewerbungs-Kanal, Bot-Logs und Changelog, alle Bot-Nachrichten im Components-V2-Layout." },
-      { kind: "neu", text: "**Zurückziehen** – vor der Bearbeitung ohne Grund, danach mit kurzem Grund und 14 Tagen für Rückfragen." },
+      { kind: "neu", text: "**Zurückziehen** – vor der Bearbeitung ohne Grund, danach mit kurzem Grund und 14 Tagen für Rückfragen. Das Team bestätigt den Rückzug per Knopf." },
       { kind: "neu", text: "**KI (optional)** – Einordnung in Kategorien und Auto-Antwort, wenn niemand online ist – mit Schutz vor Manipulation." },
       { kind: "neu", text: "**Hilfe & Begriffe** – alle Begriffe erklärt, „Was heißt das?“-Links direkt an Hinweisen und Knöpfen." },
       { kind: "neu", text: "**Gefahrenzone** – Admins können alle Bewerbungen löschen, mit eingetipptem Bestätigungssatz." },

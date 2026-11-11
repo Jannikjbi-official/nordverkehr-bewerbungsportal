@@ -11,7 +11,7 @@ const url = new URL(process.env.DATABASE_URL!);
 url.pathname = "/nordverkehr_claimtest";
 process.env.DATABASE_URL = url.toString();
 const { db } = await import("../src/lib/db");
-const { setClaim, sendTeamMessage, changeStatus } = await import("../src/lib/team/service");
+const { setClaim, sendTeamMessage, changeStatus, acknowledgeWithdrawal } = await import("../src/lib/team/service");
 const { backfillNulls } = await import("../src/lib/db-nulls");
 let fails = 0;
 const check = (ok: boolean, m: string) => { console.log(ok ? "✓" : "✗", m); if (!ok) fails++; };
@@ -62,6 +62,18 @@ try {
   check(logs.length > 0 && logs.every((l) => JSON.stringify(l.payload).includes('"flags":32768')), `alle ${logs.length} Kanal-Posts sind V2`);
   check(all.includes("1569736621019111515"), "Bot-Logs gehen in 1569736621019111515");
   for (const s of ["betreut jetzt", "übernommen von", "freigegeben", "geschrieben (als Team)", "In Prüfung"]) check(all.includes(s), `Bot-Log enthält „${s}“`);
+  // Rückzug während der Bearbeitung bestätigen
+  await db.application.update({ where: { id: app.id }, data: { status: "WITHDRAWN", withdrawnInReview: true, withdrawReason: "Keine Zeit mehr", decidedAt: new Date() } });
+  const ack = await acknowledgeWithdrawal({ applicationId: app.id, actor: lea });
+  const again = await acknowledgeWithdrawal({ applicationId: app.id, actor: jonas });
+  const acked = await db.application.findUniqueOrThrow({ where: { id: app.id } });
+  check(!!acked.withdrawAckAt && acked.withdrawAckById === lea.id, "Rückzug bestätigt (von Lea)");
+  check(ack.jobIds.length === 2 && again.jobIds.length === 0, "Bestätigung: DM + Bot-Log, zweiter Klick tut nichts");
+  const ackMsg = await db.message.findFirst({ where: { applicationId: app.id, direction: "SYSTEM" }, orderBy: { createdAt: "desc" } });
+  check(!!ackMsg?.body.includes("Rückzug") && !!ackMsg.body.includes("bestätigt"), "Bewerber bekommt Bestätigung im Portal");
+  const ackLog = JSON.stringify((await db.outboxJob.findMany({ where: { type: "CHANNEL_MESSAGE" } })).map((j) => j.payload));
+  check(ackLog.includes("Rückzug von"), "Bot-Log: Rückzug bestätigt");
+
   // Daten zurücksetzen
   const { resetAllApplications, countApplications } = await import("../src/lib/team/reset");
   await db.application.create({ data: { userId: lea.id, positionId: pos.id, status: "DRAFT" } });

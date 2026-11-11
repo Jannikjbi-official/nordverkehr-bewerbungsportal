@@ -22,6 +22,8 @@ describe("Rückzug: in Bearbeitung?", () => {
     expect(canFollowUp({ status: "WITHDRAWN", withdrawnInReview: false, decidedAt: recent }, now)).toBe(false);
     expect(canFollowUp({ status: "WITHDRAWN", withdrawnInReview: true, decidedAt: new Date(now - (FOLLOW_UP_DAYS + 1) * DAY) }, now)).toBe(false);
     expect(canFollowUp({ status: "REJECTED", withdrawnInReview: true, decidedAt: recent }, now)).toBe(false);
+    // nach „Rückzug bestätigen“ ist Schluss
+    expect(canFollowUp({ status: "WITHDRAWN", withdrawnInReview: true, decidedAt: recent, withdrawAckAt: new Date(now) }, now)).toBe(false);
   });
 });
 

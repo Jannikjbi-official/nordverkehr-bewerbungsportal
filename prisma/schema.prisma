@@ -294,6 +294,9 @@ model Application {
   /// Rückzug während der Bearbeitung: Grund des Bewerbers, Team kann noch nachfragen
   withdrawReason       String?
   withdrawnInReview    Boolean           @default(false)
+  /// Team hat den Rückzug bestätigt (danach keine Rückfragen mehr, raus aus dem Dashboard)
+  withdrawAckAt        DateTime?
+  withdrawAckById      String?
   interviewAt          DateTime?
   interviewNote        String?
   rejectionReason      String?

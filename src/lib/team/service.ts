@@ -205,3 +205,50 @@ export async function sendTeamMessage(opts: {
     return { messageId: message.id, jobIds: [job.id, ...(logJob ? [logJob] : [])], missing: rendered.missing };
   });
 }
+
+/**
+ * Rückzug während der Bearbeitung bestätigen: Bewerbung verschwindet aus dem
+ * Dashboard, Rückfragen sind beendet, der Bewerber bekommt eine kurze
+ * Bestätigung (Portal + DM) und das Bot-Log einen Eintrag.
+ */
+export async function acknowledgeWithdrawal(opts: { applicationId: string; actor: Actor }) {
+  const app = await db.application.findUnique({ where: { id: opts.applicationId }, include: { user: true, position: { select: { title: true } } } });
+  if (!app || app.status !== "WITHDRAWN") throw new UserFacingError("Diese Bewerbung ist nicht zurückgezogen.");
+  if (app.withdrawAckAt) return { jobIds: [] as string[] };
+
+  const name = app.user.globalName || app.user.username;
+  const body =
+    `Moin ${name},\n\nwir haben deinen Rückzug der Bewerbung als **${app.position.title}** (${app.publicId}) gesehen und bestätigt. ` +
+    `Danke, dass du Bescheid gegeben hast – du kannst dich später jederzeit gern wieder bewerben.`;
+
+  return db.$transaction(async (tx) => {
+    // Bedingt setzen: zwei gleichzeitige Klicks erzeugen nur eine Bestätigung
+    const res = await tx.application.updateMany({
+      where: { id: app.id, OR: [{ withdrawAckAt: null }, { withdrawAckAt: { isSet: false } }] },
+      data: { withdrawAckAt: new Date(), withdrawAckById: opts.actor.id },
+    });
+    if (res.count === 0) return { jobIds: [] as string[] };
+
+    const message = await tx.message.create({
+      data: { applicationId: app.id, direction: "SYSTEM", body, deliveryStatus: "PENDING" },
+    });
+    const dm = await enqueue(
+      {
+        type: "DM",
+        discordUserId: app.user.discordId,
+        purpose: "status",
+        message: buildApplicantMessage({ title: "Rückzug bestätigt", body, publicId: app.publicId, statusUrl: `${publicEnv.appUrl}/dashboard/${app.id}` }),
+      },
+      { tx, messageId: message.id, applicationId: app.id },
+    );
+    const log = await botLog(`✅ ${esc(actorName(opts.actor))} hat den Rückzug von **${app.publicId}** (${app.position.title}) bestätigt`, {
+      tx,
+      applicationId: app.id,
+      url: `${publicEnv.appUrl}/team/bewerbungen/${app.id}`,
+    });
+    await tx.auditLog.create({
+      data: { actorId: opts.actor.id, action: "application.withdraw_ack", targetType: "application", targetId: app.id, meta: { publicId: app.publicId } },
+    });
+    return { jobIds: [dm.id, ...(log ? [log] : [])] };
+  });
+}
