@@ -269,11 +269,67 @@ async function backfillClaimFields(db: PrismaClient, opts: Options) {
   await set("Application", "withdrawnInReview", false);
 }
 
+/** Neue Fachfragen (11/2026) – werden ergänzt, wenn es den Key noch nicht gibt. */
+const NEW_SPECIFIC_KEYS = [
+  "support.voice_issue",
+  "support.escalation",
+  "support.voice_tools",
+  "moderator.documentation",
+  "moderator.explain_decision",
+  "moderator.hold_back",
+  "eventteam.planning",
+  "eventteam.crowd",
+  "eventteam.feedback",
+];
+
+async function addSpecificQuestions(db: PrismaClient, opts: Options) {
+  const log = opts.log ?? (() => {});
+  const added: string[] = [];
+  for (const [slug, sections] of Object.entries(POSITION_SECTIONS)) {
+    const wanted = sections.flatMap((s) => s.questions).filter((q) => NEW_SPECIFIC_KEYS.includes(q.key));
+    if (!wanted.length) continue;
+    const position = await db.position.findUnique({ where: { slug }, select: { id: true, typeId: true } });
+    if (!position) continue; // Position wurde gelöscht
+    // Fachfragen-Abschnitt der Position (per Key, sonst der erste aktive)
+    const section =
+      (await db.formSection.findFirst({ where: { key: `${slug}.fach`, positionId: position.id, archived: false } })) ??
+      (await db.formSection.findFirst({ where: { positionId: position.id, archived: false }, orderBy: { sortOrder: "asc" } }));
+    if (!section) continue;
+    const max = await db.question.aggregate({ _max: { sortOrder: true }, where: { sectionId: section.id } });
+    let order = (max._max.sortOrder ?? 0) + 1;
+    for (const q of wanted) {
+      if (await db.question.findFirst({ where: { key: q.key }, select: { id: true } })) continue; // existiert (auch archiviert)
+      added.push(q.key);
+      if (opts.dryRun) continue;
+      await db.question.create({
+        data: {
+          key: q.key,
+          sectionId: section.id,
+          label: q.label,
+          type: q.type,
+          required: q.required ?? true,
+          helpText: q.helpText ?? null,
+          placeholder: q.placeholder ?? null,
+          minLength: q.minLength ?? null,
+          maxLength: q.maxLength ?? null,
+          minValue: q.minValue ?? null,
+          maxValue: q.maxValue ?? null,
+          options: q.options ?? [],
+          sortOrder: order++,
+        },
+      });
+    }
+  }
+  log(`Neue Fachfragen: ${added.length ? added.join(", ") : "keine"}`);
+  return added;
+}
+
 const MIGRATIONS: { id: string; run: (db: PrismaClient, opts: Options) => Promise<unknown> }[] = [
   { id: "2026-11-questions-v2", run: migrateQuestionsV2 },
   { id: "2026-11-claims", run: backfillClaimFields },
   // Fehlende optionale Felder → null, damit Filter wie `liftedAt: null` (Sperren!) greifen
   { id: "2026-11-explicit-nulls", run: (db, o) => (o.dryRun ? Promise.resolve(0) : backfillNulls(db)) },
+  { id: "2026-11-fachfragen-v2", run: addSpecificQuestions },
 ];
 
 const LOCK_KEY = "lock:migrations";

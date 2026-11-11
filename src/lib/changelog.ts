@@ -16,6 +16,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-11-fachfragen",
+    date: "2026-11-11",
+    title: "Mehr Fachfragen für Support, Moderator & Eventteam",
+    items: [
+      "Support: Fehlersuche bei SaltyChat, wann ein Ticket weitergegeben wird, Sicherheit mit TeamSpeak & SaltyChat.",
+      "Moderator: Regelverstöße nachvollziehbar dokumentieren, Entscheidungen erklären, erkennen, wann man besser nicht eingreift.",
+      "Eventteam: Event vorbereiten und ankündigen, Umgang mit Chaos am Eventabend, Feedback und Kritik.",
+      "Die Basisfragen bleiben für alle gleich – jede Stelle hat jetzt eigene, passende Fachfragen.",
+    ],
+  },
+  {
     id: "2026-11-11-team-workflow",
     date: "2026-11-11",
     title: "Claimen, Discord-Kanäle, Components V2, Rückzug & Changelog",
