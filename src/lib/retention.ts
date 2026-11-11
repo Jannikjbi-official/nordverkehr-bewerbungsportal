@@ -17,6 +17,7 @@ export interface CleanupResult {
   audit: number;
   rateLimits: number;
   outbox: number;
+  profiles: number;
 }
 
 async function deleteApplications(where: Prisma.ApplicationWhereInput) {
@@ -36,11 +37,18 @@ export async function runRetention(now = new Date()): Promise<CleanupResult> {
   // Hochgeladene, nie eingereichte Bilder nach 2 Tagen entfernen
   const orphans = await db.upload.deleteMany({ where: { applicationId: null, createdAt: { lt: before(2) } } });
 
+  // Gespeicherte allgemeine Angaben: weg, sobald keine eingereichte Bewerbung mehr existiert
+  const profiles = (
+    await db.applicantProfile.deleteMany({
+      where: { updatedAt: { lt: before(1) }, user: { applications: { none: { status: { not: "DRAFT" } } } } },
+    })
+  ).count;
+
   const audit = (await db.auditLog.deleteMany({ where: { createdAt: { lt: before(s["retention.auditDays"]) } } })).count;
   const rateLimits = (await db.rateLimit.deleteMany({ where: { resetAt: { lt: now } } })).count;
   const outbox = (await db.outboxJob.deleteMany({ where: { status: { in: ["DONE", "FAILED"] }, updatedAt: { lt: before(30) } } })).count;
 
-  const result = { drafts, withdrawn, rejected, accepted, orphanUploads: orphans.count, audit, rateLimits, outbox };
+  const result = { drafts, withdrawn, rejected, accepted, orphanUploads: orphans.count, audit, rateLimits, outbox, profiles };
   if (drafts + withdrawn + rejected + accepted + orphans.count > 0) {
     await db.auditLog.create({ data: { action: "retention.cleanup", meta: { ...result } } });
   }

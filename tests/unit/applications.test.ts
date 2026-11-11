@@ -65,6 +65,7 @@ describe("checkEligibility", () => {
 
 const q = (over: Partial<FormQuestion>): FormQuestion => ({
   id: "q1",
+  key: null,
   label: "Frage",
   helpText: null,
   placeholder: null,
@@ -105,7 +106,7 @@ describe("validateAnswer", () => {
     expect(validateAnswer(q({ type: "NUMBER", minValue: 1, maxValue: 5 }), 3)).toBeNull();
   });
   it("validateAll sammelt Fehler pro Frage", () => {
-    const r = validateAll([{ id: "s", title: "S", description: null, questions: [q({ id: "a" }), q({ id: "b", required: false })] }], {});
+    const r = validateAll([{ id: "s", key: null, general: false, title: "S", description: null, questions: [q({ id: "a" }), q({ id: "b", required: false })] }], {});
     expect(r.ok).toBe(false);
     expect(Object.keys(r.errors)).toEqual(["a"]);
   });

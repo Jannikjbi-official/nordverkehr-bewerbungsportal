@@ -12,6 +12,7 @@ import { getEligibility } from "@/lib/applications/service";
 import { getSettings } from "@/lib/settings";
 import { effectiveMinAge } from "@/lib/applications/rules";
 import type { AnswerMap } from "@/lib/applications/form";
+import { generalComplete, prefillFromProfile, type ProfileAnswers } from "@/lib/applications/profile";
 
 export const metadata: Metadata = { title: "Bewerben", robots: { index: false } };
 
@@ -67,12 +68,16 @@ async function Apply({ params }: Pick<PageProps<"/bewerben/[slug]">, "params">) 
     );
   }
 
-  const [sections, draft] = await Promise.all([
+  const [sections, draft, profile] = await Promise.all([
     getFormDefinition(position),
     eligibility.draftId ? db.application.findUnique({ where: { id: eligibility.draftId } }) : null,
+    db.applicantProfile.findUnique({ where: { userId: user.id }, select: { age: true, answers: true } }),
   ]);
 
-  const data = { ...((draft?.draftData ?? {}) as AnswerMap) };
+  // Allgemeine Antworten aus der letzten Bewerbung vorausfüllen (nur leere Felder)
+  const data = profile
+    ? prefillFromProfile(sections, (draft?.draftData ?? {}) as AnswerMap, (profile.answers ?? {}) as ProfileAnswers).data
+    : { ...((draft?.draftData ?? {}) as AnswerMap) };
   const fileIds = Object.values(data).flatMap((v) => (Array.isArray(v) ? v : []));
   const uploads = fileIds.length
     ? await db.upload.findMany({ where: { id: { in: fileIds }, ownerId: user.id }, select: { id: true, fileName: true } })
@@ -90,7 +95,13 @@ async function Apply({ params }: Pick<PageProps<"/bewerben/[slug]">, "params">) 
       sections={sections}
       minAge={effectiveMinAge(position, { minAge: settings["applications.minAge"] })}
       displayName={user.globalName || user.username}
-      initial={{ draftId: draft?.id ?? null, data, step: draft?.draftStep ?? 0, age: draft?.age ?? null }}
+      initial={{
+        draftId: draft?.id ?? null,
+        data,
+        step: draft?.draftStep ?? 0,
+        age: draft?.age ?? profile?.age ?? null,
+        fromProfile: !!profile && generalComplete(sections, data),
+      }}
       initialUploads={Object.fromEntries(uploads.map((u) => [u.id, u]))}
     />
   );

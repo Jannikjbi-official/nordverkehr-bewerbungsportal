@@ -7,6 +7,8 @@ import type { QuestionType } from "@prisma/client";
 
 export interface FormQuestion {
   id: string;
+  /** Eindeutiger Schlüssel (z. B. "about_me") – null bei alten/eigenen Fragen ohne Key */
+  key: string | null;
   label: string;
   helpText: string | null;
   placeholder: string | null;
@@ -21,6 +23,9 @@ export interface FormQuestion {
 
 export interface FormSectionDef {
   id: string;
+  key: string | null;
+  /** Allgemeiner Abschnitt (für alle Positionen, Antworten werden wiederverwendet) */
+  general: boolean;
   title: string;
   description: string | null;
   questions: FormQuestion[];

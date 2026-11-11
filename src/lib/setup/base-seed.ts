@@ -1,22 +1,32 @@
 /**
  * Basisdaten (Bewerbungsart, Positionen, Fragen, Nachrichtenbausteine) und
- * Datenbank-Einrichtung. Von Seed-Skript, Admin-Button und Cron genutzt.
+ * Datenbank-Einrichtung. Von Seed-Skript, Cron und Ersteinrichtung genutzt.
+ *
+ * Idempotent und sicher bei parallelen Aufrufen: Abschnitte und Fragen haben
+ * eindeutige Keys (partielle Unique-Indizes), doppelte Anlage scheitert am Index.
  */
 import type { PrismaClient } from "@prisma/client";
 import { GENERAL_SECTIONS, POSITIONS, TEMPLATES, type SeedSection } from "@/lib/setup/seed-data";
 import { ensureIndexes } from "@/lib/setup/indexes";
+import { markMigrationsDone, runMigrations } from "@/lib/setup/migrations";
 
-async function createSections(db: PrismaClient, typeId: string, positionId: string | null, sections: SeedSection[], offset = 0) {
-  for (const [i, s] of sections.entries()) {
-    await db.formSection.create({
-      data: {
-        typeId,
-        positionId,
-        title: s.title,
-        description: s.description,
-        sortOrder: offset + i,
-        questions: {
-          create: s.questions.map((q, qi) => ({
+function isUniqueViolation(e: unknown) {
+  return typeof e === "object" && e !== null && (e as { code?: string }).code === "P2002";
+}
+
+/** Legt einen Abschnitt samt Fragen an, falls es seinen Key noch nicht gibt. */
+async function ensureSection(db: PrismaClient, typeId: string, positionId: string | null, s: SeedSection, sortOrder: number) {
+  if (await db.formSection.findFirst({ where: { key: s.key }, select: { id: true } })) return false;
+  try {
+    const section = await db.formSection.create({
+      data: { key: s.key, typeId, positionId, title: s.title, description: s.description, sortOrder },
+    });
+    for (const [qi, q] of s.questions.entries()) {
+      try {
+        await db.question.create({
+          data: {
+            key: q.key,
+            sectionId: section.id,
             label: q.label,
             type: q.type,
             required: q.required ?? true,
@@ -28,44 +38,62 @@ async function createSections(db: PrismaClient, typeId: string, positionId: stri
             maxValue: q.maxValue,
             options: q.options ?? [],
             sortOrder: qi,
-          })),
-        },
-      },
-    });
+          },
+        });
+      } catch (e) {
+        if (!isUniqueViolation(e)) throw e; // Frage existiert schon (paralleler Lauf)
+      }
+    }
+    return true;
+  } catch (e) {
+    if (isUniqueViolation(e)) return false; // Abschnitt wurde parallel angelegt
+    throw e;
   }
 }
 
-/** Legt fehlende Basisdaten an (idempotent – vorhandene Positionen bleiben unberührt). */
+/** Legt fehlende Basisdaten an (idempotent – vorhandene Inhalte bleiben unberührt). */
 export async function seedBase(db: PrismaClient, log: (m: string) => void = () => {}) {
-  const type = await db.applicationType.upsert({
-    where: { key: "team" },
-    create: { key: "team", name: "Team-Bewerbung", description: "Bewerbungen für das Nordverkehr-Team" },
-    update: {},
-  });
+  let type = await db.applicationType.findUnique({ where: { key: "team" } });
+  if (!type) {
+    try {
+      type = await db.applicationType.create({
+        data: { key: "team", name: "Team-Bewerbung", description: "Bewerbungen für das Nordverkehr-Team" },
+      });
+    } catch (e) {
+      if (!isUniqueViolation(e)) throw e;
+      type = await db.applicationType.findUniqueOrThrow({ where: { key: "team" } });
+    }
+  }
 
-  if ((await db.formSection.count({ where: { typeId: type.id, positionId: null } })) === 0) {
-    await createSections(db, type.id, null, GENERAL_SECTIONS);
-    log(`✓ ${GENERAL_SECTIONS.length} allgemeine Formular-Schritte`);
+  for (const [i, s] of GENERAL_SECTIONS.entries()) {
+    if (await ensureSection(db, type.id, null, s, i)) log(`✓ Allgemeiner Abschnitt „${s.title}“`);
   }
 
   for (const [i, p] of POSITIONS.entries()) {
-    if (await db.position.findUnique({ where: { slug: p.slug } })) continue;
-    const pos = await db.position.create({
-      data: {
-        typeId: type.id,
-        slug: p.slug,
-        title: p.title,
-        tagline: p.tagline,
-        description: p.description,
-        icon: p.icon,
-        status: p.status,
-        tasks: p.tasks,
-        requirements: p.requirements,
-        sortOrder: i,
-      },
-    });
-    await createSections(db, type.id, pos.id, p.sections, 100);
-    log(`✓ Position ${p.title}`);
+    let pos = await db.position.findUnique({ where: { slug: p.slug } });
+    if (!pos) {
+      try {
+        pos = await db.position.create({
+          data: {
+            typeId: type.id,
+            slug: p.slug,
+            title: p.title,
+            tagline: p.tagline,
+            description: p.description,
+            icon: p.icon,
+            status: p.status,
+            tasks: p.tasks,
+            requirements: p.requirements,
+            sortOrder: i,
+          },
+        });
+        log(`✓ Position ${p.title}`);
+      } catch (e) {
+        if (!isUniqueViolation(e)) throw e;
+        continue;
+      }
+      for (const [si, s] of p.sections.entries()) await ensureSection(db, type.id, pos.id, s, 100 + si);
+    }
   }
 
   if ((await db.messageTemplate.count()) === 0) {
@@ -78,15 +106,22 @@ export async function seedBase(db: PrismaClient, log: (m: string) => void = () =
 export interface BootstrapResult {
   indexes: true;
   seeded: boolean;
+  migrations: string[];
 }
 
 /**
- * Indizes sicherstellen und – nur in einer leeren Datenbank – Basisdaten anlegen.
- * So kommen gelöschte Positionen nicht von selbst zurück.
+ * Indizes sicherstellen, ausstehende Daten-Migrationen ausführen und – nur in
+ * einer leeren Datenbank – Basisdaten anlegen. So kommen gelöschte Positionen
+ * nicht von selbst zurück.
  */
 export async function bootstrapDatabase(db: PrismaClient): Promise<BootstrapResult> {
-  await ensureIndexes(db);
   const empty = (await db.applicationType.count()) === 0;
-  if (empty) await seedBase(db);
-  return { indexes: true, seeded: empty };
+  // Migrationen vor den Indizes: sie räumen Duplikate auf, die sonst die Unique-Indizes blockieren
+  const migrations = empty ? [] : await runMigrations(db);
+  await ensureIndexes(db);
+  if (empty) {
+    await seedBase(db);
+    await markMigrationsDone(db);
+  }
+  return { indexes: true, seeded: empty, migrations };
 }

@@ -166,7 +166,16 @@ tests/unit/            Vitest (Rollenprüfung, Routen, Nachrichtenversand, Schut
 | `npm run db:dev` | lokale MongoDB (Replica Set) |
 | `npm run db:push` | Schema + Indizes übertragen |
 | `npm run db:seed` | Basisdaten (+ Demo, außer `SEED_DEMO=false`) |
+| `npm run db:migrate-questions` | Fragen-Migration: Probelauf, mit `-- --apply` ausführen (läuft sonst automatisch beim Serverstart) |
+| `npm run db:test-migration` | Migration gegen eine Wegwerf-DB mit Altbestand (Duplikate) testen |
 | `npm run worker` | optionaler Worker |
+
+## Fragen-Struktur
+
+- **Allgemeine Fragen** (Über dich, Erfahrung & Motivation, Szenarien) gibt es genau einmal, sie gelten für alle Positionen.
+- **Positionen** haben nur fachliche Fragen („Fachfragen“). Heißt ein Abschnitt wie die Position, wird er als „Fachfragen“ angezeigt.
+- Jede Frage hat einen **eindeutigen Key** (`about_me`, `support.tickets`). Das Formular entfernt Duplikate per Key bzw. Text; der Builder warnt bei gleichem Key oder ähnlichem Text.
+- Antworten auf allgemeine Fragen werden nach dem Absenden im **Bewerberprofil** gemerkt und bei der nächsten Bewerbung vorausgefüllt („Deine Angaben“ – mit „Anpassen“).
 
 ## Erweiterbarkeit
 

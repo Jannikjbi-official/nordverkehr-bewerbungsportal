@@ -22,9 +22,10 @@ export function QuestionField({ q, value, error, onChange, uploads, onUploaded }
   const describedBy = [q.helpText ? helpId : null, error ? errId : null].filter(Boolean).join(" ") || undefined;
 
   const label = (
-    <span className="flex flex-wrap items-center gap-2">
+    // Szenario-Badge immer als eigene Zeile über dem Fragetext – einheitlich, egal wie lang die Frage ist
+    <span className="flex flex-col items-start gap-1.5">
       {q.type === "SCENARIO" && (
-        <span className="nv-pill nv-pill-red !text-[0.65rem] !py-0.5 !px-2">
+        <span className="nv-pill nv-pill-red !text-[0.65rem] !py-0.5 !px-2 w-fit">
           <Lightning size={11} weight="fill" aria-hidden /> Szenario
         </span>
       )}

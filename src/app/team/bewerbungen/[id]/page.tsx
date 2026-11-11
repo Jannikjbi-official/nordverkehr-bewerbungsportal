@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ArrowLeft, ArrowSquareOut, CalendarCheck, DiscordLogo, Robot, User, WarningCircle } from "@phosphor-icons/react/ssr";
+import { ArrowLeft, ArrowSquareOut, CalendarCheck, DiscordLogo, WarningCircle } from "@phosphor-icons/react/ssr";
 import { Avatar, DeliveryBadge, Notice, StatusBadge, cn, formatDay, formatDayTime, formatRelative } from "@/components/ui";
 import { DiscordMarkdown } from "@/components/DiscordMarkdown";
+import { ChatAvatar, ChatRoleBadge, personName } from "@/components/ChatParticipant";
 import {
   CommentBox,
   DeleteCommentButton,
@@ -52,7 +53,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
       answers: { orderBy: { sortOrder: "asc" } },
       votes: { include: { user: { select: { globalName: true, username: true } } }, orderBy: { createdAt: "asc" } },
       comments: { include: { author: { select: { globalName: true, username: true, discordId: true, avatar: true } } }, orderBy: { createdAt: "asc" } },
-      messages: { include: { author: { select: { globalName: true, username: true } } }, orderBy: { createdAt: "asc" } },
+      messages: { include: { author: { select: { globalName: true, username: true, discordId: true, avatar: true, isAdmin: true, isTeam: true } } }, orderBy: { createdAt: "asc" } },
       statusChanges: { include: { actor: { select: { globalName: true, username: true } } }, orderBy: { createdAt: "asc" } },
     },
   });
@@ -200,21 +201,23 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
               <ol className="p-5 space-y-4 border-b border-line">
                 {app.messages.map((m) => {
                   const fromApplicant = m.direction === "APPLICANT_TO_TEAM";
+                  const person = fromApplicant ? app.user : m.author;
                   return (
                     <li key={m.id} className={cn("flex gap-3", fromApplicant && "flex-row-reverse")}>
-                      <div className={cn("h-8 w-8 shrink-0 rounded-full grid place-items-center", fromApplicant ? "bg-surface-2" : "bg-red-soft text-red-text")} aria-hidden>
-                        {m.direction === "SYSTEM" || m.direction === "AI_TO_APPLICANT" ? <Robot size={16} /> : <User size={16} />}
-                      </div>
+                      <ChatAvatar direction={m.direction} person={person} size={32} />
                       <div className={cn("max-w-[85%] min-w-0", fromApplicant && "text-right")}>
-                        <p className="text-xs text-muted">
-                          {m.direction === "SYSTEM"
-                            ? "Automatische Nachricht"
-                            : m.direction === "AI_TO_APPLICANT"
-                              ? "Automatische Antwort (KI)"
-                              : fromApplicant
-                              ? name
-                              : (m.author?.globalName ?? m.author?.username ?? "Team")}{" "}
-                          · {formatDayTime(m.createdAt)}
+                        <p className="text-xs text-muted flex flex-wrap items-center gap-1.5" style={fromApplicant ? { justifyContent: "flex-end" } : undefined}>
+                          <span className="font-medium text-fg-2">
+                            {m.direction === "SYSTEM"
+                              ? "Automatische Nachricht"
+                              : m.direction === "AI_TO_APPLICANT"
+                                ? "Automatische Antwort (KI)"
+                                : fromApplicant
+                                  ? name
+                                  : personName(m.author, "Team")}
+                          </span>
+                          <ChatRoleBadge direction={m.direction} person={person} />
+                          <span>· {formatDayTime(m.createdAt)}</span>
                         </p>
                         <div className={cn("mt-1 inline-block text-left rounded-2xl px-4 py-3 text-sm", fromApplicant ? "bg-surface-2" : "bg-card border border-line", m.flagged && "ring-1 ring-[var(--tone-danger)]")}>
                           <DiscordMarkdown text={m.body} />

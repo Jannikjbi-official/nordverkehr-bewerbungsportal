@@ -8,12 +8,11 @@ import {
   CheckCircle,
   Confetti,
   DiscordLogo,
-  Robot,
-  UsersThree,
   WarningCircle,
 } from "@phosphor-icons/react/ssr";
 import { Container, DeliveryBadge, IconTile, Notice, StatusBadge, cn, formatDay, formatDayTime } from "@/components/ui";
 import { DiscordMarkdown } from "@/components/DiscordMarkdown";
+import { ChatAvatar, ChatRoleBadge, personName } from "@/components/ChatParticipant";
 import { ReplyBox, WithdrawButton, MarkRead } from "@/components/dashboard/ApplicantActions";
 import { requireUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
@@ -45,7 +44,7 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
       position: true,
       answers: { orderBy: { sortOrder: "asc" } },
       statusChanges: { orderBy: { createdAt: "asc" } },
-      messages: { orderBy: { createdAt: "asc" } },
+      messages: { include: { author: { select: { globalName: true, username: true, discordId: true, avatar: true, isAdmin: true, isTeam: true } } }, orderBy: { createdAt: "asc" } },
     },
   });
   if (!app || app.status === "DRAFT") notFound();
@@ -120,28 +119,23 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
             <ol className="p-5 space-y-5">
               {app.messages.map((m) => {
                 const mine = m.direction === "APPLICANT_TO_TEAM";
+                const person = mine ? user : m.author;
                 return (
                   <li key={m.id} className={cn("flex gap-3", mine && "flex-row-reverse")}>
-                    <div
-                      className={cn(
-                        "h-9 w-9 shrink-0 rounded-full grid place-items-center",
-                        mine ? "bg-surface-2" : "bg-red-soft text-red-text",
-                      )}
-                      aria-hidden
-                    >
-                      {m.direction === "SYSTEM" || m.direction === "AI_TO_APPLICANT" ? <Robot size={18} /> : <UsersThree size={18} />}
-                    </div>
+                    <ChatAvatar direction={m.direction} person={person} />
                     <div className={cn("max-w-[85%] min-w-0", mine && "text-right")}>
-                      <p className="text-xs text-muted">
-                        {m.direction === "SYSTEM"
-                          ? "Automatische Nachricht"
-                          : m.direction === "AI_TO_APPLICANT"
-                            ? "Automatische Antwort (KI)"
-                            : mine
-                              ? "Du"
-                              : "Nordverkehr-Team"}{" "}
-                        ·{" "}
-                        {formatDayTime(m.createdAt)}
+                      <p className="text-xs text-muted flex flex-wrap items-center gap-1.5" style={mine ? { justifyContent: "flex-end" } : undefined}>
+                        <span className="font-medium text-fg-2">
+                          {m.direction === "SYSTEM"
+                            ? "Automatische Nachricht"
+                            : m.direction === "AI_TO_APPLICANT"
+                              ? "Automatische Antwort"
+                              : mine
+                                ? "Du"
+                                : personName(m.author, "Nordverkehr-Team")}
+                        </span>
+                        {!mine && <ChatRoleBadge direction={m.direction} person={m.author} />}
+                        <span>· {formatDayTime(m.createdAt)}</span>
                       </p>
                       <div
                         className={cn(

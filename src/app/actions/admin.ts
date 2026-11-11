@@ -7,6 +7,8 @@ import { requireAdmin } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 import { saveSettings, settingsSchema, type Settings } from "@/lib/settings";
 import type { ActionResult } from "@/app/actions/application";
+import { KEY_PATTERN, findSimilarQuestions, suggestKey } from "@/lib/applications/similarity";
+import { normalizeLabel } from "@/lib/setup/questions";
 
 const id = z.string().min(10).max(40);
 const QTYPE = z.enum(["SHORT_TEXT", "LONG_TEXT", "NUMBER", "SELECT", "MULTI_SELECT", "CHECKBOX", "URL", "FILE", "SCENARIO"]);
@@ -107,6 +109,13 @@ const sectionSchema = z.object({
   description: z.string().trim().max(400).nullable(),
 });
 
+/** Hängt _2, _3 … an, bis der Key frei ist. */
+async function uniqueKey(base: string, taken: (k: string) => Promise<boolean>) {
+  let key = base;
+  for (let i = 2; await taken(key); i++) key = `${base}_${i}`;
+  return key;
+}
+
 export async function saveSectionAction(input: z.input<typeof sectionSchema>): Promise<ActionResult<{ id: string }>> {
   const { user } = await requireAdmin();
   const p = sectionSchema.safeParse(input);
@@ -117,8 +126,11 @@ export async function saveSectionAction(input: z.input<typeof sectionSchema>): P
     saved = await db.formSection.update({ where: { id: p.data.id }, data: { title: p.data.title, description: p.data.description } });
   } else {
     const max = await db.formSection.aggregate({ _max: { sortOrder: true }, where: { positionId: p.data.positionId } });
+    const pos = p.data.positionId ? await db.position.findUnique({ where: { id: p.data.positionId }, select: { slug: true } }) : null;
+    const base = normalizeLabel(p.data.title).replace(/ /g, "_").slice(0, 40) || "abschnitt";
+    const key = await uniqueKey(pos ? `${pos.slug}.${base}` : base, async (k) => !!(await db.formSection.findFirst({ where: { key: k }, select: { id: true } })));
     saved = await db.formSection.create({
-      data: { typeId: type.id, positionId: p.data.positionId, title: p.data.title, description: p.data.description, sortOrder: (max._max.sortOrder ?? 0) + 1 },
+      data: { key, typeId: type.id, positionId: p.data.positionId, title: p.data.title, description: p.data.description, sortOrder: (max._max.sortOrder ?? 0) + 1 },
     });
   }
   await audit("form.update", { actorId: user.id, targetType: "section", targetId: saved.id });
@@ -148,6 +160,15 @@ const questionSchema = z
   .object({
     id: id.optional(),
     sectionId: id,
+    /** Eindeutiger Key; leer = automatisch aus dem Fragetext */
+    key: z
+      .string()
+      .trim()
+      .max(60)
+      .refine((k) => k === "" || KEY_PATTERN.test(k), "Key: nur a–z, 0–9, _ und höchstens ein Punkt (z. B. support.tickets).")
+      .nullish(),
+    /** Admin hat die Ähnlichkeitswarnung bestätigt */
+    confirmSimilar: z.boolean().optional(),
     label: z.string().trim().min(3).max(300),
     helpText: z.string().trim().max(400).nullable(),
     placeholder: z.string().trim().max(120).nullable(),
@@ -166,12 +187,39 @@ export async function saveQuestionAction(input: z.input<typeof questionSchema>):
   const { user } = await requireAdmin();
   const p = questionSchema.safeParse(input);
   if (!p.success) return { ok: false, error: p.error.issues[0].message };
-  const { id: qid, ...data } = p.data;
+  const { id: qid, key: rawKey, confirmSimilar, ...data } = p.data;
+  const section = await db.formSection.findUnique({ where: { id: data.sectionId }, select: { position: { select: { slug: true } } } });
+  if (!section) return { ok: false, error: "Schritt nicht gefunden." };
+  const keyTaken = async (k: string) => !!(await db.question.findFirst({ where: { key: k, ...(qid ? { NOT: { id: qid } } : {}) }, select: { id: true } }));
+
+  let key = rawKey || null;
+  if (key && (await keyTaken(key))) return { ok: false, error: `Der Key „${key}“ ist schon vergeben.`, fieldErrors: { key: "vergeben" } };
+  if (!key) {
+    const current = qid ? await db.question.findUnique({ where: { id: qid }, select: { key: true } }) : null;
+    key = current?.key ?? (await uniqueKey(suggestKey(data.label, section.position?.slug), keyTaken));
+  }
+
+  // Doppelte Fragen vermeiden: gleicher/ähnlicher Text an anderer Stelle → erst nach Bestätigung speichern
+  if (!confirmSimilar) {
+    const existing = await db.question.findMany({
+      where: { archived: false, section: { NOT: { archived: true } } },
+      select: { id: true, key: true, label: true, section: { select: { title: true, position: { select: { title: true } } } } },
+    });
+    const hits = findSimilarQuestions(
+      { id: qid, key, label: data.label },
+      existing.map((q) => ({ id: q.id, key: q.key, label: q.label, where: `${q.section.position?.title ?? "Allgemein"} › ${q.section.title}` })),
+    );
+    if (hits.length) {
+      const h = hits[0];
+      return { ok: false, error: `Ähnliche Frage gibt es schon (${h.where}): „${h.label}“`, fieldErrors: { similar: h.id } };
+    }
+  }
+
   let saved;
-  if (qid) saved = await db.question.update({ where: { id: qid }, data });
+  if (qid) saved = await db.question.update({ where: { id: qid }, data: { ...data, key } });
   else {
     const max = await db.question.aggregate({ _max: { sortOrder: true }, where: { sectionId: data.sectionId } });
-    saved = await db.question.create({ data: { ...data, sortOrder: (max._max.sortOrder ?? 0) + 1 } });
+    saved = await db.question.create({ data: { ...data, key, sortOrder: (max._max.sortOrder ?? 0) + 1 } });
   }
   await audit("form.update", { actorId: user.id, targetType: "question", targetId: saved.id });
   revalidatePath("/team/positionen", "layout");

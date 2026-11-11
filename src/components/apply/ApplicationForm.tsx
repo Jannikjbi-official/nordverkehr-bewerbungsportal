@@ -32,24 +32,42 @@ interface Props {
   sections: FormSectionDef[];
   minAge: number;
   displayName: string;
-  initial: { draftId: string | null; data: AnswerMap; step: number; age: number | null };
+  /** fromProfile: allgemeine Antworten stammen vollständig aus der letzten Bewerbung */
+  initial: { draftId: string | null; data: AnswerMap; step: number; age: number | null; fromProfile?: boolean };
   initialUploads: Record<string, UploadedFile>;
+}
+
+type Page =
+  | { key: string; title: string; kind: "start" | "general" | "confirm" | "review" }
+  | { key: string; title: string; kind: "section"; section: FormSectionDef };
+
+/** Schritte des Formulars; zusammengeklappt ersetzt eine Zusammenfassung die allgemeinen Abschnitte. */
+function buildPages(sections: FormSectionDef[], collapsed: boolean): Page[] {
+  const hasGeneral = sections.some((s) => s.general);
+  return [
+    { key: "start", title: "Start", kind: "start" },
+    ...(collapsed && hasGeneral ? [{ key: "general", title: "Deine Angaben", kind: "general" } as const] : []),
+    ...sections.filter((s) => !(collapsed && s.general)).map((s) => ({ key: s.id, title: s.title, kind: "section" as const, section: s })),
+    { key: "confirm", title: "Abschluss", kind: "confirm" },
+    { key: "review", title: "Überprüfen", kind: "review" },
+  ];
 }
 
 type SaveState = { kind: "idle" } | { kind: "saving" } | { kind: "saved"; at: Date } | { kind: "error"; message: string };
 
 export function ApplicationForm({ position, sections, minAge, displayName, initial, initialUploads }: Props) {
   const router = useRouter();
-  const steps = useMemo(
-    () => [
-      { key: "start", title: "Start" },
-      ...sections.map((s) => ({ key: s.id, title: s.title })),
-      { key: "confirm", title: "Abschluss" },
-      { key: "review", title: "Überprüfen" },
-    ],
-    [sections],
-  );
+  const [collapsed, setCollapsed] = useState(!!initial.fromProfile);
+  const steps = useMemo(() => buildPages(sections, collapsed), [sections, collapsed]);
   const last = steps.length - 1;
+  const generalSections = useMemo(() => sections.filter((s) => s.general), [sections]);
+  /** Index eines Abschnitts in der aufgeklappten Ansicht */
+  const expandedIndex = (sectionId: string) => buildPages(sections, false).findIndex((p) => p.key === sectionId);
+  function expandTo(sectionId?: string) {
+    setCollapsed(false);
+    setErrors({});
+    setStep(sectionId ? expandedIndex(sectionId) : 1);
+  }
 
   const [step, setStep] = useState(Math.min(initial.step, last - 1));
   const [data, setData] = useState<AnswerMap>(initial.data);
@@ -144,9 +162,17 @@ export function ApplicationForm({ position, sections, minAge, displayName, initi
       }
       return !underAge;
     }
-    const section = sections[i - 1];
-    if (section) {
-      const errs = validateSection(section, data);
+    const page = steps[i];
+    if (page?.kind === "general") {
+      // Sollte nicht passieren (nur bei vollständigen Angaben zusammengeklappt) – sonst aufklappen
+      const bad = generalSections.find((s) => Object.keys(validateSection(s, data)).length > 0);
+      if (bad) {
+        expandTo(bad.id);
+        return false;
+      }
+    }
+    if (page?.kind === "section") {
+      const errs = validateSection(page.section, data);
       setErrors(errs);
       if (Object.keys(errs).length) {
         const first = Object.keys(errs)[0];
@@ -206,8 +232,11 @@ export function ApplicationForm({ position, sections, minAge, displayName, initi
           const firstQ = Object.keys(res.fieldErrors)[0];
           if (firstQ === "age") setStep(0);
           else {
-            const idx = sections.findIndex((s) => s.questions.some((q) => q.id === firstQ));
-            if (idx >= 0) setStep(idx + 1);
+            const target = sections.find((s) => s.questions.some((q) => q.id === firstQ));
+            if (target) {
+              setCollapsed(false);
+              setStep(expandedIndex(target.id));
+            }
           }
         }
       }
@@ -216,7 +245,7 @@ export function ApplicationForm({ position, sections, minAge, displayName, initi
 
   const progress = Math.round((step / last) * 100);
   const current = steps[step];
-  const section = step >= 1 && step <= sections.length ? sections[step - 1] : null;
+  const section = current.kind === "section" ? current.section : null;
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[240px_1fr] lg:gap-12">
@@ -294,6 +323,11 @@ export function ApplicationForm({ position, sections, minAge, displayName, initi
                   Moin {displayName}. <em>Los geht&apos;s.</em>
                 </>
               )}
+              {current.kind === "general" && (
+                <>
+                  Deine <em>Angaben.</em>
+                </>
+              )}
               {section && section.title}
               {step === last - 1 && (
                 <>
@@ -362,6 +396,26 @@ export function ApplicationForm({ position, sections, minAge, displayName, initi
                     <CheckCircle size={18} className="text-red-text shrink-0" aria-hidden /> Status jederzeit im Dashboard
                   </li>
                 </ul>
+              </div>
+            )}
+
+            {/* Allgemeine Angaben aus der letzten Bewerbung */}
+            {current.kind === "general" && (
+              <div className="mt-6 space-y-6">
+                <p className="text-muted">
+                  Die allgemeinen Fragen kennst du schon von deiner letzten Bewerbung – wir haben deine Antworten
+                  übernommen. Passt noch alles? Dann einfach weiter.
+                </p>
+                {generalSections.map((s) => (
+                  <ReviewBlock key={s.id} title={s.title} onEdit={() => expandTo(s.id)} editLabel="Anpassen">
+                    {s.questions.map((q) => (
+                      <ReviewRow key={q.id} label={q.label} value={formatAnswerForDisplay(q.type, data[q.id] ?? null)} />
+                    ))}
+                  </ReviewBlock>
+                ))}
+                <button type="button" className="nv-btn nv-btn-ghost nv-btn-sm" onClick={() => expandTo()}>
+                  <PencilSimple size={14} aria-hidden /> Alle allgemeinen Antworten anpassen
+                </button>
               </div>
             )}
 
@@ -437,8 +491,16 @@ export function ApplicationForm({ position, sections, minAge, displayName, initi
                 <ReviewBlock title="Start" onEdit={() => setStep(0)}>
                   <ReviewRow label="Alter" value={age ? String(age) : "–"} />
                 </ReviewBlock>
-                {sections.map((s, i) => (
-                  <ReviewBlock key={s.id} title={s.title} onEdit={() => setStep(i + 1)}>
+                {sections.map((s) => (
+                  <ReviewBlock
+                    key={s.id}
+                    title={s.title}
+                    onEdit={() => {
+                      const idx = steps.findIndex((p) => p.key === s.id);
+                      if (idx >= 0) setStep(idx);
+                      else expandTo(s.id);
+                    }}
+                  >
                     {s.questions.map((q) => (
                       <ReviewRow
                         key={q.id}
@@ -526,13 +588,13 @@ function SaveIndicator({ state }: { state: SaveState }) {
   );
 }
 
-function ReviewBlock({ title, onEdit, children }: { title: string; onEdit: () => void; children: React.ReactNode }) {
+function ReviewBlock({ title, onEdit, editLabel = "Bearbeiten", children }: { title: string; onEdit: () => void; editLabel?: string; children: React.ReactNode }) {
   return (
     <section className="rounded-xl border border-line">
       <header className="flex items-center justify-between px-4 py-3 border-b border-line">
         <h3 className="font-semibold text-sm">{title}</h3>
         <button type="button" onClick={onEdit} className="nv-btn nv-btn-quiet nv-btn-sm">
-          <PencilSimple size={14} aria-hidden /> Bearbeiten
+          <PencilSimple size={14} aria-hidden /> {editLabel}
         </button>
       </header>
       <dl className="divide-y divide-[var(--nv-border)]">{children}</dl>

@@ -32,6 +32,7 @@ export async function GET() {
           votes: { select: { value: true, createdAt: true } },
         },
       },
+      profile: { select: { age: true, answers: true, createdAt: true, updatedAt: true } },
       notesAbout: { select: { body: true, createdAt: true } },
       bansAbout: { select: { reason: true, expiresAt: true, createdAt: true, liftedAt: true } },
     },
@@ -71,6 +72,9 @@ export async function GET() {
       interneKommentare: a.comments,
       abstimmungen: a.votes,
     })),
+    gespeicherteAllgemeineAngaben: full.profile
+      ? { alter: full.profile.age, antworten: full.profile.answers, angelegt: full.profile.createdAt, aktualisiert: full.profile.updatedAt }
+      : null,
     interneNotizen: full.notesAbout,
     sperren: full.bansAbout,
   };

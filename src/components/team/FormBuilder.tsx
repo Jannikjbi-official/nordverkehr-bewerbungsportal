@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Archive, DotsSixVertical, PencilSimple, Plus, Trash } from "@phosphor-icons/react/ssr";
+import { Archive, DotsSixVertical, PencilSimple, Plus, Trash, Warning } from "@phosphor-icons/react/ssr";
 import {
   archiveQuestionAction,
   deleteSectionAction,
@@ -16,6 +16,7 @@ import {
 } from "@/app/actions/admin";
 import { QUESTION_TYPE_LABEL, type FormQuestion, type FormSectionDef } from "@/lib/applications/form";
 import { QuestionField } from "@/components/apply/QuestionField";
+import { KEY_PATTERN, findSimilarQuestions, suggestKey, type ExistingQuestion } from "@/lib/applications/similarity";
 import type { QuestionType } from "@prisma/client";
 
 const TYPES = Object.keys(QUESTION_TYPE_LABEL) as QuestionType[];
@@ -38,7 +39,17 @@ function useRun() {
   return { pending, error, run };
 }
 
-export function FormBuilder({ positionId, sections: initial }: { positionId: string | null; sections: FormSectionDef[] }) {
+interface BuilderContext {
+  keyPrefix: string | null;
+  existingQuestions: ExistingQuestion[];
+}
+
+export function FormBuilder({
+  positionId,
+  sections: initial,
+  keyPrefix,
+  existingQuestions,
+}: { positionId: string | null; sections: FormSectionDef[] } & BuilderContext) {
   const [sections, setSections] = useState(initial);
   const { pending, error, run } = useRun();
   const [newTitle, setNewTitle] = useState("");
@@ -61,7 +72,7 @@ export function FormBuilder({ positionId, sections: initial }: { positionId: str
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
           {sections.map((s, i) => (
-            <SortableSection key={s.id} section={s} index={i} />
+            <SortableSection key={s.id} section={s} index={i} ctx={{ keyPrefix, existingQuestions }} />
           ))}
         </SortableContext>
       </DndContext>
@@ -86,7 +97,7 @@ export function FormBuilder({ positionId, sections: initial }: { positionId: str
   );
 }
 
-function SortableSection({ section, index }: { section: FormSectionDef; index: number }) {
+function SortableSection({ section, index, ctx }: { section: FormSectionDef; index: number; ctx: BuilderContext }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
   const [questions, setQuestions] = useState(section.questions);
   const [editing, setEditing] = useState<Partial<FormQuestion> | null>(null);
@@ -166,14 +177,17 @@ function SortableSection({ section, index }: { section: FormSectionDef; index: n
         {editing ? (
           <QuestionEditor
             q={editing}
+            ctx={ctx}
             pending={pending}
             onCancel={() => setEditing(null)}
-            onSave={(q) =>
+            onSave={(q, confirmSimilar) =>
               run(
                 () =>
                   saveQuestionAction({
                     id: q.id,
                     sectionId: section.id,
+                    key: q.key || null,
+                    confirmSimilar,
                     label: q.label ?? "",
                     helpText: q.helpText || null,
                     placeholder: q.placeholder || null,
@@ -210,6 +224,7 @@ function SortableQuestion({ q, onEdit, onArchive }: { q: FormQuestion; onEdit: (
       <div className="min-w-0 flex-1">
         <p className="text-sm truncate">{q.label}</p>
         <p className="text-xs text-muted">
+          {q.key && <span className="font-mono">{q.key} · </span>}
           {QUESTION_TYPE_LABEL[q.type]}
           {q.required ? " · Pflicht" : " · optional"}
           {q.minLength ? ` · min. ${q.minLength} Zeichen` : ""}
@@ -225,8 +240,25 @@ function SortableQuestion({ q, onEdit, onArchive }: { q: FormQuestion; onEdit: (
   );
 }
 
-function QuestionEditor({ q: initial, pending, onSave, onCancel }: { q: Partial<FormQuestion>; pending: boolean; onSave: (q: Partial<FormQuestion>) => void; onCancel: () => void }) {
+function QuestionEditor({
+  q: initial,
+  ctx,
+  pending,
+  onSave,
+  onCancel,
+}: {
+  q: Partial<FormQuestion>;
+  ctx: BuilderContext;
+  pending: boolean;
+  onSave: (q: Partial<FormQuestion>, confirmSimilar: boolean) => void;
+  onCancel: () => void;
+}) {
   const [q, setQ] = useState(initial);
+  const [confirmSimilar, setConfirmSimilar] = useState(false);
+  const keyValue = q.key ?? "";
+  const keyInvalid = keyValue !== "" && !KEY_PATTERN.test(keyValue);
+  const keySuggestion = q.label && q.label.trim().length >= 3 ? suggestKey(q.label, ctx.keyPrefix) : null;
+  const similar = findSimilarQuestions({ id: initial.id, key: keyValue || null, label: q.label ?? "" }, ctx.existingQuestions).slice(0, 3);
   const [opts, setOpts] = useState((initial.options ?? []).join("\n"));
   const set = <K extends keyof FormQuestion>(k: K, v: FormQuestion[K]) => setQ((x) => ({ ...x, [k]: v }));
   const num = (v: string) => (v === "" ? null : Number(v));
@@ -235,6 +267,7 @@ function QuestionEditor({ q: initial, pending, onSave, onCancel }: { q: Partial<
   const isChoice = ["SELECT", "MULTI_SELECT"].includes(type);
   const preview: FormQuestion = {
     id: "preview",
+    key: null,
     label: q.label || "Fragetext",
     helpText: q.helpText ?? null,
     placeholder: q.placeholder ?? null,
@@ -280,7 +313,47 @@ function QuestionEditor({ q: initial, pending, onSave, onCancel }: { q: Partial<
           </label>
           <input id="q-ph" className="nv-input" maxLength={120} value={q.placeholder ?? ""} onChange={(e) => set("placeholder", e.target.value)} />
         </div>
+        <div className="sm:col-span-2">
+          <label htmlFor="q-key" className="nv-field-label">
+            Key (eindeutig)
+          </label>
+          <input
+            id="q-key"
+            className="nv-input font-mono text-sm"
+            maxLength={60}
+            placeholder={keySuggestion ?? "wird automatisch vergeben"}
+            value={keyValue}
+            aria-invalid={keyInvalid || undefined}
+            aria-describedby="q-key-hint"
+            onChange={(e) => set("key", e.target.value.toLowerCase().replace(/\s+/g, "_") || null)}
+          />
+          <p id="q-key-hint" className={`text-xs mt-1 ${keyInvalid ? "text-red-text" : "text-muted"}`}>
+            {keyInvalid
+              ? "Nur a–z, 0–9, _ und höchstens ein Punkt, z. B. support.tickets."
+              : "Leer lassen = automatisch aus dem Fragetext. Allgemeine Antworten werden über diesen Key zwischen Bewerbungen wiederverwendet."}
+          </p>
+        </div>
       </div>
+      {similar.length > 0 && (
+        <div className="nv-tone-warn rounded-xl border p-3 text-sm space-y-2" role="status">
+          <p className="flex items-center gap-2 font-semibold">
+            <Warning size={16} aria-hidden /> Diese Frage gibt es so ähnlich schon
+          </p>
+          <ul className="space-y-1">
+            {similar.map((h) => (
+              <li key={h.id} className="text-xs">
+                <span className="opacity-80">{h.where}:</span> „{h.label}“{" "}
+                <span className="opacity-80">{h.reason === "key" ? "(gleicher Key)" : `(${Math.round(h.score * 100)} % ähnlich)`}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs opacity-80">Allgemeine Fragen gehören in „Allgemeine Fragen“ – bei Positionen nur fachliche Fragen.</p>
+          <label className="flex items-center gap-2 text-xs">
+            <input type="checkbox" className="nv-check !mt-0" checked={confirmSimilar} onChange={(e) => setConfirmSimilar(e.target.checked)} />
+            Ist keine Dublette – trotzdem speichern
+          </label>
+        </div>
+      )}
       <div className="flex flex-wrap gap-4 items-end">
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" className="nv-check !mt-0" checked={q.required ?? true} onChange={(e) => set("required", e.target.checked)} /> Pflichtfeld
@@ -314,7 +387,12 @@ function QuestionEditor({ q: initial, pending, onSave, onCancel }: { q: Partial<
         <button type="button" className="nv-btn nv-btn-quiet nv-btn-sm" onClick={onCancel}>
           Abbrechen
         </button>
-        <button type="button" className="nv-btn nv-btn-primary nv-btn-sm" disabled={pending} onClick={() => onSave({ ...q, options: preview.options })}>
+        <button
+          type="button"
+          className="nv-btn nv-btn-primary nv-btn-sm"
+          disabled={pending || keyInvalid || (similar.length > 0 && !confirmSimilar)}
+          onClick={() => onSave({ ...q, options: preview.options }, confirmSimilar)}
+        >
           Frage speichern
         </button>
       </div>

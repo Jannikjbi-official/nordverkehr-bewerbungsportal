@@ -54,6 +54,11 @@ async function Content() {
           Nachrichten zwischen dir und dem Team.
         </li>
         <li>
+          <strong>Allgemeine Angaben:</strong> Deine Antworten auf die allgemeinen Fragen (z. B. Verfügbarkeit, Erfahrung)
+          und dein Alter merken wir uns nach dem Absenden, damit du sie bei einer weiteren Bewerbung nicht neu eintippen
+          musst. Du siehst sie vorausgefüllt und kannst sie jederzeit anpassen.
+        </li>
+        <li>
           <strong>Intern:</strong> Abstimmungen, Kommentare und Notizen des Teams, automatische Hinweise (z. B. „sehr kurze
           Antworten“) – keine automatische Bewertung oder Punktzahl.
         </li>
@@ -125,6 +130,7 @@ async function Content() {
         <li>Zurückgezogene Bewerbungen: {s["retention.withdrawnDays"]} Tage</li>
         <li>Abgelehnte Bewerbungen: {s["retention.rejectedDays"]} Tage nach der Entscheidung (für die Sperrfrist)</li>
         <li>Angenommene Bewerbungen: {s["retention.acceptedDays"]} Tage nach der Entscheidung</li>
+        <li>Gespeicherte allgemeine Angaben: bis keine eingereichte Bewerbung mehr von dir gespeichert ist</li>
         <li>Audit-Log: {s["retention.auditDays"]} Tage</li>
       </ul>
       <p>Die Löschung läuft automatisch.</p>

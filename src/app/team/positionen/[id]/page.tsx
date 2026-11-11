@@ -43,9 +43,14 @@ async function Editor({ params }: Pick<PageProps<"/team/positionen/[id]">, "para
   if (!isGeneral && !position) notFound();
 
   const sections = await db.formSection.findMany({
-    where: { positionId: isGeneral ? null : position!.id },
+    where: { positionId: isGeneral ? null : position!.id, NOT: { archived: true } },
     orderBy: { sortOrder: "asc" },
     include: { questions: { where: { archived: false }, orderBy: { sortOrder: "asc" } } },
+  });
+  // Alle aktiven Fragen (allgemein + alle Positionen) für die Duplikat-Warnung im Builder
+  const allQuestions = await db.question.findMany({
+    where: { archived: false, section: { NOT: { archived: true } } },
+    select: { id: true, key: true, label: true, section: { select: { title: true, position: { select: { title: true } } } } },
   });
 
   return (
@@ -91,12 +96,22 @@ async function Editor({ params }: Pick<PageProps<"/team/positionen/[id]">, "para
         </div>
         <FormBuilder
           positionId={position?.id ?? null}
+          keyPrefix={position?.slug ?? null}
+          existingQuestions={allQuestions.map((q) => ({
+            id: q.id,
+            key: q.key,
+            label: q.label,
+            where: `${q.section.position?.title ?? "Allgemein"} › ${q.section.title}`,
+          }))}
           sections={sections.map((s) => ({
             id: s.id,
+            key: s.key,
+            general: s.positionId === null,
             title: s.title,
             description: s.description,
             questions: s.questions.map((q) => ({
               id: q.id,
+              key: q.key,
               label: q.label,
               helpText: q.helpText,
               placeholder: q.placeholder,

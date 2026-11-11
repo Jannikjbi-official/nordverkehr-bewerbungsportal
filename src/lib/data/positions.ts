@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import type { FormSectionDef } from "@/lib/applications/form";
+import { assembleForm } from "@/lib/applications/assemble";
 
 export async function listPublicPositions() {
   const positions = await queryPublicPositions();
@@ -29,23 +30,29 @@ export async function getPublicPosition(slug: string) {
   return p;
 }
 
-/** Formular-Schritte: allgemeine zuerst, dann positionsspezifische. */
-export async function getFormDefinition(position: { id: string; typeId: string }): Promise<FormSectionDef[]> {
+/**
+ * Formular-Schritte: allgemeine Abschnitte (einmal zentral definiert) zuerst,
+ * dann die Fachfragen der Position. Duplikate werden per Key/Text entfernt.
+ */
+export async function getFormDefinition(position: { id: string; typeId: string; title: string }): Promise<FormSectionDef[]> {
   const sections = await db.formSection.findMany({
-    where: { typeId: position.typeId, OR: [{ positionId: null }, { positionId: position.id }] },
+    // Alte Abschnitte ohne `archived`-Feld vereinheitlicht die Migration beim Serverstart
+    where: { typeId: position.typeId, OR: [{ positionId: null }, { positionId: position.id }], NOT: { archived: true } },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     include: { questions: { where: { archived: false }, orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] } },
   });
-  // positionId=null zuerst, Reihenfolge innerhalb stabil
-  sections.sort((a, b) => Number(a.positionId !== null) - Number(b.positionId !== null) || a.sortOrder - b.sortOrder);
-  return sections
-    .filter((s) => s.questions.length > 0)
-    .map((s) => ({
+  return assembleForm(
+    sections.map((s) => ({
       id: s.id,
+      key: s.key,
       title: s.title,
       description: s.description,
+      positionId: s.positionId,
+      sortOrder: s.sortOrder,
+      createdAt: s.createdAt,
       questions: s.questions.map((q) => ({
         id: q.id,
+        key: q.key,
         label: q.label,
         helpText: q.helpText,
         placeholder: q.placeholder,
@@ -56,6 +63,9 @@ export async function getFormDefinition(position: { id: string; typeId: string }
         minValue: q.minValue,
         maxValue: q.maxValue,
         options: q.options,
+        sortOrder: q.sortOrder,
       })),
-    }));
+    })),
+    position,
+  );
 }

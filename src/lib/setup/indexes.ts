@@ -30,8 +30,17 @@ export const INDEXES: Record<string, IndexSpec[]> = {
   UserBan: [idx(["subjectId"], "UserBan")],
   ApplicationType: [idx(["key"], "ApplicationType", true)],
   Position: [idx(["slug"], "Position", true), idx(["typeId", "status"], "Position")],
-  FormSection: [idx(["typeId", "positionId"], "FormSection")],
-  Question: [idx(["sectionId"], "Question")],
+  FormSection: [
+    idx(["typeId", "positionId"], "FormSection"),
+    // Eindeutige Abschnitts-Keys (nur wenn gesetzt) – verhindert doppelte Abschnitte, auch bei parallelen Einrichtungen
+    { key: { key: 1 }, name: "section_key_unique_when_set", unique: true, partialFilterExpression: { key: { $type: "string" } } },
+  ],
+  Question: [
+    idx(["sectionId"], "Question"),
+    // Eindeutige Fragen-Keys (nur wenn gesetzt)
+    { key: { key: 1 }, name: "question_key_unique_when_set", unique: true, partialFilterExpression: { key: { $type: "string" } } },
+  ],
+  ApplicantProfile: [idx(["userId"], "ApplicantProfile", true)],
   Application: [
     idx(["publicId"], "Application"),
     idx(["status"], "Application"),

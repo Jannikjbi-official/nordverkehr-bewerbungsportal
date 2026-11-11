@@ -131,6 +131,19 @@ model User {
   templates        MessageTemplate[]
   auditLogs        AuditLog[]
   aiUsage          AiUsage[]
+  profile          ApplicantProfile?
+}
+
+/// Allgemeine Angaben eines Bewerbers (einmal ausgefüllt, für weitere Bewerbungen wiederverwendet).
+/// answers: { [Fragen-Key]: Wert } – Keys statt IDs, damit Umbauten im Formular nichts kaputt machen.
+model ApplicantProfile {
+  id        String   @id @default(cuid()) @map("_id")
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  age       Int?
+  answers   Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model UserNote {
@@ -202,9 +215,12 @@ model Position {
   @@index([typeId, status])
 }
 
-/// Formular-Schritt. positionId = null → gilt für alle Positionen der Bewerbungsart.
+/// Formular-Schritt. positionId = null → allgemeiner Schritt (für alle Positionen, nur einmal pro Person).
 model FormSection {
   id          String          @id @default(cuid()) @map("_id")
+  /// Eindeutiger Schlüssel (z. B. "about", "support.fach") – partieller Unique-Index in setup/indexes.ts
+  key         String?
+  archived    Boolean         @default(false)
   typeId      String
   type        ApplicationType @relation(fields: [typeId], references: [id], onDelete: Cascade)
   positionId  String?
@@ -220,6 +236,8 @@ model FormSection {
 
 model Question {
   id          String       @id @default(cuid()) @map("_id")
+  /// Eindeutiger Schlüssel (z. B. "about_me", "support.newbie") – partieller Unique-Index in setup/indexes.ts
+  key         String?
   sectionId   String
   section     FormSection  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   label       String

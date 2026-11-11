@@ -13,6 +13,7 @@ import type { ApplicationStatus, QuestionType, VoteValue } from "@prisma/client"
 import { resolveDatabaseUrl } from "../src/lib/db";
 import { ensureIndexes } from "../src/lib/setup/indexes";
 import { seedBase } from "../src/lib/setup/base-seed";
+import { markMigrationsDone, runMigrations } from "../src/lib/setup/migrations";
 
 const db = new PrismaClient({ datasourceUrl: resolveDatabaseUrl() });
 
@@ -228,8 +229,12 @@ async function seedDemo() {
 }
 
 async function main() {
+  // Reihenfolge wichtig: erst bestehende Daten migrieren (Keys), dann Indizes, dann Fehlendes ergänzen
+  const empty = (await db.applicationType.count()) === 0;
+  if (!empty) for (const m of await runMigrations(db, { log: console.log })) console.log(`✓ Migration ${m}`);
   await ensureIndexes(db);
   await seedBase(db, console.log);
+  if (empty) await markMigrationsDone(db);
   await seedDemo();
 }
 

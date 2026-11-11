@@ -1,132 +1,10 @@
 /**
  * Inhalte für den Seed. Positionstexte orientieren sich an nordverkehr.xyz/team.
  */
-import type { PositionStatus, QuestionType, TemplateCategory } from "@prisma/client";
+import type { PositionStatus, TemplateCategory } from "@prisma/client";
+import { GENERAL_SECTIONS, POSITION_SECTIONS, type SeedQuestion, type SeedSection } from "@/lib/setup/questions";
 
-export interface SeedQuestion {
-  key: string;
-  label: string;
-  type: QuestionType;
-  required?: boolean;
-  helpText?: string;
-  placeholder?: string;
-  minLength?: number;
-  maxLength?: number;
-  minValue?: number;
-  maxValue?: number;
-  options?: string[];
-}
-
-export interface SeedSection {
-  key: string;
-  title: string;
-  description?: string;
-  questions: SeedQuestion[];
-}
-
-export const GENERAL_SECTIONS: SeedSection[] = [
-  {
-    key: "about",
-    title: "Über dich",
-    description: "Ein paar Basics, damit wir wissen, mit wem wir es zu tun haben.",
-    questions: [
-      {
-        key: "callname",
-        label: "Wie sollen wir dich nennen?",
-        type: "SHORT_TEXT",
-        placeholder: "Rufname oder Spitzname",
-        maxLength: 40,
-      },
-      {
-        key: "hours",
-        label: "Wie viele Stunden pro Woche kannst du realistisch fürs Team einplanen?",
-        type: "SELECT",
-        helpText: "Ehrlich bleiben – lieber weniger zusagen und dafür verlässlich sein.",
-        options: ["unter 5 Stunden", "5–10 Stunden", "10–20 Stunden", "über 20 Stunden"],
-      },
-      {
-        key: "availability",
-        label: "Wann bist du meistens erreichbar?",
-        type: "MULTI_SELECT",
-        options: ["Wochentags vormittags", "Wochentags nachmittags", "Wochentags abends", "Am Wochenende"],
-        minValue: 1,
-      },
-      {
-        key: "intro",
-        label: "Erzähl kurz etwas über dich.",
-        type: "LONG_TEXT",
-        placeholder: "Was machst du so, wie bist du zu RP gekommen, was ist dir wichtig?",
-        minLength: 80,
-        maxLength: 1500,
-      },
-    ],
-  },
-  {
-    key: "experience",
-    title: "Erfahrung & Motivation",
-    description: "Kein Lebenslauf nötig. Uns interessiert, wie du tickst.",
-    questions: [
-      {
-        key: "teams",
-        label: "Welche Erfahrung hast du in anderen Teams oder Projekten?",
-        type: "LONG_TEXT",
-        helpText: "Server, Communities, Vereine, Projekte – alles zählt. Keine Erfahrung ist auch okay, dann sag das.",
-        minLength: 40,
-        maxLength: 2000,
-      },
-      {
-        key: "motivation",
-        label: "Warum willst du ausgerechnet bei Nordverkehr ins Team?",
-        type: "LONG_TEXT",
-        minLength: 120,
-        maxLength: 2500,
-      },
-      {
-        key: "strengths",
-        label: "Was sind deine Stärken?",
-        type: "LONG_TEXT",
-        minLength: 40,
-        maxLength: 1200,
-      },
-      {
-        key: "weaknesses",
-        label: "Woran arbeitest du noch?",
-        type: "LONG_TEXT",
-        helpText: "Jeder hat Baustellen. Wir finden es stark, wenn man sie kennt.",
-        minLength: 40,
-        maxLength: 1200,
-      },
-    ],
-  },
-  {
-    key: "scenarios",
-    title: "Szenarien",
-    description: "Es gibt keine perfekte Antwort. Wir wollen sehen, wie du denkst.",
-    questions: [
-      {
-        key: "insult",
-        label: "Ein Spieler beleidigt dich im Support-Ticket. Wie reagierst du?",
-        type: "SCENARIO",
-        minLength: 80,
-        maxLength: 2000,
-      },
-      {
-        key: "friend",
-        label: "Ein Freund von dir bricht eine Regel und du bekommst es mit. Was machst du?",
-        type: "SCENARIO",
-        minLength: 80,
-        maxLength: 2000,
-      },
-      {
-        key: "conflict",
-        label: "Zwei Teammitglieder sind sich öffentlich uneinig über eine Entscheidung. Wie gehst du damit um?",
-        type: "SCENARIO",
-        minLength: 80,
-        maxLength: 2000,
-      },
-    ],
-  },
-];
+export { GENERAL_SECTIONS, POSITION_SECTIONS, type SeedQuestion, type SeedSection };
 
 export interface SeedPosition {
   slug: string;
@@ -161,27 +39,7 @@ export const POSITIONS: SeedPosition[] = [
       "Funktionierendes Mikrofon, TeamSpeak & SaltyChat",
       "Regelmäßige Verfügbarkeit (mind. 5 Std./Woche)",
     ],
-    sections: [
-      {
-        key: "support",
-        title: "Support",
-        questions: [
-          {
-            key: "newbie",
-            label: "Ein neuer Spieler hat noch nie RP gespielt. Wie erklärst du ihm den Einstieg?",
-            type: "LONG_TEXT",
-            minLength: 80,
-            maxLength: 2000,
-          },
-          {
-            key: "tickets",
-            label: "Wie viel Support-Erfahrung hast du ungefähr?",
-            type: "SELECT",
-            options: ["Noch keine", "Ein paar Tickets", "Regelmäßig auf einem anderen Server", "Lead/Leitung im Support"],
-          },
-        ],
-      },
-    ],
+    sections: POSITION_SECTIONS["support"] ?? [],
   },
   {
     slug: "moderator",
@@ -203,27 +61,7 @@ export const POSITIONS: SeedPosition[] = [
       "Neutralität – auch bei Freunden",
       "Funktionierendes Mikrofon, TeamSpeak & SaltyChat",
     ],
-    sections: [
-      {
-        key: "mod",
-        title: "Moderation",
-        questions: [
-          {
-            key: "powergaming",
-            label: "Während einer Verfolgungsjagd fällt dir Powergaming auf. Wann und wie greifst du ein?",
-            type: "SCENARIO",
-            minLength: 100,
-            maxLength: 2000,
-          },
-          {
-            key: "rules_knowledge",
-            label: "Wie gut kennst du unser Regelwerk?",
-            type: "SELECT",
-            options: ["Einmal überflogen", "Gelesen und verstanden", "Kenne ich sehr genau"],
-          },
-        ],
-      },
-    ],
+    sections: POSITION_SECTIONS["moderator"] ?? [],
   },
   {
     slug: "entwickler",
@@ -245,42 +83,7 @@ export const POSITIONS: SeedPosition[] = [
       "Git-Grundlagen",
       "Portfolio oder GitHub-Profil",
     ],
-    sections: [
-      {
-        key: "dev",
-        title: "Entwicklung",
-        questions: [
-          {
-            key: "stack",
-            label: "Mit welchen Sprachen und Technologien arbeitest du?",
-            type: "MULTI_SELECT",
-            options: ["Lua", "JavaScript / TypeScript", "C#", "SQL", "React / Vue", "Andere"],
-            minValue: 1,
-          },
-          {
-            key: "github",
-            label: "Link zu deinem GitHub oder Portfolio",
-            type: "URL",
-            placeholder: "https://github.com/…",
-          },
-          {
-            key: "project",
-            label: "Beschreib ein Projekt, auf das du stolz bist.",
-            type: "LONG_TEXT",
-            helpText: "Was war die Herausforderung, was war dein Teil, was hast du gelernt?",
-            minLength: 100,
-            maxLength: 2500,
-          },
-          {
-            key: "fivem",
-            label: "Hast du schon für FiveM oder andere Multiplayer-Plattformen entwickelt?",
-            type: "LONG_TEXT",
-            required: false,
-            maxLength: 1500,
-          },
-        ],
-      },
-    ],
+    sections: POSITION_SECTIONS["entwickler"] ?? [],
   },
   {
     slug: "media",
@@ -302,41 +105,7 @@ export const POSITIONS: SeedPosition[] = [
       "Gespür für Stil und Timing",
       "Beispiele deiner Arbeit",
     ],
-    sections: [
-      {
-        key: "media",
-        title: "Content",
-        questions: [
-          {
-            key: "platforms",
-            label: "Auf welchen Plattformen kennst du dich aus?",
-            type: "MULTI_SELECT",
-            options: ["TikTok", "Instagram", "YouTube", "Twitch", "X / Twitter"],
-            minValue: 1,
-          },
-          {
-            key: "portfolio",
-            label: "Link zu deinen Arbeiten",
-            type: "URL",
-            placeholder: "https://…",
-          },
-          {
-            key: "idea",
-            label: "Welche Content-Idee würdest du als Erstes für Nordverkehr umsetzen?",
-            type: "LONG_TEXT",
-            minLength: 80,
-            maxLength: 2000,
-          },
-          {
-            key: "samples",
-            label: "Screenshots oder Thumbnails (optional)",
-            type: "FILE",
-            required: false,
-            helpText: "Bis zu 5 Bilder (JPG, PNG, WebP), je max. 8 MB.",
-          },
-        ],
-      },
-    ],
+    sections: POSITION_SECTIONS["media"] ?? [],
   },
   {
     slug: "mapper",
@@ -358,34 +127,7 @@ export const POSITIONS: SeedPosition[] = [
       "Screenshots bisheriger Arbeiten",
       "Geduld für Details",
     ],
-    sections: [
-      {
-        key: "mapping",
-        title: "Mapping",
-        questions: [
-          {
-            key: "tools",
-            label: "Mit welchen Tools arbeitest du?",
-            type: "MULTI_SELECT",
-            options: ["CodeWalker", "Blender", "Sollumz", "3ds Max", "ZModeler", "Andere"],
-            minValue: 1,
-          },
-          {
-            key: "screenshots",
-            label: "Screenshots deiner Arbeiten",
-            type: "FILE",
-            helpText: "Bis zu 5 Bilder (JPG, PNG, WebP), je max. 8 MB. Metadaten werden automatisch entfernt.",
-          },
-          {
-            key: "portfolio",
-            label: "Portfolio-Link (optional)",
-            type: "URL",
-            required: false,
-            placeholder: "https://…",
-          },
-        ],
-      },
-    ],
+    sections: POSITION_SECTIONS["mapper"] ?? [],
   },
   {
     slug: "eventteam",
@@ -401,28 +143,7 @@ export const POSITIONS: SeedPosition[] = [
       "Feedback einsammeln und auswerten",
     ],
     requirements: ["Mindestalter 18 Jahre", "Organisationstalent", "Kreativität und Zuverlässigkeit"],
-    sections: [
-      {
-        key: "events",
-        title: "Events",
-        questions: [
-          {
-            key: "event_idea",
-            label: "Beschreib ein Event, das du gern auf Nordverkehr veranstalten würdest.",
-            type: "LONG_TEXT",
-            minLength: 120,
-            maxLength: 2500,
-          },
-          {
-            key: "event_experience",
-            label: "Hast du schon Events organisiert? Erzähl kurz.",
-            type: "LONG_TEXT",
-            required: false,
-            maxLength: 1500,
-          },
-        ],
-      },
-    ],
+    sections: POSITION_SECTIONS["eventteam"] ?? [],
   },
 ];
 

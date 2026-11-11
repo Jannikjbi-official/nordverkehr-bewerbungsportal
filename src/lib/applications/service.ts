@@ -12,6 +12,7 @@ import {
   type FormSectionDef,
 } from "@/lib/applications/form";
 import { computeFlags, type ApplicationFlag } from "@/lib/applications/flags";
+import { mergeProfile, type ProfileAnswers } from "@/lib/applications/profile";
 import { getFormDefinition } from "@/lib/data/positions";
 import { buildApplicantMessage, buildLogMessage } from "@/lib/messages/embed";
 import { buildTemplateVars, renderTemplate } from "@/lib/messages/placeholders";
@@ -182,6 +183,15 @@ export async function submitApplication(user: { id: string; discordId: string; u
       },
     });
     await tx.statusChange.create({ data: { applicationId: draft.id, to: "SUBMITTED", actorId: user.id } });
+
+    // Allgemeine Antworten fürs nächste Mal merken (per Fragen-Key)
+    const profile = await tx.applicantProfile.findUnique({ where: { userId: user.id }, select: { answers: true } });
+    const profileAnswers = mergeProfile(sections, (profile?.answers ?? {}) as ProfileAnswers, answers) as Prisma.InputJsonValue;
+    await tx.applicantProfile.upsert({
+      where: { userId: user.id },
+      create: { userId: user.id, age: input.age, answers: profileAnswers },
+      update: { age: input.age, answers: profileAnswers },
+    });
 
     // Automatische Bestätigung: im Portal + per DM
     const rendered = renderTemplate(
