@@ -109,7 +109,7 @@ describe("Discord-Nachrichten (Components V2)", () => {
     expect(log.flags).toBe(COMPONENTS_V2);
     expect(container(log).accent_color).toBe(WARN_COLOR);
     const cl = buildChangelogMessage(
-      { title: "Update", date: "2026-11-11", items: [{ kind: "neu", text: "A" }, { kind: "fix", text: "B" }, { kind: "neu", text: "C" }] },
+      { version: "1.3", title: "Update", date: "2026-11-11", items: [{ kind: "neu", text: "A" }, { kind: "fix", text: "B" }, { kind: "neu", text: "C" }] },
       "https://bewerbung.nordverkehr.xyz/team/changelog",
     );
     expect(cl.flags).toBe(COMPONENTS_V2);
@@ -118,6 +118,7 @@ describe("Discord-Nachrichten (Components V2)", () => {
     expect(t).toContain("### 🐛 Behoben\n- B");
     expect(t).not.toContain("Verbessert");
     expect(t).toContain("11. November 2026");
+    expect(t).toContain("## Version 1.3");
     expect(JSON.stringify(cl.components)).not.toContain("logo.png");
   });
 });

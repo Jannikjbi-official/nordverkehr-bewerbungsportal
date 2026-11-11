@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FOLLOW_UP_DAYS, canFollowUp, isInProcessing } from "@/lib/applications/status";
 import { buildApplicantMessage, buildChangelogMessage, embedAuthor, v2Text } from "@/lib/messages/embed";
-import { CHANGELOG } from "@/lib/changelog";
+import { CHANGELOG, isPublished, todayBerlin } from "@/lib/changelog";
 import { esc } from "@/lib/discord/botlog";
 
 const DAY = 86_400_000;
@@ -52,6 +52,26 @@ describe("Changelog", () => {
     }
     const dates = CHANGELOG.map((e) => e.date);
     expect([...dates].sort().reverse()).toEqual(dates);
+  });
+});
+
+describe("Changelog: Veröffentlichung um 0 Uhr", () => {
+  const entry = { date: "2026-11-11" };
+  it("der laufende Tag ist noch nicht veröffentlicht", () => {
+    expect(isPublished(entry, new Date("2026-11-11T22:59:00Z"))).toBe(false); // 23:59 Berlin (Winter)
+  });
+  it("ab 0 Uhr deutscher Zeit ist er veröffentlicht", () => {
+    expect(isPublished(entry, new Date("2026-11-11T23:00:00Z"))).toBe(true); // 00:00 Berlin
+    expect(todayBerlin(new Date("2026-11-11T23:00:00Z"))).toBe("2026-11-12");
+  });
+  it("Sommerzeit: Mitternacht ist 22:00 UTC", () => {
+    expect(todayBerlin(new Date("2026-07-01T21:59:00Z"))).toBe("2026-07-01");
+    expect(todayBerlin(new Date("2026-07-01T22:00:00Z"))).toBe("2026-07-02");
+  });
+  it("Versionen eindeutig, eine pro Tag", () => {
+    expect(new Set(CHANGELOG.map((e) => e.version)).size).toBe(CHANGELOG.length);
+    expect(new Set(CHANGELOG.map((e) => e.date)).size).toBe(CHANGELOG.length);
+    for (const e of CHANGELOG) expect(e.version).toMatch(/^\d+\.\d+$/);
   });
 });
 

@@ -1,13 +1,15 @@
 /**
- * Changelog des Bewerbungsportals – neueste Einträge zuerst.
+ * Changelog des Bewerbungsportals – ein Eintrag pro Tag, neueste zuerst.
  *
- * Bei JEDER Änderung am Portal hier einen Eintrag ergänzen (eindeutige `id`,
- * nie umbenennen – sonst wird er erneut gepostet). Neue Einträge erscheinen im
- * Team-Bereich (/team/changelog) und werden nach dem Deployment genau einmal
- * in den Changelog-Kanal auf Discord gepostet.
+ * Ablauf:
+ *  - Alles, was an einem Tag geändert wird, kommt in DEN Eintrag dieses Tages.
+ *  - Jeder Tag bekommt eine Version: 1.0 (Start), danach 1.1, 1.2, …
+ *  - Veröffentlicht wird ein Tag um 0 Uhr (Europe/Berlin) des Folgetags:
+ *    ab dann auf der Website sichtbar und per Cron einmal auf Discord gepostet.
+ *    Der laufende Tag ist noch nicht öffentlich.
  *
  * Stil: kurze Punkte, vorne ein fettes Stichwort („**Claimen** – …“).
- * Details gehören nicht hierher.
+ * Die `id` nie ändern – daran wird erkannt, ob schon gepostet wurde.
  */
 export type ChangeKind = "neu" | "besser" | "fix";
 
@@ -18,11 +20,14 @@ export interface ChangelogItem {
 }
 
 export interface ChangelogEntry {
-  /** Eindeutig und unveränderlich – daran wird erkannt, ob schon gepostet wurde */
+  /** Eindeutig und unveränderlich, z. B. "v1.0" */
   id: string;
-  /** ISO-Datum (YYYY-MM-DD) */
+  /** Versionsnummer ohne "v" */
+  version: string;
+  /** Tag der Änderungen, ISO (YYYY-MM-DD) */
   date: string;
-  title: string;
+  /** Optionaler Untertitel */
+  title?: string;
   items: ChangelogItem[];
 }
 
@@ -37,89 +42,39 @@ export function groupItems(items: ChangelogItem[]) {
   return CHANGE_GROUPS.map((g) => ({ ...g, items: items.filter((i) => i.kind === g.kind) })).filter((g) => g.items.length > 0);
 }
 
+/** Heutiges Datum in Deutschland als YYYY-MM-DD. */
+export function todayBerlin(now = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+}
+
+/** Veröffentlicht = der Tag ist vorbei (ab 0 Uhr deutscher Zeit am Folgetag). */
+export function isPublished(entry: Pick<ChangelogEntry, "date">, now = new Date()) {
+  return entry.date < todayBerlin(now);
+}
+
+export function publishedEntries(now = new Date()) {
+  return CHANGELOG.filter((e) => isPublished(e, now));
+}
+
+export const versionLabel = (e: Pick<ChangelogEntry, "version">) => `Version ${e.version}`;
+
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    id: "2026-11-11-reset",
+    id: "v1.0",
+    version: "1.0",
     date: "2026-11-11",
-    title: "Daten zurücksetzen",
+    title: "Das Bewerbungsportal ist da",
     items: [
-      { kind: "neu", text: "**Gefahrenzone** – Admins können in den Einstellungen alle Bewerbungen löschen, mit eingetipptem Bestätigungssatz. Konten, Positionen, Fragen und Einstellungen bleiben." },
-      { kind: "besser", text: "**Mobil** – alle Seiten auf Handy-Breite geprüft, nichts läuft über." },
-    ],
-  },
-  {
-    id: "2026-11-11-hilfe",
-    date: "2026-11-11",
-    title: "Hilfe & Begriffe",
-    items: [
-      { kind: "neu", text: "**Hilfe & Begriffe** – neue Seite im Team-Bereich: Status, Claimen, Hinweise, KI-Kategorien, Manipulationsversuch, Zustellstatus, Sperren und mehr kurz erklärt, mit Suche." },
-      { kind: "neu", text: "**„Was heißt das?“** – kleine Links direkt an Hinweisen, Status und Knöpfen führen zur passenden Erklärung." },
-    ],
-  },
-  {
-    id: "2026-11-11-claim-betreff",
-    date: "2026-11-11",
-    title: "Claimen sichtbarer, Betreff aus Bausteinen",
-    items: [
-      { kind: "besser", text: "**Claimen** – direkt oben in jeder Bewerbung statt versteckt in der Seitenleiste." },
-      { kind: "neu", text: "**Betreff aus Baustein** – der erste gewählte Baustein setzt den Betreff der DM." },
-    ],
-  },
-  {
-    id: "2026-11-11-discord-design",
-    date: "2026-11-11",
-    title: "Aufgeräumte Discord-Posts",
-    items: [
-      { kind: "besser", text: "**Changelog** – sortiert nach Neu, Verbessert und Behoben, kurze Punkte statt Textblock." },
-      { kind: "besser", text: "**Bot-Nachrichten** – ruhigeres Layout, Profilbild nur dort, wo eine Person schreibt." },
-    ],
-  },
-  {
-    id: "2026-11-11-fachfragen",
-    date: "2026-11-11",
-    title: "Mehr Fachfragen",
-    items: [
-      { kind: "neu", text: "**Support** – Fehlersuche bei SaltyChat, wann ein Ticket weitergeht, TeamSpeak & SaltyChat." },
-      { kind: "neu", text: "**Moderator** – Verstöße dokumentieren, Entscheidungen erklären, nicht unnötig eingreifen." },
-      { kind: "neu", text: "**Eventteam** – Event vorbereiten, Chaos am Eventabend, Feedback & Kritik." },
-    ],
-  },
-  {
-    id: "2026-11-11-team-workflow",
-    date: "2026-11-11",
-    title: "Claimen, Discord-Kanäle & mehr",
-    items: [
-      { kind: "neu", text: "**Claimen** – sehen, wer eine Bewerbung betreut. Übernehmen und Freigeben per Klick." },
-      { kind: "neu", text: "**Absender wählen** – Nachrichten mit eigenem Namen oder als Nordverkehr-Team." },
-      { kind: "neu", text: "**Discord-Kanäle** – neue Bewerbungen, Bot-Logs und Changelog getrennt." },
-      { kind: "neu", text: "**Changelog** – im Team-Bereich und hier im Kanal." },
-      { kind: "besser", text: "**Zurückziehen** – vor der Bearbeitung ohne Grund, danach mit kurzem Grund. Rückfragen bis 14 Tage." },
-      { kind: "besser", text: "**Chat** – Discord-Profilbilder, Kennzeichnung als Admin oder Team." },
-      { kind: "besser", text: "**Discord** – alle Bot-Nachrichten im Components-V2-Layout." },
-      { kind: "besser", text: "**Diagnose** – Testnachricht pro Kanal in den Einstellungen." },
-      { kind: "fix", text: "**Sperren & Zähler** – griffen bei manchen Einträgen nicht." },
-    ],
-  },
-  {
-    id: "2026-11-11-fragen",
-    date: "2026-11-11",
-    title: "Fragen bereinigt",
-    items: [
-      { kind: "besser", text: "**Keine Doppelungen** – Basisfragen gibt es einmal, pro Stelle nur Fachfragen." },
-      { kind: "neu", text: "**Vorausfüllen** – Basisantworten werden bei der nächsten Bewerbung übernommen." },
-      { kind: "neu", text: "**Formular-Builder** – eindeutige Keys, Warnung bei ähnlichen Fragen." },
-      { kind: "besser", text: "**Fachfragen** statt „Support // Support“, einheitliche Szenario-Kennzeichnung." },
-      { kind: "fix", text: "**Duplikate** zusammengeführt – keine Antwort ging verloren." },
-    ],
-  },
-  {
-    id: "2026-11-11-start",
-    date: "2026-11-11",
-    title: "Bewerbungsportal gestartet",
-    items: [
-      { kind: "neu", text: "**Login mit Discord** – Team-Bereich mit Team-Rolle, Admin-Funktionen mit Admin-Rolle." },
-      { kind: "neu", text: "**Bewerben in Schritten** – automatisch gespeichert, Bestätigung per DM, Status im Dashboard." },
-      { kind: "neu", text: "**Team-Bereich** – Tabelle & Board, Abstimmung, Kommentare, Bausteine, Statistiken, Audit-Log." },
+      { kind: "neu", text: "**Bewerben in Schritten** – Login mit Discord, automatisches Speichern, Bestätigung per DM, Status im Dashboard." },
+      { kind: "neu", text: "**Basis- & Fachfragen** – Basisfragen einmal für alle, pro Stelle eigene Fachfragen. Basisantworten werden beim nächsten Mal vorausgefüllt." },
+      { kind: "neu", text: "**Team-Bereich** – Tabelle & Board, Abstimmung, Kommentare, Notizen, Sperren, Statistiken, Audit-Log." },
+      { kind: "neu", text: "**Claimen** – oben in jeder Bewerbung sehen, wer sie betreut. Übernehmen und Freigeben per Klick." },
+      { kind: "neu", text: "**Nachrichten** – Bausteine mit Platzhaltern, Betreff aus dem Baustein, senden als du oder als Team." },
+      { kind: "neu", text: "**Discord** – Bewerbungs-Kanal, Bot-Logs und Changelog, alle Bot-Nachrichten im Components-V2-Layout." },
+      { kind: "neu", text: "**Zurückziehen** – vor der Bearbeitung ohne Grund, danach mit kurzem Grund und 14 Tagen für Rückfragen." },
+      { kind: "neu", text: "**KI (optional)** – Einordnung in Kategorien und Auto-Antwort, wenn niemand online ist – mit Schutz vor Manipulation." },
+      { kind: "neu", text: "**Hilfe & Begriffe** – alle Begriffe erklärt, „Was heißt das?“-Links direkt an Hinweisen und Knöpfen." },
+      { kind: "neu", text: "**Gefahrenzone** – Admins können alle Bewerbungen löschen, mit eingetipptem Bestätigungssatz." },
     ],
   },
 ];

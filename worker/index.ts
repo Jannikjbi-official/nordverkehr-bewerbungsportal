@@ -6,14 +6,18 @@
  *  2. Outbox: stellt ausstehende DMs, Log-Posts und Rollenvergaben zu – mit
  *     Wiederholung und Backoff, falls der direkte Versand scheitert.
  *  3. Löschfristen: entfernt Daten automatisch nach den eingestellten Fristen.
+ *  4. Online-Status: Solange der Worker läuft, ist der Bot in Discord „online“
+ *     und zeigt die Zahl offener Bewerbungen (ohne Worker: offline – Vercel
+ *     kann keine dauerhafte Gateway-Verbindung halten).
  *
  * Start: `npm run worker`
  */
 import "dotenv/config";
-import { Client, Events, GatewayIntentBits, type GuildMember, type PartialGuildMember } from "discord.js";
+import { ActivityType, Client, Events, GatewayIntentBits, type GuildMember, type PartialGuildMember } from "discord.js";
 import { db } from "@/lib/db";
 import { releaseStuckJobs, runOutbox } from "@/lib/discord/outbox-db";
 import { runRetention } from "@/lib/retention";
+import { ACTIVE_STATUSES } from "@/lib/applications/status";
 
 const OUTBOX_INTERVAL_MS = 15_000;
 const RETENTION_INTERVAL_MS = 6 * 60 * 60 * 1000;
@@ -38,7 +42,11 @@ async function startGateway() {
   }
   // GuildMembers ist ein privilegierter Intent ("Server Members Intent" im Developer Portal)
   const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
-  client.once(Events.ClientReady, (c) => log(`Gateway verbunden als ${c.user.tag}`));
+  client.once(Events.ClientReady, (c) => {
+    log(`Gateway verbunden als ${c.user.tag}`);
+    void updatePresence(client);
+    setInterval(() => void updatePresence(client), PRESENCE_INTERVAL_MS);
+  });
   client.on(Events.GuildMemberUpdate, (oldM, newM) => {
     const before = oldM.partial ? null : [...oldM.roles.cache.keys()].sort().join(",");
     const after = [...newM.roles.cache.keys()].sort().join(",");
@@ -49,6 +57,21 @@ async function startGateway() {
   client.on(Events.Error, (e) => console.error("[worker] Gateway-Fehler", e));
   await client.login(token);
   return client;
+}
+
+const PRESENCE_INTERVAL_MS = 5 * 60 * 1000;
+
+/** Bot-Status: online + „Schaut zu: N offene Bewerbungen“. */
+async function updatePresence(client: Client) {
+  try {
+    const open = await db.application.count({ where: { status: { in: ACTIVE_STATUSES } } });
+    client.user?.setPresence({
+      status: "online",
+      activities: [{ type: ActivityType.Watching, name: open === 1 ? "1 offene Bewerbung" : `${open} offene Bewerbungen` }],
+    });
+  } catch (e) {
+    console.error("[worker] Status konnte nicht gesetzt werden", e);
+  }
 }
 
 let outboxRunning = false;

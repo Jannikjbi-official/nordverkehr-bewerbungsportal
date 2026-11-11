@@ -272,28 +272,24 @@ export async function discordTestAction(kind: z.input<typeof CHANNEL_KIND>): Pro
   }
 }
 
-/** Neuesten (oder angegebenen) Changelog-Eintrag erneut posten und das Ergebnis zurückgeben. */
-export async function repostChangelogAction(entryId?: string): Promise<ActionResult<{ message: string }>> {
+/** Alle Changelog-Posts des Bots im Kanal löschen; der nächste Cron postet die veröffentlichten Versionen neu. */
+export async function deleteChangelogPostsAction(): Promise<ActionResult<{ message: string }>> {
   await requireAdmin();
-  const { CHANGELOG } = await import("@/lib/changelog");
-  const entry = entryId ? CHANGELOG.find((e) => e.id === entryId) : CHANGELOG[0];
-  if (!entry) return { ok: false, error: "Eintrag nicht gefunden." };
-  const { repostChangelogEntry } = await import("@/lib/discord/changelog-post");
-  const jobId = await repostChangelogEntry(db, entry.id);
-  if (!jobId) return { ok: false, error: "Changelog-Posts sind ausgeschaltet oder kein Kanal eingetragen." };
-  const job = await db.outboxJob.findUnique({ where: { id: jobId }, select: { status: true, lastError: true } });
-  if (job?.status === "DONE") return { ok: true, data: { message: `„${entry.title}“ wurde gepostet.` } };
-  return { ok: false, error: `Nicht gepostet (${job?.status ?? "?"}): ${job?.lastError ?? "unbekannter Fehler"}` };
+  const { deleteChangelogPosts } = await import("@/lib/discord/changelog-post");
+  const r = await deleteChangelogPosts(db);
+  return { ok: true, data: { message: `${r.deleted} Changelog-Post(s) gelöscht. Der nächste Post kommt um 0 Uhr.` } };
 }
 
-/** Alle Changelog-Einträge chronologisch neu posten (nachdem alte Posts im Kanal gelöscht wurden). */
-export async function repostAllChangelogAction(): Promise<ActionResult<{ message: string }>> {
+/** Veröffentlichte, noch nicht gepostete Versionen sofort posten (sonst übernimmt das der Cron um 0 Uhr). */
+export async function postChangelogNowAction(): Promise<ActionResult<{ message: string }>> {
   await requireAdmin();
-  const { repostAllChangelog } = await import("@/lib/discord/changelog-post");
-  const r = await repostAllChangelog(db);
-  if (r.total === 0) return { ok: false, error: "Changelog-Posts sind ausgeschaltet oder kein Kanal eingetragen." };
-  if (r.errors.length) return { ok: false, error: `${r.sent} von ${r.total} gepostet. Fehler: ${r.errors.join(" · ")}` };
-  return { ok: true, data: { message: `${r.sent} von ${r.total} Einträgen gepostet (älteste zuerst).` } };
+  const { postNewChangelogEntries } = await import("@/lib/discord/changelog-post");
+  const ids = await postNewChangelogEntries(db);
+  if (!ids.length) return { ok: true, data: { message: "Nichts zu posten – der laufende Tag wird erst um 0 Uhr veröffentlicht." } };
+  const jobs = await db.outboxJob.findMany({ where: { id: { in: ids } }, select: { status: true, lastError: true } });
+  const errors = jobs.map((j) => j.lastError).filter(Boolean);
+  if (errors.length) return { ok: false, error: `Fehler: ${errors.join(" · ")}` };
+  return { ok: true, data: { message: `${ids.length} Version(en) gepostet.` } };
 }
 
 /** Ausstehende Zustellungen jetzt senden. */

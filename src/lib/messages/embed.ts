@@ -161,13 +161,15 @@ export const formatDateDe = (iso: string) =>
  * Behoben) eine Überschrift mit echter Markdown-Liste. Kein Logo-Bild.
  */
 export function buildChangelogMessage(
-  entry: { title: string; date: string; items: { kind: ChangeKind; text: string }[] },
+  entry: { version: string; title?: string; date: string; items: { kind: ChangeKind; text: string }[] },
   url?: string | null,
 ): RESTPostAPIChannelMessageJSONBody {
   const groups = groupItems(entry.items);
   const budget = Math.floor(BODY_LIMIT / Math.max(groups.length, 1));
   const children: (APIComponentInContainer | null | false)[] = [
-    text(`-# 📋 CHANGELOG · NORDVERKEHR BEWERBUNGSPORTAL\n## ${truncate(entry.title, 200)}\n-# ${formatDateDe(entry.date)}`),
+    text(
+      `-# 📋 CHANGELOG · NORDVERKEHR BEWERBUNGSPORTAL\n## Version ${entry.version}${entry.title ? `\n**${truncate(entry.title, 150)}**` : ""}\n-# ${formatDateDe(entry.date)}`,
+    ),
   ];
   for (const g of groups) {
     children.push(separator(true, 1));

@@ -20,10 +20,6 @@ export async function register() {
       const { ensureIndexes } = await import("@/lib/setup/indexes");
       void ensureIndexes(db).catch((e) => console.error("[setup] Indizes", e));
     }
-    // Neue Changelog-Einträge einmalig in den Discord-Kanal (blockiert den Start nicht)
-    void import("@/lib/discord/changelog-post")
-      .then(({ postNewChangelogEntries }) => postNewChangelogEntries(db))
-      .catch((e) => console.error("[changelog]", e));
   } catch (e) {
     // Start nie blockieren – Formular dedupliziert zusätzlich beim Anzeigen
     console.error("[setup] Migration beim Start fehlgeschlagen", e);

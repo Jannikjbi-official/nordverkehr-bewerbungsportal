@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { ArrowRight, ArrowUUpLeft, CalendarCheck, Megaphone, ChatCircleDots, DiscordLogo, HandPointing, ShieldWarning } from "@phosphor-icons/react/ssr";
 import { Avatar, Notice, Stat, StatusBadge, formatDay, formatDayTime, formatRelative } from "@/components/ui";
-import { CHANGELOG } from "@/lib/changelog";
+import { publishedEntries, versionLabel } from "@/lib/changelog";
 import { DiscordMarkdown } from "@/components/DiscordMarkdown";
 import { requireTeam } from "@/lib/auth/session";
 import { db } from "@/lib/db";
@@ -57,6 +57,8 @@ async function Overview({ searchParams }: Pick<PageProps<"/team">, "searchParams
     }),
   ]);
 
+  const latest = publishedEntries()[0];
+
   return (
     <div className="space-y-8">
       <header>
@@ -84,25 +86,30 @@ async function Overview({ searchParams }: Pick<PageProps<"/team">, "searchParams
         <Stat label="DM-Probleme" value={dmFailed} hint="Bestätigung nicht zugestellt" />
       </div>
 
-      <section className="nv-card p-5 flex flex-col gap-3 sm:flex-row sm:items-start">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-red-soft text-red-text">
-          <Megaphone size={20} aria-hidden />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="nv-mono">Neu im Portal · {formatDay(new Date(`${CHANGELOG[0].date}T12:00:00`))}</p>
-          <h2 className="font-semibold mt-0.5">{CHANGELOG[0].title}</h2>
-          <ul className="mt-2 space-y-1 text-sm text-fg-2 list-disc pl-5 marker:text-red-text">
-            {CHANGELOG[0].items.slice(0, 3).map((it, k) => (
-              <li key={k} className="line-clamp-2">
-                <DiscordMarkdown text={it.text} className="inline [&_strong]:text-fg" />
-              </li>
-            ))}
-          </ul>
-        </div>
-        <Link href="/team/changelog" className="nv-btn nv-btn-ghost nv-btn-sm self-start">
-          Changelog <ArrowRight size={13} aria-hidden />
-        </Link>
-      </section>
+      {latest && (
+        <section className="nv-card p-5 flex flex-col gap-3 sm:flex-row sm:items-start">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-red-soft text-red-text">
+            <Megaphone size={20} aria-hidden />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="nv-mono">Neu im Portal · {formatDay(new Date(`${latest.date}T12:00:00`))}</p>
+            <h2 className="font-semibold mt-0.5">
+              {versionLabel(latest)}
+              {latest.title && <span className="font-normal text-muted"> · {latest.title}</span>}
+            </h2>
+            <ul className="mt-2 space-y-1 text-sm text-fg-2 list-disc pl-5 marker:text-red-text">
+              {latest.items.slice(0, 3).map((it, k) => (
+                <li key={k} className="line-clamp-2">
+                  <DiscordMarkdown text={it.text} className="inline [&_strong]:text-fg" />
+                </li>
+              ))}
+            </ul>
+          </div>
+          <Link href="/team/changelog" className="nv-btn nv-btn-ghost nv-btn-sm self-start">
+            Changelog <ArrowRight size={13} aria-hidden />
+          </Link>
+        </section>
+      )}
 
       {withdrawn.length > 0 && (
         <section className="nv-card p-5 border-[color-mix(in_srgb,var(--tone-warn)_40%,transparent)]">

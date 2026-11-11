@@ -30,24 +30,33 @@ export async function requireUser(callbackUrl = "/dashboard"): Promise<CurrentUs
   return user;
 }
 
-/** Merkt sich, dass ein Teammitglied aktiv ist ("Team online" für Auto-Antworten). Max. 1×/Minute. */
-async function touchTeamActivity(user: CurrentUser) {
-  if (user.lastTeamActiveAt && Date.now() - user.lastTeamActiveAt.getTime() < 60_000) return;
-  const { db } = await import("@/lib/db");
-  await db.user.update({ where: { id: user.id }, data: { lastTeamActiveAt: new Date() } }).catch(() => {});
-  // Fällige Discord-Zustellungen nach der Antwort mitnehmen (ergänzt den Cron)
+/**
+ * Hintergrund-Aufgabe bei Team-Aufrufen: fällige Discord-Zustellungen senden.
+ * Unabhängig davon, wer gerade klickt, höchstens alle 2 Minuten pro
+ * Server-Instanz (läuft per after() nach der Antwort). Der Changelog wird
+ * NICHT hier gepostet, sondern nur vom Cron um 0 Uhr.
+ */
+let lastBackgroundRun = 0;
+async function scheduleBackgroundWork() {
+  if (Date.now() - lastBackgroundRun < 120_000) return;
+  lastBackgroundRun = Date.now();
   try {
     const { after } = await import("next/server");
     after(async () => {
       const { runOutbox } = await import("@/lib/discord/outbox-db");
-      const { postNewChangelogEntries } = await import("@/lib/discord/changelog-post");
-      // Neue Changelog-Einträge (falls der Serverstart es nicht geschafft hat)
-      await postNewChangelogEntries(db).catch((e) => console.error("[changelog]", e));
       await runOutbox({ limit: 10 }).catch(() => {});
     });
   } catch {
     // außerhalb eines Requests (z. B. Tests) – egal
   }
+}
+
+/** Merkt sich, dass ein Teammitglied aktiv ist ("Team online" für Auto-Antworten). Max. 1×/Minute. */
+async function touchTeamActivity(user: CurrentUser) {
+  await scheduleBackgroundWork();
+  if (user.lastTeamActiveAt && Date.now() - user.lastTeamActiveAt.getTime() < 60_000) return;
+  const { db } = await import("@/lib/db");
+  await db.user.update({ where: { id: user.id }, data: { lastTeamActiveAt: new Date() } }).catch(() => {});
 }
 
 /** Team-Rolle erforderlich (bei jeder Seite UND jeder Action prüfen). */
