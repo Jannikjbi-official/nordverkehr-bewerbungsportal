@@ -62,6 +62,21 @@ try {
   check(logs.length > 0 && logs.every((l) => JSON.stringify(l.payload).includes('"flags":32768')), `alle ${logs.length} Kanal-Posts sind V2`);
   check(all.includes("1569736621019111515"), "Bot-Logs gehen in 1569736621019111515");
   for (const s of ["betreut jetzt", "übernommen von", "freigegeben", "geschrieben (als Team)", "In Prüfung"]) check(all.includes(s), `Bot-Log enthält „${s}“`);
+  // Daten zurücksetzen
+  const { resetAllApplications, countApplications } = await import("../src/lib/team/reset");
+  await db.application.create({ data: { userId: lea.id, positionId: pos.id, status: "DRAFT" } });
+  await db.applicantProfile.create({ data: { userId: applicant.id, answers: { about_me: "x" } } });
+  await db.counter.create({ data: { key: "publicId:2026", value: 7 } });
+  check((await countApplications(db)).all === 2, "vorher 2 Bewerbungen (1 eingereicht, 1 Entwurf)");
+  const counts = await resetAllApplications(db, { resetNumbering: false });
+  check(counts.applications === 2 && counts.messages >= 2, `Reset meldet ${counts.applications} Bewerbungen, ${counts.messages} Nachrichten`);
+  const left = await Promise.all([db.application.count(), db.message.count(), db.answer.count(), db.vote.count(), db.comment.count(), db.statusChange.count(), db.applicantProfile.count(), db.outboxJob.count({ where: { applicationId: { not: null } } })]);
+  check(left.every((n) => n === 0), `nichts Bewerbungsbezogenes übrig (${left.join("/")})`);
+  check((await db.user.count()) === 3 && (await db.position.count()) === 1 && (await db.userBan.count()) === 2, "Konten, Positionen und Sperren bleiben");
+  check((await db.counter.findUnique({ where: { key: "publicId:2026" } }))?.value === 7, "Nummerierung bleibt ohne Haken");
+  await resetAllApplications(db, { resetNumbering: true });
+  check(!(await db.counter.findUnique({ where: { key: "publicId:2026" } })), "mit Haken beginnt die Nummerierung neu");
+
   console.log(fails ? `${fails} fehlgeschlagen` : "Alle Prüfungen bestanden.");
 } finally {
   await db.$runCommandRaw({ dropDatabase: 1 }).catch(() => {});

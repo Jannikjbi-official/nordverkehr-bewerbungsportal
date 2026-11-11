@@ -5,6 +5,8 @@ import { getSettings } from "@/lib/settings";
 import { SettingsForm } from "@/components/team/SettingsForm";
 import { DiscordDiagnostics, type FailedJob } from "@/components/team/DiscordDiagnostics";
 import { HelpLink } from "@/components/team/HelpLink";
+import { DangerZone } from "@/components/team/DangerZone";
+import { RESET_CONFIRM_PHRASE, countApplications } from "@/lib/team/reset";
 import { db } from "@/lib/db";
 import { formatDayTime } from "@/components/ui";
 import { formatUsd, isAiConfigured } from "@/lib/ai/config";
@@ -39,9 +41,10 @@ async function Content() {
     logChannel: !!process.env.DISCORD_LOG_CHANNEL_ID,
     anthropic: isAiConfigured(),
   };
-  const [failedJobs, pending] = await Promise.all([
+  const [failedJobs, pending, appCounts] = await Promise.all([
     db.outboxJob.findMany({ where: { status: "FAILED" }, orderBy: { updatedAt: "desc" }, take: 8 }),
     db.outboxJob.count({ where: { status: "PENDING" } }),
+    countApplications(db),
   ]);
   const failed: FailedJob[] = failedJobs.map((j) => {
     const p = j.payload as { type?: string; channelId?: string; purpose?: string };
@@ -65,6 +68,7 @@ async function Content() {
         <DiscordDiagnostics failed={failed} pending={pending} />
       </section>
       <SettingsForm settings={settings} env={env} spend={formatUsd(spend)} spendMicro={spend} />
+      <DangerZone counts={appCounts} phrase={RESET_CONFIRM_PHRASE} />
     </div>
   );
 }

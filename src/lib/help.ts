@@ -198,6 +198,11 @@ export const HELP: HelpSection[] = [
         text: "Alte Entwürfe, zurückgezogene, abgelehnte und angenommene Bewerbungen werden nach den Fristen aus den Einstellungen automatisch gelöscht – auch der Audit-Log. Steht so in den Datenschutzhinweisen.",
       },
       {
+        id: "daten-zuruecksetzen",
+        term: "Daten zurücksetzen",
+        text: "Nur für Admins, unten in den Einstellungen („Gefahrenzone“). Löscht **alle Bewerbungen** samt Antworten, Bildern, Nachrichten, Abstimmungen, Kommentaren und gemerkten Basisantworten – zum Bestätigen muss ein Satz eingetippt werden. Konten, Positionen, Fragen, Bausteine, Einstellungen, Sperren und Notizen bleiben. Wird im Audit-Log und Bot-Log festgehalten. **Nicht umkehrbar.**",
+      },
+      {
         id: "audit",
         term: "Audit-Log",
         text: "Protokoll, wer wann was im Portal gemacht hat (Status, Nachrichten, Claims, Einstellungen …). Für Nachvollziehbarkeit, nicht zur Kontrolle einzelner.",

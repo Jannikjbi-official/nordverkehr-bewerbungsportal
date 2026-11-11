@@ -305,3 +305,40 @@ export async function flushOutboxAction(): Promise<ActionResult<{ message: strin
   revalidatePath("/team/einstellungen");
   return { ok: true, data: { message: n ? `${n} Zustellung(en) verarbeitet.` : "Nichts fällig." } };
 }
+
+// ─── Daten zurücksetzen ───────────────────────────────────────
+
+const resetSchema = z.object({ confirm: z.string(), resetNumbering: z.boolean() });
+
+/** Löscht ALLE Bewerbungen (siehe lib/team/reset.ts). Nur Admins, mit Bestätigungssatz. */
+export async function resetApplicationsAction(input: z.input<typeof resetSchema>): Promise<ActionResult<{ message: string }>> {
+  const { user } = await requireAdmin();
+  const p = resetSchema.safeParse(input);
+  const { RESET_CONFIRM_PHRASE, resetAllApplications } = await import("@/lib/team/reset");
+  if (!p.success || p.data.confirm.trim() !== RESET_CONFIRM_PHRASE) {
+    return { ok: false, error: `Bitte genau „${RESET_CONFIRM_PHRASE}“ eintippen.` };
+  }
+  const { rateLimit } = await import("@/lib/rate-limit");
+  const rl = await rateLimit(`reset:${user.id}`, 3, 3600);
+  if (!rl.ok) return { ok: false, error: "Zu viele Versuche. Bitte später erneut." };
+
+  try {
+    const counts = await resetAllApplications(db, { resetNumbering: p.data.resetNumbering });
+    await audit("data.reset", { actorId: user.id, meta: { ...counts, resetNumbering: p.data.resetNumbering } });
+    const { botLog, esc } = await import("@/lib/discord/botlog");
+    const job = await botLog(
+      `🧹 ${esc(user.globalName || user.username)} hat **alle Bewerbungen gelöscht** (${counts.applications} Bewerbungen, ${counts.messages} Nachrichten)` +
+        (p.data.resetNumbering ? " – Nummerierung beginnt wieder bei 1." : "."),
+      { tone: "warn" },
+    );
+    if (job) {
+      const { runOutbox } = await import("@/lib/discord/outbox-db");
+      await runOutbox({ ids: [job] }).catch(() => {});
+    }
+    revalidatePath("/team", "layout");
+    return { ok: true, data: { message: `${counts.applications} Bewerbungen gelöscht (dazu ${counts.answers} Antworten, ${counts.messages} Nachrichten, ${counts.uploads} Bilder).` } };
+  } catch (err) {
+    console.error("[reset]", err);
+    return { ok: false, error: "Zurücksetzen fehlgeschlagen – es wurde nichts gelöscht." };
+  }
+}

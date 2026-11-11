@@ -39,6 +39,15 @@ export function groupItems(items: ChangelogItem[]) {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-11-reset",
+    date: "2026-11-11",
+    title: "Daten zurücksetzen",
+    items: [
+      { kind: "neu", text: "**Gefahrenzone** – Admins können in den Einstellungen alle Bewerbungen löschen, mit eingetipptem Bestätigungssatz. Konten, Positionen, Fragen und Einstellungen bleiben." },
+      { kind: "besser", text: "**Mobil** – alle Seiten auf Handy-Breite geprüft, nichts läuft über." },
+    ],
+  },
+  {
     id: "2026-11-11-hilfe",
     date: "2026-11-11",
     title: "Hilfe & Begriffe",

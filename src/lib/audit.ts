@@ -7,6 +7,7 @@ export type AuditAction =
   | "application.withdraw"
   | "application.claim"
   | "application.release"
+  | "data.reset"
   | "application.status"
   | "application.interview"
   | "application.vote"
@@ -65,6 +66,7 @@ export const AUDIT_LABELS: Record<string, string> = {
   "application.withdraw": "Bewerbung zurückgezogen",
   "application.claim": "Bewerbung geclaimt",
   "application.release": "Bewerbung freigegeben",
+  "data.reset": "Alle Bewerbungen gelöscht",
   "application.status": "Status geändert",
   "application.interview": "Gesprächstermin gesetzt",
   "application.vote": "Abgestimmt",
