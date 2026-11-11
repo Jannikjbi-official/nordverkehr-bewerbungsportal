@@ -8,6 +8,7 @@ import { CATEGORY_LABEL, CATEGORY_ORDER } from "@/lib/applications/status";
 import { PLACEHOLDERS, renderTemplate, type TemplateVars } from "@/lib/messages/placeholders";
 import { DiscordPreview } from "@/components/team/DiscordPreview";
 import { StatusSelect } from "@/components/team/StatusSelect";
+import { HelpLink } from "@/components/team/HelpLink";
 import type { ApplicationStatus, TemplateCategory } from "@prisma/client";
 
 const DEFAULT_TITLE = "Nachricht vom Nordverkehr-Team";
@@ -187,6 +188,7 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
             />
             <details className="mt-1.5">
               <summary className="text-xs text-muted cursor-pointer">Platzhalter</summary>
+              <HelpLink id="platzhalter" label="Alle Platzhalter erklärt" className="mt-1" />
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {PLACEHOLDERS.map((p) => (
                   <button
@@ -250,6 +252,7 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
               </button>
             ))}
           </div>
+          <HelpLink id="absender" label="Unterschied?" />
         </div>
         <DiscordPreview title={renderedTitle} body={rendered.text} publicId={publicId} author={asTeam ? null : { name: sender.name, iconUrl: sender.avatarUrl }} />
         {rendered.missing.length > 0 && (

@@ -16,6 +16,7 @@ import {
 } from "@/components/team/DetailControls";
 import { MessageComposer } from "@/components/team/MessageComposer";
 import { ClaimBox } from "@/components/team/ClaimBox";
+import { HelpLink } from "@/components/team/HelpLink";
 import { avatarUrl } from "@/lib/discord/snowflake";
 import { AiPanel } from "@/components/team/AiPanel";
 import { TagPills } from "@/components/team/TagPills";
@@ -119,6 +120,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <TagPills tags={app.aiTags} size="md" />
               {aiEnabled && <RetagButton applicationId={app.id} hasTags={app.aiTags.length > 0} />}
+              {app.aiTags.length > 0 && <HelpLink id="ki-tags" />}
             </div>
           )}
         </div>
@@ -141,7 +143,8 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
           {app.withdrawReason ? <>„{app.withdrawReason}“</> : "Ohne Begründung."}{" "}
           {canFollowUp(app)
             ? `Du kannst unten nachfragen – der Bewerber kann bis ${formatDay(new Date(app.decidedAt!.getTime() + FOLLOW_UP_DAYS * 86_400_000))} antworten.`
-            : "Die Frist für Rückfragen ist abgelaufen."}
+            : "Die Frist für Rückfragen ist abgelaufen."}{" "}
+          <HelpLink id="rueckzug" />
         </Notice>
       )}
 
@@ -155,7 +158,8 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
           )}
           {dmIssue && (
             <Notice tone="danger" icon={DiscordLogo} title="Bestätigungs-DM konnte nicht zugestellt werden">
-              Der Bewerber hat DMs deaktiviert oder ist nicht auf dem Server. Nachrichten erscheinen trotzdem im Portal.
+              Der Bewerber hat DMs deaktiviert oder ist nicht auf dem Server. Nachrichten erscheinen trotzdem im Portal.{" "}
+              <HelpLink id="bestaetigung" />
             </Notice>
           )}
           {flags.length > 0 && (
@@ -165,6 +169,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
                   <li key={i}>{f.message}</li>
                 ))}
               </ul>
+              <HelpLink id="automatische-hinweise" className="mt-1.5" />
             </Notice>
           )}
         </div>
@@ -219,6 +224,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
           <section id="nachricht" className="nv-card scroll-mt-28" aria-labelledby="msgs">
             <h2 id="msgs" className="px-5 py-4 border-b border-line font-semibold">
               Nachrichten an {name}
+              <HelpLink id="zustellung" label="Zustellstatus?" className="ml-2" />
             </h2>
             {app.messages.length > 0 && (
               <ol className="p-5 space-y-4 border-b border-line">
@@ -247,7 +253,9 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
                           <DiscordMarkdown text={m.body} />
                         </div>
                         {m.flagged && (
-                          <p className="mt-1 text-xs text-[var(--tone-danger)]">Möglicher Manipulationsversuch an der KI erkannt – Auto-Antwort wurde blockiert.</p>
+                          <p className="mt-1 text-xs text-[var(--tone-danger)]">
+                            Möglicher Manipulationsversuch an der KI erkannt – Auto-Antwort wurde blockiert. <HelpLink id="manipulation" />
+                          </p>
                         )}
                         {!fromApplicant && (
                           <div className="mt-1 flex items-center gap-1 flex-wrap">
@@ -281,6 +289,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
         <aside className="space-y-6">
           <div className="nv-card p-5 space-y-5">
             <StatusControl applicationId={app.id} current={app.status} targets={allowedTeamTargets(app.status)} />
+            <HelpLink id="status" label="Was bedeuten die Status?" />
             <div className="nv-divider" />
             <InterviewForm applicationId={app.id} at={app.interviewAt?.toISOString() ?? null} note={app.interviewNote} />
             {app.interviewAt && (
@@ -291,7 +300,9 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
           </div>
 
           <div className="nv-card p-5">
-            <p className="nv-mono mb-3">Abstimmung</p>
+            <p className="nv-mono mb-3 flex items-center justify-between gap-2">
+              Abstimmung <HelpLink id="abstimmung" label="Wofür?" />
+            </p>
             <VotePanel
               applicationId={app.id}
               mine={myVote}

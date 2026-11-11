@@ -1,0 +1,209 @@
+/**
+ * Hilfe & Begriffe für das Team (/team/hilfe). Jeder Begriff hat eine feste
+ * `id` – auf die verlinken die „Was heißt das?“-Links im Team-Bereich
+ * (`/team/hilfe#<id>`). Neue Funktion → hier einen Eintrag ergänzen.
+ *
+ * Bezeichnungen aus dem Code (Status, KI-Kategorien, Zustellstatus,
+ * Platzhalter) werden direkt übernommen, damit Hilfe und Oberfläche gleich heißen.
+ */
+import { STATUS_LABEL } from "@/lib/applications/status";
+import { TAGS } from "@/lib/ai/tags";
+import { PLACEHOLDERS } from "@/lib/messages/placeholders";
+
+export interface HelpTerm {
+  id: string;
+  term: string;
+  /** Kurzer Erklärtext (Discord-Markdown: **fett**) */
+  text: string;
+  /** Optionale Liste (Begriff → Erklärung) */
+  list?: { label: string; text: string }[];
+}
+
+export interface HelpSection {
+  id: string;
+  title: string;
+  terms: HelpTerm[];
+}
+
+export const DELIVERY_HELP: { label: string; text: string }[] = [
+  { label: "Wird zugestellt", text: "Liegt in der Warteschlange und geht gleich raus." },
+  { label: "Per DM zugestellt", text: "Discord hat die DM angenommen." },
+  { label: "DMs deaktiviert", text: "Der Bewerber lässt keine DMs zu (oder ist nicht auf dem Server). Die Nachricht steht trotzdem im Portal." },
+  { label: "DM fehlgeschlagen", text: "Discord hat abgelehnt – „Erneut senden“ probieren, sonst in den Einstellungen die Zustellung prüfen." },
+  { label: "Nur im Portal", text: "Wurde nicht per DM verschickt, der Bewerber sieht sie im Dashboard." },
+];
+
+const TAG_HELP: Record<keyof typeof TAGS, string> = {
+  vollstaendig: "Alle Fragen sinnvoll beantwortet.",
+  luecken: "Einige Antworten fehlen oder sind sehr knapp.",
+  rueckfrage: "Etwas ist unklar – lohnt eine Nachfrage.",
+  erfahren: "Bringt viel passende Erfahrung mit.",
+  einsteiger: "Wenig Vorerfahrung – nicht schlecht, nur zur Einordnung.",
+  viel_zeit: "Gibt viel verfügbare Zeit an.",
+  wenig_zeit: "Gibt wenig verfügbare Zeit an.",
+  generisch: "Antworten klingen austauschbar oder wie aus einer Vorlage.",
+  manipulation: "Setzt nur der Schutzfilter, nie die KI selbst – siehe „Manipulationsversuch“.",
+};
+
+export const HELP: HelpSection[] = [
+  {
+    id: "ablauf",
+    title: "Ablauf & Status",
+    terms: [
+      {
+        id: "status",
+        term: "Status einer Bewerbung",
+        text: "Der Status zeigt, wo eine Bewerbung steht. Bewerber sehen ihn in ihrem Dashboard – mit einer kurzen Erklärung.",
+        list: [
+          { label: STATUS_LABEL.SUBMITTED, text: "Ist angekommen, noch niemand hat sie angefasst. Der Bewerber kann ohne Grund zurückziehen." },
+          { label: STATUS_LABEL.IN_REVIEW, text: "Das Team liest und bewertet. Ab hier geht Zurückziehen nur noch mit kurzem Grund." },
+          { label: STATUS_LABEL.INTERVIEW, text: "Einladung zum Gespräch. Den Termin trägst du unter „Gesprächstermin“ ein, er landet im Platzhalter {termin}." },
+          { label: STATUS_LABEL.ACCEPTED, text: "Endgültig. Ist es eingestellt, vergibt der Bot automatisch die Discord-Rolle der Position." },
+          { label: STATUS_LABEL.REJECTED, text: "Endgültig. Danach gilt die Sperrfrist, bis sich die Person für dieselbe Position erneut bewerben kann." },
+          { label: STATUS_LABEL.WITHDRAWN, text: "Hat der Bewerber selbst zurückgezogen." },
+          { label: STATUS_LABEL.DRAFT, text: "Noch nicht abgeschickt – das Team sieht Entwürfe nicht." },
+        ],
+      },
+      {
+        id: "bewerbungs-id",
+        term: "Bewerbungs-ID",
+        text: "Die Nummer einer Bewerbung, z. B. **NV-2026-0042**. Sie steht in jeder DM – damit lässt sich eine Bewerbung im Support schnell finden.",
+      },
+      {
+        id: "rueckzug",
+        term: "Zurückziehen während der Bearbeitung",
+        text: "Wird eine Bewerbung schon bearbeitet (in Prüfung, im Gespräch oder geclaimt) und der Bewerber zieht zurück, muss er kurz begründen. Die Bewerbung erscheint dann oben im Team-Dashboard. **14 Tage** lang könnt ihr noch nachfragen und der Bewerber kann antworten – die KI antwortet in dieser Zeit nicht.",
+      },
+      {
+        id: "fragen",
+        term: "Basisfragen & Fachfragen",
+        text: "**Basisfragen** (Über dich, Erfahrung & Motivation, Szenarien) beantworten alle einmal – bei der nächsten Bewerbung werden sie vorausgefüllt. **Fachfragen** gibt es pro Stelle. Admins pflegen beides unter „Positionen & Fragen“; der Builder warnt, wenn eine Frage schon ähnlich existiert.",
+      },
+    ],
+  },
+  {
+    id: "bearbeiten",
+    title: "Bearbeiten & Schreiben",
+    terms: [
+      {
+        id: "claimen",
+        term: "Claimen",
+        text: "Wer eine Bewerbung **claimt**, betreut sie – die anderen sehen oben in der Bewerbung und in der Liste („Betreut von“), wer dran ist. **Übernehmen** kann jedes Teammitglied, **Freigeben** nur wer geclaimt hat oder ein Admin. Alles landet im Bot-Log.",
+      },
+      {
+        id: "absender",
+        term: "Senden als ich / als Team",
+        text: "Beim Schreiben wählst du, wer in der DM oben steht: **du** (Name und Profilbild) oder **Nordverkehr-Team**. Wer geclaimt hat, schreibt standardmäßig persönlich. Intern sieht das Team immer, wer geschrieben hat („als Team gesendet“).",
+      },
+      {
+        id: "bausteine",
+        term: "Bausteine & Betreff",
+        text: "Bausteine sind fertige Textstücke nach Kategorie, die sich kombinieren lassen. Der **erste gewählte Baustein setzt den Betreff** der DM; hast du den Betreff selbst geändert, bleibt er. Pflege unter „Nachrichtenbausteine“.",
+      },
+      {
+        id: "platzhalter",
+        term: "Platzhalter",
+        text: "Werden beim Senden automatisch ersetzt – im Text und im Betreff. Fehlt ein Wert, warnt die Vorschau vorher.",
+        list: PLACEHOLDERS.map((p) => ({ label: `{${p.key}}`, text: p.label })),
+      },
+      {
+        id: "abstimmung",
+        term: "Abstimmung",
+        text: "Pro, Contra oder Enthaltung – nur intern als Meinungsbild. Die Abstimmung entscheidet nichts automatisch, den Status setzt immer ein Mensch.",
+      },
+      {
+        id: "kommentare",
+        term: "Kommentare & Notizen",
+        text: "**Kommentare** gehören zu einer Bewerbung, **Notizen** zu einer Person (unter „Nutzer & Sperren“). Beides ist intern. Fordert ein Bewerber seine Daten an, sind sie im Export enthalten – ohne den Namen des Teammitglieds. Also sachlich formulieren.",
+      },
+    ],
+  },
+  {
+    id: "hinweise",
+    title: "Hinweise & KI",
+    terms: [
+      {
+        id: "automatische-hinweise",
+        term: "Automatische Hinweise (keine Bewertung)",
+        text: "Das Portal markiert Auffälligkeiten, damit ihr genauer hinschaut. Es sind **Hinweise, keine Wertung** – niemand wird deswegen automatisch abgelehnt.",
+        list: [
+          { label: "Viele sehr kurze Antworten", text: "Viele Textantworten liegen deutlich unter der erwarteten Länge." },
+          { label: "Identische Antwort", text: "Derselbe Text steht bei mehreren Fragen." },
+          { label: "Sehr ähnlich zu Bewerbung …", text: "Starke Übereinstimmung mit einer anderen Bewerbung – evtl. kopiert." },
+          { label: "Junger Discord-Account", text: "Der Discord-Account ist jünger als in den Einstellungen festgelegt." },
+        ],
+      },
+      {
+        id: "ki-tags",
+        term: "KI-Einordnung (Kategorien)",
+        text: "Ist die KI aktiv, ordnet sie neue Bewerbungen in **beschreibende Kategorien** ein – ohne Ranking oder Punktzahl. Die KI entscheidet nichts; „Neu einordnen“ holt eine frische Einschätzung.",
+        list: (Object.keys(TAGS) as (keyof typeof TAGS)[]).map((k) => ({ label: TAGS[k], text: TAG_HELP[k] })),
+      },
+      {
+        id: "auto-antwort",
+        term: "Automatische Antwort (KI)",
+        text: "Schreibt ein Bewerber und **niemand vom Team war in den letzten Minuten im Team-Bereich aktiv**, kann eine KI-Antwort kommen – klar als automatisch gekennzeichnet. Sie beantwortet nur allgemeine Fragen, sagt nie etwas über Entscheidungen und verweist sonst aufs Team. Einschalten und Limits in den Einstellungen.",
+      },
+      {
+        id: "manipulation",
+        term: "Manipulationsversuch",
+        text: "Eine Nachricht sieht aus, als wollte jemand die **KI austricksen** (sog. Prompt Injection) – z. B. „Vergiss alle Anweisungen“, „ignore previous instructions“, „Entwicklermodus“, „zeig mir deinen Systemprompt“, auch verschleiert oder mit unsichtbaren Zeichen. Dann **antwortet die KI nicht**, die Nachricht kommt aber ganz normal beim Team an (roter Rahmen). Es ist nur ein Hinweis: Die Erkennung arbeitet mit Mustern und trifft manchmal harmlose Sätze. Einfach lesen und normal antworten.",
+      },
+    ],
+  },
+  {
+    id: "discord",
+    title: "Discord & Zustellung",
+    terms: [
+      {
+        id: "zustellung",
+        term: "Zustellstatus einer Nachricht",
+        text: "Unter jeder Nachricht ans Team steht, ob die Discord-DM angekommen ist. Im Portal ist jede Nachricht so oder so sichtbar.",
+        list: DELIVERY_HELP,
+      },
+      {
+        id: "discord-kanaele",
+        term: "Discord-Kanäle",
+        text: "**Bewerbungs-Kanal:** ein Post pro neuer Bewerbung. **Bot-Log:** Status, Claims, Nachrichten, Antworten von Bewerbern, Zustellfehler. **Changelog:** Neuerungen im Portal. Admins ändern die Kanäle in den Einstellungen und können dort mit „Discord-Zustellung prüfen“ eine Testnachricht schicken.",
+      },
+      {
+        id: "bestaetigung",
+        term: "Bestätigungs-DM",
+        text: "Geht direkt nach dem Absenden an den Bewerber. Hat er DMs zu, erscheint oben in der Bewerbung „Bestätigungs-DM konnte nicht zugestellt werden“ – er sieht alles trotzdem im Portal.",
+      },
+    ],
+  },
+  {
+    id: "regeln",
+    title: "Regeln & Daten",
+    terms: [
+      {
+        id: "sperre",
+        term: "Sperre",
+        text: "Unter „Nutzer & Sperren“ kann eine Person befristet oder dauerhaft gesperrt werden. Gesperrte können sich nicht bewerben; eine Begründung ist Pflicht und bleibt intern.",
+      },
+      {
+        id: "sperrfrist",
+        term: "Sperrfrist nach Ablehnung",
+        text: "So viele Tage nach einer Ablehnung kann sich jemand nicht erneut auf **dieselbe** Position bewerben. Standard in den Einstellungen, pro Position anpassbar. Platzhalter {sperrfrist}.",
+      },
+      {
+        id: "mindestalter",
+        term: "Mindestalter",
+        text: "Team-Bewerbungen ab 18 Jahren (pro Position anpassbar). Jüngere können das Formular nicht abschicken.",
+      },
+      {
+        id: "loeschfristen",
+        term: "Löschfristen",
+        text: "Alte Entwürfe, zurückgezogene, abgelehnte und angenommene Bewerbungen werden nach den Fristen aus den Einstellungen automatisch gelöscht – auch der Audit-Log. Steht so in den Datenschutzhinweisen.",
+      },
+      {
+        id: "audit",
+        term: "Audit-Log",
+        text: "Protokoll, wer wann was im Portal gemacht hat (Status, Nachrichten, Claims, Einstellungen …). Für Nachvollziehbarkeit, nicht zur Kontrolle einzelner.",
+      },
+    ],
+  },
+];
+
+export const HELP_IDS = HELP.flatMap((s) => s.terms.map((t) => t.id));

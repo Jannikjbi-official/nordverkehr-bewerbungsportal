@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { HandGrabbing, LockSimpleOpen, PushPin } from "@phosphor-icons/react/ssr";
 import { claimAction } from "@/app/actions/team";
 import { Avatar } from "@/components/ui";
+import { HelpLink } from "@/components/team/HelpLink";
 
 interface Props {
   applicationId: string;
@@ -51,7 +52,8 @@ export function ClaimBox({ applicationId, me, claimedBy, claimedAgo }: Props) {
             {mine ? "Du betreust diese Bewerbung" : claimedBy ? `${claimedBy.name} betreut diese Bewerbung` : "Noch nicht geclaimt"}
           </p>
           <p className="text-xs text-muted">
-            {claimedBy ? `seit ${claimedAgo}` : "Wer claimt, betreut die Bewerbung und schreibt standardmäßig mit eigenem Namen."}
+            {claimedBy ? `seit ${claimedAgo}` : "Wer claimt, betreut die Bewerbung und schreibt standardmäßig mit eigenem Namen."}{" "}
+            <HelpLink id="claimen" />
           </p>
         </div>
       </div>

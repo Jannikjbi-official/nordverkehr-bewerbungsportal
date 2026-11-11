@@ -39,6 +39,15 @@ export function groupItems(items: ChangelogItem[]) {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-11-hilfe",
+    date: "2026-11-11",
+    title: "Hilfe & Begriffe",
+    items: [
+      { kind: "neu", text: "**Hilfe & Begriffe** – neue Seite im Team-Bereich: Status, Claimen, Hinweise, KI-Kategorien, Manipulationsversuch, Zustellstatus, Sperren und mehr kurz erklärt, mit Suche." },
+      { kind: "neu", text: "**„Was heißt das?“** – kleine Links direkt an Hinweisen, Status und Knöpfen führen zur passenden Erklärung." },
+    ],
+  },
+  {
     id: "2026-11-11-claim-betreff",
     date: "2026-11-11",
     title: "Claimen sichtbarer, Betreff aus Bausteinen",

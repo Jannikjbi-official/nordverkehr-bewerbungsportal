@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth/session";
 import { getSettings } from "@/lib/settings";
 import { SettingsForm } from "@/components/team/SettingsForm";
 import { DiscordDiagnostics, type FailedJob } from "@/components/team/DiscordDiagnostics";
+import { HelpLink } from "@/components/team/HelpLink";
 import { db } from "@/lib/db";
 import { formatDayTime } from "@/components/ui";
 import { formatUsd, isAiConfigured } from "@/lib/ai/config";
@@ -58,7 +59,8 @@ async function Content() {
       <section className="nv-card p-5 sm:p-6">
         <h2 className="font-semibold text-lg">Discord-Zustellung prüfen</h2>
         <p className="text-sm text-muted mb-4">
-          Schickt eine Testnachricht direkt an den Kanal und zeigt den genauen Fehler von Discord, falls es nicht klappt.
+          Schickt eine Testnachricht direkt an den Kanal und zeigt den genauen Fehler von Discord, falls es nicht klappt.{" "}
+          <HelpLink id="discord-kanaele" label="Welcher Kanal wofür?" />
         </p>
         <DiscordDiagnostics failed={failed} pending={pending} />
       </section>
