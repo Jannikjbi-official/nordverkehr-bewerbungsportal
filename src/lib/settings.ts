@@ -34,6 +34,14 @@ const bool = (def: boolean) =>
     .preprocess((v) => (v === "true" || v === "on" ? true : v === "false" || v === "off" ? false : v), z.boolean())
     .default(def);
 
+// Discord-Kanal-ID oder leer (= aus)
+const channel = (def: string) =>
+  z
+    .string()
+    .trim()
+    .regex(/^(\d{15,25})?$/, "Kanal-ID besteht nur aus Ziffern.")
+    .default(def);
+
 /** Alle einstellbaren Werte mit Typ, Grenzen und Standard. */
 export const settingsSchema = z.object({
   "applications.minAge": z.coerce.number().int().min(12).max(99).default(18),
@@ -42,7 +50,15 @@ export const settingsSchema = z.object({
   "applications.minFillSeconds": z.coerce.number().int().min(0).max(3600).default(90),
   "applications.minDiscordAccountDays": z.coerce.number().int().min(0).max(3650).default(30),
 
+  /** Neue Bewerbungen im Bewerbungs-Kanal posten */
   "discord.logChannelEnabled": bool(true),
+  "discord.applicationsChannelId": channel("1570180703663165520"),
+  /** Protokoll (Status, Claims, Nachrichten, Zustellfehler) im Bot-Log-Kanal */
+  "discord.botLogEnabled": bool(true),
+  "discord.botLogChannelId": channel("1569736621019111515"),
+  /** Neue Changelog-Einträge des Portals posten */
+  "discord.changelogEnabled": bool(true),
+  "discord.changelogChannelId": channel("1570181667627475146"),
   "discord.autoRoleOnAccept": bool(false),
 
   "messages.confirmationTemplate": z.string().min(10).max(3500).default(DEFAULT_CONFIRMATION_TEMPLATE),

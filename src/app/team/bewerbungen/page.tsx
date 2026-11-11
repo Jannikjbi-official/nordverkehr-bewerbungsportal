@@ -89,7 +89,7 @@ async function Content({ searchParams }: Pick<PageProps<"/team/bewerbungen">, "s
         <>
           <div className="nv-card overflow-hidden">
             <div className="nv-scroll-x">
-              <table className="nv-table w-full text-sm min-w-[760px]">
+              <table className="nv-table w-full text-sm min-w-[880px]">
                 <thead>
                   <tr>
                     <th scope="col">Bewerber</th>
@@ -97,6 +97,7 @@ async function Content({ searchParams }: Pick<PageProps<"/team/bewerbungen">, "s
                     <th scope="col">Status</th>
                     <th scope="col">Eingang</th>
                     <th scope="col">Stimmen</th>
+                    <th scope="col">Betreut von</th>
                     <th scope="col">
                       <span className="sr-only">Hinweise</span>
                     </th>
@@ -136,6 +137,16 @@ async function Content({ searchParams }: Pick<PageProps<"/team/bewerbungen">, "s
                           <span className="text-[var(--tone-danger)]">{v.contra}</span>
                           <span className="text-faint"> / </span>
                           <span className="text-muted">{v.abstain}</span>
+                        </td>
+                        <td>
+                          {r.claimedBy ? (
+                            <span className="flex items-center gap-2 text-fg-2" title="Betreut von">
+                              <Avatar discordId={r.claimedBy.discordId} avatar={r.claimedBy.avatar} size={22} />
+                              <span className="truncate max-w-[9rem]">{r.claimedBy.globalName || r.claimedBy.username}</span>
+                            </span>
+                          ) : (
+                            <span className="text-faint">–</span>
+                          )}
                         </td>
                         <td>
                           <span className="flex items-center gap-2 justify-end">

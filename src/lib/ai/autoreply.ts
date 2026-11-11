@@ -58,6 +58,8 @@ export async function maybeAutoReply(applicantMessageId: string): Promise<AutoRe
   if (!msg || msg.direction !== "APPLICANT_TO_TEAM") return { kind: "skipped", reason: "keine Bewerber-Nachricht" };
   const app = msg.application;
   const user = app.user;
+  // Nach einem Rückzug antwortet nur das Team selbst (Rückfragen), keine KI
+  if (app.status === "WITHDRAWN") return { kind: "skipped", reason: "zurückgezogen" };
 
   // Abstand pro Bewerbung (verhindert Ping-Pong mit dem Bot) und Tageslimit pro Bewerber
   if (settings["ai.autoReplyCooldownMinutes"] > 0) {

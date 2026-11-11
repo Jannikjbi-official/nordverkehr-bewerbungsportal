@@ -16,6 +16,7 @@ import {
   normalizeLabel,
   type SeedQuestion,
 } from "@/lib/setup/questions";
+import { backfillNulls } from "@/lib/db-nulls";
 
 export interface MigrationReport {
   sectionsKeyed: string[];
@@ -255,8 +256,24 @@ export async function migrateQuestionsV2(db: PrismaClient, opts: Options = {}): 
   return r;
 }
 
+/**
+ * Neue Pflichtfelder mit Standardwert in Altdokumenten setzen. Prisma liest
+ * fehlende Felder zwar mit Standardwert, Filter (z. B. `withdrawnInReview: true`)
+ * treffen solche Dokumente aber nicht.
+ */
+async function backfillClaimFields(db: PrismaClient, opts: Options) {
+  if (opts.dryRun) return;
+  const set = async (collection: string, field: string, value: boolean) =>
+    db.$runCommandRaw({ update: collection, updates: [{ q: { [field]: { $exists: false } }, u: { $set: { [field]: value } }, multi: true }] });
+  await set("Message", "asTeam", false);
+  await set("Application", "withdrawnInReview", false);
+}
+
 const MIGRATIONS: { id: string; run: (db: PrismaClient, opts: Options) => Promise<unknown> }[] = [
   { id: "2026-11-questions-v2", run: migrateQuestionsV2 },
+  { id: "2026-11-claims", run: backfillClaimFields },
+  // Fehlende optionale Felder → null, damit Filter wie `liftedAt: null` (Sperren!) greifen
+  { id: "2026-11-explicit-nulls", run: (db, o) => (o.dryRun ? Promise.resolve(0) : backfillNulls(db)) },
 ];
 
 const LOCK_KEY = "lock:migrations";

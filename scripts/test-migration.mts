@@ -151,7 +151,7 @@ try {
 
   // 2) Ausführen (wie beim Serverstart)
   const done = await runMigrations(db, { log: () => {} });
-  check(done.length === 1, `Migration ausgeführt: ${done.join(", ")}`);
+  check(done.includes("2026-11-questions-v2"), `Migrationen ausgeführt: ${done.join(", ")}`);
   await ensureIndexes(db);
   check(true, "Unique-Indizes ließen sich anlegen (keine doppelten Keys mehr)");
 

@@ -4,15 +4,15 @@ import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { publicEnv, env } from "@/lib/env";
+import { publicEnv } from "@/lib/env";
 import { requireUser } from "@/lib/auth/session";
 import { draftDataSchema, type AnswerMap } from "@/lib/applications/form";
 import { getEligibility, submitApplication, UserFacingError } from "@/lib/applications/service";
 import { rateLimit } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
-import { runOutbox, enqueue } from "@/lib/discord/outbox-db";
-import { getSettings } from "@/lib/settings";
-import { ACTIVE_STATUSES } from "@/lib/applications/status";
+import { runOutbox } from "@/lib/discord/outbox-db";
+import { botLog, esc } from "@/lib/discord/botlog";
+import { ACTIVE_STATUSES, canFollowUp, isInProcessing } from "@/lib/applications/status";
 import type { Prisma } from "@prisma/client";
 
 export type ActionResult<T = undefined> =
@@ -125,16 +125,39 @@ export async function deleteDraftAction(draftId: string): Promise<ActionResult> 
   return { ok: true };
 }
 
-export async function withdrawApplicationAction(applicationId: string): Promise<ActionResult> {
+/**
+ * Bewerbung zurückziehen. Vor der Bearbeitung sofort und ohne Grund; läuft die
+ * Bearbeitung schon (in Prüfung, Gespräch oder geclaimt), mit kurzem Grund –
+ * das Team sieht den Rückzug im Dashboard und kann noch nachfragen.
+ */
+export async function withdrawApplicationAction(applicationId: string, reason?: string): Promise<ActionResult> {
   const user = await requireUser();
   if (!idSchema.safeParse(applicationId).success) return { ok: false, error: "Ungültig." };
-  const app = await db.application.findFirst({ where: { id: applicationId, userId: user.id, status: { in: ACTIVE_STATUSES } } });
+  const app = await db.application.findFirst({
+    where: { id: applicationId, userId: user.id, status: { in: ACTIVE_STATUSES } },
+    include: { position: { select: { title: true } } },
+  });
   if (!app) return { ok: false, error: "Diese Bewerbung kann nicht mehr zurückgezogen werden." };
+  const inReview = isInProcessing(app);
+  const why = (reason ?? "").trim().slice(0, 1000);
+  if (inReview && why.length < 3) {
+    return { ok: false, error: "Deine Bewerbung wird schon bearbeitet – sag dem Team bitte kurz, warum du zurückziehst.", fieldErrors: { reason: "Bitte kurz begründen." } };
+  }
   await db.$transaction([
-    db.application.update({ where: { id: app.id }, data: { status: "WITHDRAWN", decidedAt: new Date() } }),
-    db.statusChange.create({ data: { applicationId: app.id, from: app.status, to: "WITHDRAWN", actorId: user.id } }),
+    db.application.update({
+      where: { id: app.id },
+      data: { status: "WITHDRAWN", decidedAt: new Date(), withdrawnInReview: inReview, withdrawReason: inReview ? why : null },
+    }),
+    db.statusChange.create({ data: { applicationId: app.id, from: app.status, to: "WITHDRAWN", actorId: user.id, note: inReview ? why : null } }),
   ]);
-  await audit("application.withdraw", { actorId: user.id, targetType: "application", targetId: app.id });
+  await audit("application.withdraw", { actorId: user.id, targetType: "application", targetId: app.id, meta: { inReview } });
+  const job = await botLog(
+    inReview
+      ? `↩️ **${app.publicId}** (${app.position.title}) wurde **während der Bearbeitung** zurückgezogen: „${esc(why.slice(0, 300))}“`
+      : `↩️ **${app.publicId}** (${app.position.title}) wurde vor der Bearbeitung zurückgezogen`,
+    { applicationId: app.id, tone: inReview ? "warn" : "default", url: `${publicEnv.appUrl}/team/bewerbungen/${app.id}` },
+  );
+  if (job) after(() => runOutbox({ ids: [job] }).catch(() => {}));
   revalidatePath(`/dashboard/${app.id}`);
   return { ok: true };
 }
@@ -149,10 +172,12 @@ export async function replyToTeamAction(input: z.input<typeof replySchema>): Pro
   const rl = await rateLimit(`reply:${user.id}`, 10, 3600);
   if (!rl.ok) return { ok: false, error: "Du hast gerade viele Nachrichten geschickt. Bitte warte etwas." };
 
-  const app = await db.application.findFirst({
-    where: { id: parsed.data.applicationId, userId: user.id, status: { in: ACTIVE_STATUSES } },
+  const found = await db.application.findFirst({
+    where: { id: parsed.data.applicationId, userId: user.id, status: { in: [...ACTIVE_STATUSES, "WITHDRAWN"] } },
     include: { position: true },
   });
+  // Nach einem Rückzug während der Bearbeitung bleibt der Chat für Rückfragen offen
+  const app = found && (ACTIVE_STATUSES.includes(found.status) || canFollowUp(found)) ? found : null;
   if (!app) return { ok: false, error: "Auf diese Bewerbung kann nicht mehr geantwortet werden." };
 
   const message = await db.message.create({
@@ -164,22 +189,11 @@ export async function replyToTeamAction(input: z.input<typeof replySchema>): Pro
     await maybeAutoReply(message.id).catch((e) => console.error("[autoreply]", e));
   });
 
-  const settings = await getSettings();
-  const channelId = env().DISCORD_LOG_CHANNEL_ID;
-  if (settings["discord.logChannelEnabled"] && channelId) {
-    const job = await enqueue(
-      {
-        type: "CHANNEL_MESSAGE",
-        channelId,
-        message: {
-          content: `💬 Neue Antwort zu **${app.publicId}** (${app.position.title}) – ${publicEnv.appUrl}/team/bewerbungen/${app.id}`,
-          allowed_mentions: { parse: [] },
-        },
-      },
-      { applicationId: app.id },
-    );
-    after(() => runOutbox({ ids: [job.id] }).catch(() => {}));
-  }
+  const job = await botLog(
+    `💬 Neue Antwort von ${esc(user.globalName || user.username)} zu **${app.publicId}** (${app.position.title})`,
+    { applicationId: app.id, url: `${publicEnv.appUrl}/team/bewerbungen/${app.id}` },
+  );
+  if (job) after(() => runOutbox({ ids: [job] }).catch(() => {}));
   revalidatePath(`/dashboard/${app.id}`);
   return { ok: true };
 }

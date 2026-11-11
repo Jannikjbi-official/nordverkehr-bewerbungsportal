@@ -10,6 +10,7 @@ import {
   Gear,
   House,
   ListDashes,
+  Megaphone,
   Users,
 } from "@phosphor-icons/react/ssr";
 
@@ -20,6 +21,7 @@ const ITEMS = [
   { href: "/team/nutzer", label: "Nutzer & Sperren", icon: Users },
   { href: "/team/statistiken", label: "Statistiken", icon: ChartBar },
   { href: "/team/audit", label: "Audit-Log", icon: ClockCounterClockwise },
+  { href: "/team/changelog", label: "Changelog", icon: Megaphone },
 ];
 const ADMIN = [
   { href: "/team/positionen", label: "Positionen & Fragen", icon: ListDashes },

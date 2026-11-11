@@ -51,6 +51,22 @@ export function SettingsForm({ settings, env, spend, spendMicro }: Props) {
       {help && <p className="nv-help mt-1">{help}</p>}
     </div>
   );
+  const channelField = (k: keyof Settings, label: string) => (
+    <div>
+      <label htmlFor={k} className="nv-field-label">
+        {label}
+      </label>
+      <input
+        id={k}
+        className="nv-input font-mono text-sm"
+        inputMode="numeric"
+        maxLength={25}
+        placeholder="Kanal-ID (leer = aus)"
+        value={String(s[k])}
+        onChange={(e) => set(k, e.target.value.replace(/\D/g, "") as never)}
+      />
+    </div>
+  );
   const toggle = (k: keyof Settings, label: string, help?: string) => (
     <label className="flex items-start gap-3 cursor-pointer">
       <input type="checkbox" className="nv-check" checked={!!s[k]} onChange={(e) => set(k, e.target.checked as never)} />
@@ -72,7 +88,7 @@ export function SettingsForm({ settings, env, spend, spendMicro }: Props) {
             ["guild", "DISCORD_GUILD_ID"],
             ["teamRole", "TEAM_ROLE_ID"],
             ["adminRole", "ADMIN_ROLE_ID"],
-            ["logChannel", "Log-Channel (DISCORD_LOG_CHANNEL_ID)"],
+            ["logChannel", "Fallback Bot-Log (DISCORD_LOG_CHANNEL_ID, optional)"],
             ["anthropic", "ANTHROPIC_API_KEY"],
           ].map(([k, l]) => (
             <li key={k} className="flex items-center gap-2">
@@ -105,7 +121,15 @@ export function SettingsForm({ settings, env, spend, spendMicro }: Props) {
 
       <Card title="Discord">
         <div className="space-y-3">
-          {toggle("discord.logChannelEnabled", "Neue Bewerbungen im Log-Channel posten")}
+          <div className="grid gap-4 sm:grid-cols-3">
+            {channelField("discord.applicationsChannelId", "Kanal: neue Bewerbungen")}
+            {channelField("discord.botLogChannelId", "Kanal: Bot-Logs")}
+            {channelField("discord.changelogChannelId", "Kanal: Changelog")}
+          </div>
+          <p className="nv-help">Rechtsklick auf den Kanal in Discord → „Kanal-ID kopieren“ (Entwicklermodus). Der Bot braucht dort „Nachrichten senden“ und „Links einbetten“.</p>
+          {toggle("discord.logChannelEnabled", "Neue Bewerbungen im Bewerbungs-Kanal posten")}
+          {toggle("discord.botLogEnabled", "Bot-Logs posten", "Statuswechsel, Claims, Team-Nachrichten, Antworten von Bewerbern und Zustellfehler.")}
+          {toggle("discord.changelogEnabled", "Neue Changelog-Einträge posten", "Jeder Eintrag wird genau einmal gepostet, sobald er live ist.")}
           {toggle("discord.autoRoleOnAccept", "Bei Annahme automatisch die Rolle der Position vergeben", "Rolle pro Position unter „Positionen & Fragen“ eintragen. Der Bot braucht „Rollen verwalten“ und muss über der Rolle stehen.")}
         </div>
       </Card>

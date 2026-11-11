@@ -34,6 +34,23 @@ export const STATUS_TONE: Record<ApplicationStatus, "muted" | "info" | "warn" | 
 
 export const OPEN_STATUSES: ApplicationStatus[] = ["DRAFT", "SUBMITTED", "IN_REVIEW", "INTERVIEW"];
 export const ACTIVE_STATUSES: ApplicationStatus[] = ["SUBMITTED", "IN_REVIEW", "INTERVIEW"];
+
+/** Wird die Bewerbung schon bearbeitet? (Status über "Eingegangen" hinaus oder geclaimt) */
+export function isInProcessing(app: { status: ApplicationStatus; claimedById?: string | null }) {
+  return app.status === "IN_REVIEW" || app.status === "INTERVIEW" || (app.status === "SUBMITTED" && !!app.claimedById);
+}
+
+/** Nach einem Rückzug während der Bearbeitung bleibt der Chat so lange offen (Rückfragen des Teams). */
+export const FOLLOW_UP_DAYS = 14;
+
+export function canFollowUp(app: { status: ApplicationStatus; withdrawnInReview?: boolean; decidedAt?: Date | null }, now = Date.now()) {
+  return (
+    app.status === "WITHDRAWN" &&
+    !!app.withdrawnInReview &&
+    !!app.decidedAt &&
+    now - app.decidedAt.getTime() < FOLLOW_UP_DAYS * 86_400_000
+  );
+}
 export const FINAL_STATUSES: ApplicationStatus[] = ["ACCEPTED", "REJECTED", "WITHDRAWN"];
 /** Spalten im Kanban-Board (Team). */
 export const BOARD_STATUSES: ApplicationStatus[] = ["SUBMITTED", "IN_REVIEW", "INTERVIEW", "ACCEPTED", "REJECTED"];

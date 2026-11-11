@@ -167,6 +167,7 @@ tests/unit/            Vitest (Rollenprüfung, Routen, Nachrichtenversand, Schut
 | `npm run db:push` | Schema + Indizes übertragen |
 | `npm run db:seed` | Basisdaten (+ Demo, außer `SEED_DEMO=false`) |
 | `npm run db:migrate-questions` | Fragen-Migration: Probelauf, mit `-- --apply` ausführen (läuft sonst automatisch beim Serverstart) |
+| `npm run db:test-workflow` | Claims, Absender, Components V2, Bot-Logs, null-Felder gegen eine Wegwerf-DB testen |
 | `npm run db:test-migration` | Migration gegen eine Wegwerf-DB mit Altbestand (Duplikate) testen |
 | `npm run worker` | optionaler Worker |
 

@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { explicitNulls } from "@/lib/db-nulls";
 
 /**
  * Eine PrismaClient-Instanz pro Prozess (auch über Hot-Reloads hinweg).
@@ -37,7 +38,8 @@ export function resolveDatabaseUrl(env: Record<string, string | undefined> = pro
 
 export function getDb(): PrismaClient {
   if (!globalForPrisma.__nvPrisma) {
-    globalForPrisma.__nvPrisma = new PrismaClient({ datasourceUrl: resolveDatabaseUrl() });
+    // Query-Extension ändert keine Typen – der Cast ist sicher (siehe db-nulls.ts)
+    globalForPrisma.__nvPrisma = new PrismaClient({ datasourceUrl: resolveDatabaseUrl() }).$extends(explicitNulls) as unknown as PrismaClient;
   }
   return globalForPrisma.__nvPrisma;
 }

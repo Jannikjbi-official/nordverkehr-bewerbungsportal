@@ -1,8 +1,82 @@
-import type { RESTPostAPIChannelMessageJSONBody } from "discord-api-types/v10";
+/**
+ * Alle Discord-Nachrichten des Portals im Nordverkehr-Design – als
+ * Components V2 (Flag IS_COMPONENTS_V2): ein Container mit Akzentfarbe,
+ * Textanzeigen, Trennern, Thumbnail und Link-Buttons. Kein `content`,
+ * keine `embeds` (bei V2 nicht erlaubt).
+ */
+import type {
+  APIActionRowComponent,
+  APIButtonComponentWithURL,
+  APIComponentInContainer,
+  APISectionComponent,
+  APISeparatorComponent,
+  APITextDisplayComponent,
+  RESTPostAPIChannelMessageJSONBody,
+} from "discord-api-types/v10";
 
 export const BRAND_COLOR = 0xc41e1e;
+export const WARN_COLOR = 0xf3c25b;
+export const NEUTRAL_COLOR = 0x4e5058;
 export const LOGO_URL = "https://nordverkehr.xyz/logo.png";
-export const EMBED_DESCRIPTION_LIMIT = 4096;
+/** MessageFlags.IsComponentsV2 */
+export const COMPONENTS_V2 = 1 << 15;
+/** Discord erlaubt bei V2 insgesamt 4000 Zeichen Text pro Nachricht */
+export const V2_TEXT_LIMIT = 4000;
+/** Maximal für den Nachrichtentext reserviert (Rest: Kopf, Fußzeile) */
+export const BODY_LIMIT = 3400;
+
+// ─── Bausteine ────────────────────────────────────────────────
+
+export const text = (content: string): APITextDisplayComponent => ({ type: 10, content });
+
+export const separator = (divider = true, spacing: 1 | 2 = 1): APISeparatorComponent => ({ type: 14, divider, spacing });
+
+/** Text links, Bild rechts (Avatar/Logo). */
+export function section(lines: string[], thumbnailUrl: string): APISectionComponent {
+  return {
+    type: 9,
+    components: lines.slice(0, 3).map(text),
+    accessory: { type: 11, media: { url: thumbnailUrl } },
+  };
+}
+
+/** Link-Buttons – Discord akzeptiert dort nur https-Links. */
+export function linkButtons(links: { label: string; url: string | null | undefined }[]): APIActionRowComponent<APIButtonComponentWithURL> | null {
+  const buttons = links
+    .filter((l): l is { label: string; url: string } => !!l.url && /^https:\/\//.test(l.url))
+    .slice(0, 5)
+    .map((l) => ({ type: 2 as const, style: 5 as const, label: l.label.slice(0, 80), url: l.url }));
+  return buttons.length ? { type: 1, components: buttons } : null;
+}
+
+export const truncate = (s: string, max: number) => (s.length > max ? s.slice(0, max - 1) + "…" : s);
+
+/** Discord-Zeitstempel, im Client lokal formatiert. */
+export const discordTime = (d: Date, style: "f" | "R" | "D" = "f") => `<t:${Math.floor(d.getTime() / 1000)}:${style}>`;
+
+/** Eine V2-Nachricht aus einem Container. Erwähnungen werden angezeigt, pingen aber nie. */
+export function v2Message(accent: number, children: (APIComponentInContainer | null | false)[]): RESTPostAPIChannelMessageJSONBody {
+  return {
+    flags: COMPONENTS_V2,
+    components: [{ type: 17, accent_color: accent, components: children.filter(Boolean) as APIComponentInContainer[] }],
+    allowed_mentions: { parse: [] },
+  };
+}
+
+/** Alle Textanzeigen einer Nachricht zusammen (für das 4000-Zeichen-Limit und Tests). */
+export function v2Text(msg: RESTPostAPIChannelMessageJSONBody): string {
+  const out: string[] = [];
+  const walk = (c: unknown) => {
+    if (!c || typeof c !== "object") return;
+    const o = c as { type?: number; content?: string; components?: unknown[] };
+    if (o.type === 10 && o.content) out.push(o.content);
+    o.components?.forEach(walk);
+  };
+  (msg.components ?? []).forEach(walk);
+  return out.join("\n");
+}
+
+// ─── Nachrichten an Bewerber ──────────────────────────────────
 
 export interface ApplicantEmbedInput {
   title: string;
@@ -10,66 +84,78 @@ export interface ApplicantEmbedInput {
   publicId?: string | null;
   statusUrl?: string | null;
   timestamp?: Date;
+  /** Persönlicher Absender (Teammitglied); ohne Angabe "NORDVERKEHR // TEAM" */
+  author?: { name: string; iconUrl?: string | null } | null;
 }
 
-/** Discord-Nachricht an Bewerber im Nordverkehr-Design. */
-export function buildApplicantMessage(input: ApplicantEmbedInput): RESTPostAPIChannelMessageJSONBody {
-  const description =
-    input.body.length > EMBED_DESCRIPTION_LIMIT ? input.body.slice(0, EMBED_DESCRIPTION_LIMIT - 1) + "…" : input.body;
-  const statusUrl = input.statusUrl && /^https:\/\//.test(input.statusUrl) ? input.statusUrl : null;
-  return {
-    embeds: [
-      {
-        author: { name: "NORDVERKEHR // TEAM", icon_url: LOGO_URL },
-        title: input.title.slice(0, 256),
-        description,
-        color: BRAND_COLOR,
-        footer: { text: input.publicId ? `Bewerbung ${input.publicId}` : "Nordverkehr Roleplay" },
-        timestamp: (input.timestamp ?? new Date()).toISOString(),
-      },
-    ],
-    // Discord akzeptiert nur https-Links in Buttons
-    components: statusUrl
-      ? [{ type: 1, components: [{ type: 2, style: 5, label: "Status ansehen", url: statusUrl }] }]
-      : undefined,
-    allowed_mentions: { parse: [] },
-  };
+/** Kopfzeile: Team oder persönlich ("Jonas · Nordverkehr-Team"). */
+export function embedAuthor(author?: ApplicantEmbedInput["author"]) {
+  return author
+    ? { name: `${author.name} · Nordverkehr-Team`.slice(0, 256), icon_url: author.iconUrl ?? LOGO_URL }
+    : { name: "NORDVERKEHR // TEAM", icon_url: LOGO_URL };
 }
+
+/** DM an Bewerber (Bestätigung, Team-Nachricht, Status, Auto-Antwort). */
+export function buildApplicantMessage(input: ApplicantEmbedInput): RESTPostAPIChannelMessageJSONBody {
+  const head = embedAuthor(input.author);
+  const at = input.timestamp ?? new Date();
+  return v2Message(BRAND_COLOR, [
+    section([`-# ${head.name}`, `## ${truncate(input.title, 200)}`], head.icon_url),
+    separator(),
+    text(truncate(input.body || " ", BODY_LIMIT)),
+    separator(false),
+    text(`-# ${input.publicId ? `Bewerbung ${input.publicId}` : "Nordverkehr Roleplay"} · ${discordTime(at)}`),
+    linkButtons([{ label: "Status ansehen", url: input.statusUrl }]),
+  ]);
+}
+
+// ─── Bewerbungs-Kanal ─────────────────────────────────────────
 
 export interface LogEmbedInput {
   positionTitle: string;
   applicantDiscordId: string;
   applicantName: string;
+  applicantAvatarUrl?: string | null;
   publicId: string;
   age: number | null;
   teamUrl: string;
   flags: string[];
 }
 
-/** Log-Post für neue Bewerbungen im Team-Channel. */
+/** Post für neue Bewerbungen im Bewerbungs-Kanal. */
 export function buildLogMessage(input: LogEmbedInput): RESTPostAPIChannelMessageJSONBody {
-  const fields = [
-    { name: "Position", value: input.positionTitle, inline: true },
-    { name: "Bewerber", value: `<@${input.applicantDiscordId}>\n${input.applicantName}`, inline: true },
-    { name: "Alter", value: input.age ? String(input.age) : "–", inline: true },
-  ];
-  if (input.flags.length) fields.push({ name: "Hinweise", value: input.flags.map((f) => `• ${f}`).join("\n").slice(0, 1024), inline: false });
-  const teamUrl = /^https:\/\//.test(input.teamUrl) ? input.teamUrl : null;
-  return {
-    embeds: [
-      {
-        author: { name: "NORDVERKEHR // BEWERBUNGEN", icon_url: LOGO_URL },
-        title: `Neue Bewerbung · ${input.publicId}`,
-        url: teamUrl ?? undefined,
-        color: BRAND_COLOR,
-        fields,
-        timestamp: new Date().toISOString(),
-      },
-    ],
-    components: teamUrl
-      ? [{ type: 1, components: [{ type: 2, style: 5, label: "Im Team-Bereich öffnen", url: teamUrl }] }]
-      : undefined,
-    // Kein Ping im Log-Channel
-    allowed_mentions: { parse: [] },
-  };
+  const facts = [
+    `**Position:** ${input.positionTitle}`,
+    `**Bewerber:** <@${input.applicantDiscordId}> (${input.applicantName})`,
+    `**Alter:** ${input.age ?? "–"}`,
+  ].join("\n");
+  return v2Message(BRAND_COLOR, [
+    section([`-# NORDVERKEHR // BEWERBUNGEN`, `## Neue Bewerbung · ${input.publicId}`, facts], input.applicantAvatarUrl || LOGO_URL),
+    input.flags.length > 0 && separator(),
+    input.flags.length > 0 && text(truncate(`**Hinweise** (keine Bewertung)\n${input.flags.map((f) => `• ${f}`).join("\n")}`, 1000)),
+    separator(false),
+    text(`-# Eingegangen ${discordTime(new Date(), "R")}`),
+    linkButtons([{ label: "Im Team-Bereich öffnen", url: input.teamUrl }]),
+  ]);
+}
+
+// ─── Bot-Log & Changelog ──────────────────────────────────────
+
+/** Eine Protokollzeile im Bot-Log-Kanal. */
+export function buildBotLogMessage(line: string, opts: { tone?: "default" | "warn"; url?: string | null } = {}): RESTPostAPIChannelMessageJSONBody {
+  return v2Message(opts.tone === "warn" ? WARN_COLOR : NEUTRAL_COLOR, [
+    text(truncate(line, 1800)),
+    text(`-# ${discordTime(new Date())}`),
+    linkButtons([{ label: "Öffnen", url: opts.url }]),
+  ]);
+}
+
+/** Changelog-Eintrag für den Changelog-Kanal. */
+export function buildChangelogMessage(entry: { title: string; date: string; items: string[] }, url?: string | null): RESTPostAPIChannelMessageJSONBody {
+  return v2Message(BRAND_COLOR, [
+    section([`-# NORDVERKEHR // BEWERBUNGSPORTAL`, `## 📋 ${truncate(entry.title, 200)}`, `-# ${discordTime(new Date(`${entry.date}T12:00:00Z`), "D")}`], LOGO_URL),
+    separator(),
+    text(truncate(entry.items.map((i) => `• ${i}`).join("\n"), BODY_LIMIT)),
+    linkButtons([{ label: "Changelog im Team-Bereich", url }]),
+  ]);
 }

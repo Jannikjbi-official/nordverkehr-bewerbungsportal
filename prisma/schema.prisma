@@ -118,6 +118,7 @@ model User {
 
   applications     Application[]   @relation("Applicant")
   decisions        Application[]   @relation("Decider")
+  claims           Application[]   @relation("Claimer")
   votes            Vote[]
   comments         Comment[]
   messages         Message[]
@@ -286,6 +287,13 @@ model Application {
   decidedAt            DateTime?
   decidedById          String?
   decidedBy            User?             @relation("Decider", fields: [decidedById], references: [id], onDelete: SetNull)
+  /// Teammitglied, das die Bewerbung betreut ("geclaimt")
+  claimedById          String?
+  claimedBy            User?             @relation("Claimer", fields: [claimedById], references: [id], onDelete: SetNull)
+  claimedAt            DateTime?
+  /// Rückzug während der Bearbeitung: Grund des Bewerbers, Team kann noch nachfragen
+  withdrawReason       String?
+  withdrawnInReview    Boolean           @default(false)
   interviewAt          DateTime?
   interviewNote        String?
   rejectionReason      String?
@@ -400,6 +408,8 @@ model Message {
   author         User?            @relation(fields: [authorId], references: [id], onDelete: SetNull)
   body           String
   templateIds    String[]
+  /// Vom Teammitglied bewusst als "Nordverkehr-Team" gesendet (Name bleibt intern sichtbar)
+  asTeam         Boolean          @default(false)
   deliveryStatus DeliveryStatus   @default(NOT_SENT)
   deliveryError  String?
   sentAt         DateTime?

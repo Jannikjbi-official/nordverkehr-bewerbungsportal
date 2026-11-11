@@ -78,6 +78,7 @@ export const applicationListInclude = {
   user: { select: { id: true, discordId: true, username: true, globalName: true, avatar: true } },
   position: { select: { title: true, slug: true, icon: true } },
   votes: { select: { value: true, userId: true } },
+  claimedBy: { select: { discordId: true, avatar: true, globalName: true, username: true } },
   _count: { select: { comments: true, messages: { where: { direction: "APPLICANT_TO_TEAM", readAt: null } } } },
 } satisfies Prisma.ApplicationInclude;
 

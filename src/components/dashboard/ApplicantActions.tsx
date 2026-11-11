@@ -52,25 +52,69 @@ export function ReplyBox({ applicationId }: { applicationId: string }) {
   );
 }
 
-export function WithdrawButton({ applicationId }: { applicationId: string }) {
+/**
+ * Zurückziehen: vor der Bearbeitung mit einem Klick, danach mit kurzem Grund
+ * (das Team sieht ihn und kann noch nachfragen).
+ */
+export function WithdrawButton({ applicationId, needsReason }: { applicationId: string; needsReason: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const withdraw = () =>
+    start(async () => {
+      setError(null);
+      const res = await withdrawApplicationAction(applicationId, needsReason ? reason : undefined);
+      if (!res.ok) setError(res.error);
+      else router.refresh();
+    });
+
+  if (!needsReason || !open) {
+    return (
+      <button
+        type="button"
+        className="nv-btn nv-btn-danger w-full"
+        disabled={pending}
+        onClick={() => {
+          if (needsReason) return setOpen(true);
+          if (confirm("Bewerbung wirklich zurückziehen? Das kann nicht rückgängig gemacht werden.")) withdraw();
+        }}
+      >
+        {pending ? "Wird zurückgezogen …" : "Bewerbung zurückziehen"}
+      </button>
+    );
+  }
   return (
-    <button
-      type="button"
-      className="nv-btn nv-btn-danger w-full"
-      disabled={pending}
-      onClick={() => {
-        if (!confirm("Bewerbung wirklich zurückziehen? Das kann nicht rückgängig gemacht werden.")) return;
-        start(async () => {
-          const res = await withdrawApplicationAction(applicationId);
-          if (!res.ok) alert(res.error);
-          router.refresh();
-        });
-      }}
-    >
-      {pending ? "Wird zurückgezogen …" : "Bewerbung zurückziehen"}
-    </button>
+    <div className="nv-card p-4 space-y-3">
+      <label htmlFor="withdraw-reason" className="nv-field-label">
+        Warum ziehst du zurück?
+      </label>
+      <p className="nv-help -mt-2">Deine Bewerbung wird schon bearbeitet. Ein kurzer Satz reicht – das Team kann danach noch nachfragen.</p>
+      <textarea
+        id="withdraw-reason"
+        className="nv-input !min-h-20 text-sm"
+        rows={3}
+        maxLength={1000}
+        value={reason}
+        aria-invalid={!!error}
+        onChange={(e) => setReason(e.target.value)}
+      />
+      {error && (
+        <p className="nv-error" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="flex gap-2 justify-end">
+        <button type="button" className="nv-btn nv-btn-quiet nv-btn-sm" onClick={() => setOpen(false)} disabled={pending}>
+          Abbrechen
+        </button>
+        <button type="button" className="nv-btn nv-btn-danger nv-btn-sm" disabled={pending || reason.trim().length < 3} onClick={withdraw}>
+          {pending ? "Wird zurückgezogen …" : "Zurückziehen"}
+        </button>
+      </div>
+    </div>
   );
 }
 

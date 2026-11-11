@@ -17,6 +17,8 @@ import { getFormDefinition } from "@/lib/data/positions";
 import { buildApplicantMessage, buildLogMessage } from "@/lib/messages/embed";
 import { buildTemplateVars, renderTemplate } from "@/lib/messages/placeholders";
 import { enqueue } from "@/lib/discord/outbox-db";
+import { botLog, channelIds, esc } from "@/lib/discord/botlog";
+import { avatarUrl } from "@/lib/discord/snowflake";
 import type { Prisma } from "@prisma/client";
 
 export class UserFacingError extends Error {
@@ -77,7 +79,10 @@ export interface SubmitInput {
   honeypot?: string;
 }
 
-export async function submitApplication(user: { id: string; discordId: string; username: string; globalName: string | null; discordCreatedAt: Date }, input: SubmitInput) {
+export async function submitApplication(
+  user: { id: string; discordId: string; username: string; globalName: string | null; avatar?: string | null; discordCreatedAt: Date },
+  input: SubmitInput,
+) {
   const settings = await getSettings();
   const draft = await db.application.findFirst({
     where: { id: input.draftId, userId: user.id, status: "DRAFT" },
@@ -140,7 +145,7 @@ export async function submitApplication(user: { id: string; discordId: string; u
 
   const submittedAt = new Date();
   const dashboardUrl = `${publicEnv.appUrl}/dashboard/${draft.id}`;
-  const e = env();
+  const channels = await channelIds();
 
   const result = await db.$transaction(async (tx) => {
     const publicId = await nextPublicId(tx);
@@ -230,15 +235,16 @@ export async function submitApplication(user: { id: string; discordId: string; u
     );
     jobIds.push(dm.id);
 
-    if (settings["discord.logChannelEnabled"] && e.DISCORD_LOG_CHANNEL_ID) {
+    if (channels.applications) {
       const log = await enqueue(
         {
           type: "CHANNEL_MESSAGE",
-          channelId: e.DISCORD_LOG_CHANNEL_ID,
+          channelId: channels.applications,
           message: buildLogMessage({
             positionTitle: draft.position.title,
             applicantDiscordId: user.discordId,
             applicantName: user.globalName || user.username,
+            applicantAvatarUrl: avatarUrl(user.discordId, user.avatar ?? null, 128),
             publicId,
             age: input.age,
             teamUrl: `${publicEnv.appUrl}/team/bewerbungen/${draft.id}`,
@@ -249,6 +255,12 @@ export async function submitApplication(user: { id: string; discordId: string; u
       );
       jobIds.push(log.id);
     }
+
+    const logJob = await botLog(
+      `📥 Neue Bewerbung **${publicId}** (${draft.position.title}) von ${esc(user.globalName || user.username)}`,
+      { tx, applicationId: draft.id, url: `${publicEnv.appUrl}/team/bewerbungen/${draft.id}` },
+    );
+    if (logJob) jobIds.push(logJob);
 
     await tx.auditLog.create({
       data: { actorId: user.id, action: "application.submit", targetType: "application", targetId: draft.id, meta: { publicId } },

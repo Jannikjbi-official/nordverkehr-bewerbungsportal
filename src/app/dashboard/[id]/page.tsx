@@ -16,7 +16,7 @@ import { ChatAvatar, ChatRoleBadge, personName } from "@/components/ChatParticip
 import { ReplyBox, WithdrawButton, MarkRead } from "@/components/dashboard/ApplicantActions";
 import { requireUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
-import { ACTIVE_STATUSES, STATUS_HINT, STATUS_LABEL, TIMELINE } from "@/lib/applications/status";
+import { ACTIVE_STATUSES, FOLLOW_UP_DAYS, STATUS_HINT, STATUS_LABEL, TIMELINE, canFollowUp, isInProcessing } from "@/lib/applications/status";
 import { formatAnswerForDisplay, type AnswerValue } from "@/lib/applications/form";
 import type { ApplicationStatus } from "@prisma/client";
 
@@ -51,6 +51,7 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
 
   const isNew = sp.neu === "1";
   const active = ACTIVE_STATUSES.includes(app.status);
+  const followUp = canFollowUp(app);
   const dmIssue = app.confirmationDmStatus === "DM_CLOSED" || app.confirmationDmStatus === "FAILED";
   const unread = app.messages.some((m) => m.direction === "TEAM_TO_APPLICANT" && !m.readAt);
 
@@ -119,7 +120,8 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
             <ol className="p-5 space-y-5">
               {app.messages.map((m) => {
                 const mine = m.direction === "APPLICANT_TO_TEAM";
-                const person = mine ? user : m.author;
+                const author = m.asTeam ? null : m.author;
+                const person = mine ? user : author;
                 return (
                   <li key={m.id} className={cn("flex gap-3", mine && "flex-row-reverse")}>
                     <ChatAvatar direction={m.direction} person={person} />
@@ -132,9 +134,9 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
                               ? "Automatische Antwort"
                               : mine
                                 ? "Du"
-                                : personName(m.author, "Nordverkehr-Team")}
+                                : personName(author, "Nordverkehr-Team")}
                         </span>
-                        {!mine && <ChatRoleBadge direction={m.direction} person={m.author} />}
+                        {!mine && <ChatRoleBadge direction={m.direction} person={author} />}
                         <span>· {formatDayTime(m.createdAt)}</span>
                       </p>
                       <div
@@ -155,8 +157,14 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
                 );
               })}
             </ol>
-            {active && (
+            {(active || followUp) && (
               <div className="border-t border-line p-5">
+                {followUp && (
+                  <p className="mb-3 text-xs text-muted">
+                    Du hast die Bewerbung zurückgezogen. Falls das Team noch Fragen hat, kannst du hier bis zum{" "}
+                    {formatDay(new Date(app.decidedAt!.getTime() + FOLLOW_UP_DAYS * 86_400_000))} antworten.
+                  </p>
+                )}
                 <ReplyBox applicationId={app.id} />
               </div>
             )}
@@ -215,7 +223,7 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
               </div>
             )}
           </div>
-          {active && <WithdrawButton applicationId={app.id} />}
+          {active && <WithdrawButton applicationId={app.id} needsReason={isInProcessing(app)} />}
         </aside>
       </div>
     </div>

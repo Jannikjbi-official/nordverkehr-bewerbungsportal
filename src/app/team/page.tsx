@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { ArrowRight, CalendarCheck, ChatCircleDots, DiscordLogo, HandPointing, ShieldWarning } from "@phosphor-icons/react/ssr";
-import { Avatar, Notice, Stat, StatusBadge, formatDayTime, formatRelative } from "@/components/ui";
+import { ArrowRight, ArrowUUpLeft, CalendarCheck, Megaphone, ChatCircleDots, DiscordLogo, HandPointing, ShieldWarning } from "@phosphor-icons/react/ssr";
+import { Avatar, Notice, Stat, StatusBadge, formatDay, formatDayTime, formatRelative } from "@/components/ui";
+import { CHANGELOG } from "@/lib/changelog";
 import { requireTeam } from "@/lib/auth/session";
 import { db } from "@/lib/db";
-import { ACTIVE_STATUSES } from "@/lib/applications/status";
+import { ACTIVE_STATUSES, FOLLOW_UP_DAYS } from "@/lib/applications/status";
 import { daysAgo } from "@/lib/time";
 
 export default function TeamHome({ searchParams }: PageProps<"/team">) {
@@ -20,7 +21,7 @@ async function Overview({ searchParams }: Pick<PageProps<"/team">, "searchParams
   const sp = await searchParams;
   const weekAgo = daysAgo(7);
 
-  const [open, newWeek, interviews, unreadReplies, dmFailed, needsMyVote, recent] = await Promise.all([
+  const [open, newWeek, interviews, unreadReplies, dmFailed, needsMyVote, recent, withdrawn] = await Promise.all([
     db.application.count({ where: { status: { in: ACTIVE_STATUSES } } }),
     db.application.count({ where: { submittedAt: { gte: weekAgo } } }),
     db.application.findMany({
@@ -45,6 +46,12 @@ async function Overview({ searchParams }: Pick<PageProps<"/team">, "searchParams
       where: { status: { not: "DRAFT" } },
       include: { user: true, position: true },
       orderBy: { submittedAt: "desc" },
+      take: 6,
+    }),
+    db.application.findMany({
+      where: { status: "WITHDRAWN", withdrawnInReview: true, decidedAt: { gte: daysAgo(FOLLOW_UP_DAYS) } },
+      include: { user: true, position: true },
+      orderBy: { decidedAt: "desc" },
       take: 6,
     }),
   ]);
@@ -75,6 +82,53 @@ async function Overview({ searchParams }: Pick<PageProps<"/team">, "searchParams
         <Stat label="Gespräche" value={interviews.length} hint="anstehend" />
         <Stat label="DM-Probleme" value={dmFailed} hint="Bestätigung nicht zugestellt" />
       </div>
+
+      <section className="nv-card p-5 flex flex-col gap-3 sm:flex-row sm:items-start">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-red-soft text-red-text">
+          <Megaphone size={20} aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="nv-mono">Neu im Portal · {formatDay(new Date(`${CHANGELOG[0].date}T12:00:00`))}</p>
+          <h2 className="font-semibold mt-0.5">{CHANGELOG[0].title}</h2>
+          <ul className="mt-2 space-y-1 text-sm text-fg-2 list-disc pl-5 marker:text-red-text">
+            {CHANGELOG[0].items.slice(0, 3).map((it, k) => (
+              <li key={k} className="line-clamp-2">
+                {it}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <Link href="/team/changelog" className="nv-btn nv-btn-ghost nv-btn-sm self-start">
+          Changelog <ArrowRight size={13} aria-hidden />
+        </Link>
+      </section>
+
+      {withdrawn.length > 0 && (
+        <section className="nv-card p-5 border-[color-mix(in_srgb,var(--tone-warn)_40%,transparent)]">
+          <header className="mb-3">
+            <h2 className="flex items-center gap-2 font-semibold">
+              <ArrowUUpLeft size={18} className="text-[var(--tone-warn)]" aria-hidden /> Während der Bearbeitung zurückgezogen
+            </h2>
+            <p className="text-xs text-muted mt-0.5">Der Bewerber kann {FOLLOW_UP_DAYS} Tage lang noch auf Rückfragen antworten.</p>
+          </header>
+          <ul className="space-y-1">
+            {withdrawn.map((a) => (
+              <li key={a.id}>
+                <Link href={`/team/bewerbungen/${a.id}`} className="flex items-start gap-3 rounded-lg px-2 py-2 -mx-2 hover:bg-card-hover">
+                  <Avatar discordId={a.user.discordId} avatar={a.user.avatar} size={30} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium truncate">
+                      {a.user.globalName || a.user.username} <span className="text-xs font-normal text-muted">· {a.position.title} · {a.publicId}</span>
+                    </span>
+                    <span className="block text-xs text-fg-2 line-clamp-2">„{a.withdrawReason ?? "–"}“</span>
+                  </span>
+                  <span className="text-xs text-muted whitespace-nowrap">{a.decidedAt ? formatRelative(a.decidedAt) : ""}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Panel title="Wartet auf deine Stimme" icon={<HandPointing size={18} aria-hidden />} href="/team/bewerbungen?status=SUBMITTED&status=IN_REVIEW">

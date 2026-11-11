@@ -24,9 +24,11 @@ interface Props {
   vars: TemplateVars;
   suggested: TemplateCategory[];
   statusTargets: ApplicationStatus[];
+  /** Eigener Name/Avatar für persönliche Nachrichten; claimedByMe = Standard "als ich" */
+  sender: { name: string; avatarUrl: string; claimedByMe: boolean };
 }
 
-export function MessageComposer({ applicationId, publicId, templates, vars, suggested, statusTargets }: Props) {
+export function MessageComposer({ applicationId, publicId, templates, vars, suggested, statusTargets, sender }: Props) {
   const router = useRouter();
   const textarea = useRef<HTMLTextAreaElement>(null);
   const [category, setCategory] = useState<TemplateCategory>(suggested[0] ?? "EINGANG");
@@ -38,8 +40,13 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
   const [sendError, setSendError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [pending, start] = useTransition();
+  // Wer die Bewerbung geclaimt hat, schreibt standardmäßig persönlich
+  const [asTeam, setAsTeam] = useState(!sender.claimedByMe);
 
-  const rendered = useMemo(() => renderTemplate(body, { ...vars, grund: grund || undefined }), [body, vars, grund]);
+  const rendered = useMemo(
+    () => renderTemplate(body, { ...vars, ...(asTeam ? { teammitglied: "das Nordverkehr-Team" } : {}), grund: grund || undefined }),
+    [body, vars, grund, asTeam],
+  );
   const byCat = useMemo(() => templates.filter((t) => t.category === category), [templates, category]);
   const needsGrund = /\{grund\}/.test(body);
 
@@ -62,6 +69,7 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
         templateIds: used,
         grund: grund || undefined,
         alsoStatus: alsoStatus ? (alsoStatus as "SUBMITTED") : undefined,
+        asTeam,
       });
       if (!res.ok) setSendError(res.error);
       else {
@@ -198,7 +206,27 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
       {/* Vorschau */}
       <div className="space-y-3 min-w-0">
         <p className="nv-mono">Vorschau wie in Discord</p>
-        <DiscordPreview title={title} body={rendered.text} publicId={publicId} />
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted">Senden als</span>
+          <div className="inline-flex rounded-full border border-line p-0.5" role="radiogroup" aria-label="Absender">
+            {[
+              { team: false, label: sender.name },
+              { team: true, label: "Nordverkehr-Team" },
+            ].map((o) => (
+              <button
+                key={String(o.team)}
+                type="button"
+                role="radio"
+                aria-checked={asTeam === o.team}
+                onClick={() => setAsTeam(o.team)}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${asTeam === o.team ? "bg-red text-white" : "text-muted hover:text-fg"}`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <DiscordPreview title={title} body={rendered.text} publicId={publicId} author={asTeam ? null : { name: sender.name, iconUrl: sender.avatarUrl }} />
         {rendered.missing.length > 0 && (
           <p className="flex items-start gap-1.5 text-xs text-[var(--tone-warn)]">
             <WarningCircle size={14} className="shrink-0 mt-0.5" aria-hidden />

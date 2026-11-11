@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { buildTemplateVars, combineTemplates, findPlaceholders, renderTemplate } from "@/lib/messages/placeholders";
-import { BRAND_COLOR, EMBED_DESCRIPTION_LIMIT, buildApplicantMessage, buildLogMessage } from "@/lib/messages/embed";
+import {
+  BRAND_COLOR,
+  COMPONENTS_V2,
+  V2_TEXT_LIMIT,
+  WARN_COLOR,
+  buildApplicantMessage,
+  buildBotLogMessage,
+  buildChangelogMessage,
+  buildLogMessage,
+  v2Text,
+} from "@/lib/messages/embed";
 import { csvCell } from "@/lib/csv";
 
 describe("renderTemplate", () => {
@@ -55,21 +65,30 @@ describe("buildTemplateVars", () => {
   });
 });
 
-describe("Discord-Embeds", () => {
-  it("Bewerber-Nachricht im Nordverkehr-Design, ohne Pings", () => {
+type Comp = { type: number; accent_color?: number; components?: Comp[]; url?: string };
+const container = (m: { components?: unknown[] }) => (m.components as Comp[])[0];
+const buttons = (m: { components?: unknown[] }) =>
+  (container(m).components ?? []).filter((c) => c.type === 1).flatMap((r) => r.components ?? []);
+
+describe("Discord-Nachrichten (Components V2)", () => {
+  it("Bewerber-Nachricht: V2-Flag, Container in Markenfarbe, ohne content/embeds, ohne Pings", () => {
     const m = buildApplicantMessage({ title: "Hallo", body: "Text", publicId: "NV-1", statusUrl: "https://bewerbung.nordverkehr.xyz/x" });
-    expect(m.embeds?.[0].color).toBe(BRAND_COLOR);
-    expect(m.embeds?.[0].footer?.text).toContain("NV-1");
+    expect(m.flags).toBe(COMPONENTS_V2);
+    expect(m.content).toBeUndefined();
+    expect(m.embeds).toBeUndefined();
+    expect(container(m)).toMatchObject({ type: 17, accent_color: BRAND_COLOR });
+    expect(v2Text(m)).toContain("NV-1");
     expect(m.allowed_mentions).toEqual({ parse: [] });
-    expect(m.components).toHaveLength(1);
+    expect(buttons(m)).toHaveLength(1);
   });
-  it("kürzt zu lange Texte aufs Discord-Limit", () => {
-    expect(buildApplicantMessage({ title: "x", body: "a".repeat(5000) }).embeds?.[0].description?.length).toBe(EMBED_DESCRIPTION_LIMIT);
+  it("bleibt unter dem 4000-Zeichen-Limit für Text", () => {
+    const m = buildApplicantMessage({ title: "x".repeat(300), body: "a".repeat(9000), publicId: "NV-1" });
+    expect(v2Text(m).length).toBeLessThanOrEqual(V2_TEXT_LIMIT);
   });
   it("Link-Button nur bei https", () => {
-    expect(buildApplicantMessage({ title: "x", body: "y", statusUrl: "http://localhost:3000/dashboard" }).components).toBeUndefined();
+    expect(buttons(buildApplicantMessage({ title: "x", body: "y", statusUrl: "http://localhost:3000/dashboard" }))).toHaveLength(0);
   });
-  it("Log-Post mit Position & Hinweisen, ohne Ping", () => {
+  it("Bewerbungs-Post mit Position, Hinweisen und Button, ohne Ping", () => {
     const m = buildLogMessage({
       positionTitle: "Support",
       applicantDiscordId: "111",
@@ -79,10 +98,19 @@ describe("Discord-Embeds", () => {
       teamUrl: "https://bewerbung.nordverkehr.xyz/team/bewerbungen/x",
       flags: ["Sehr kurze Antworten"],
     });
-    const fields = m.embeds?.[0].fields ?? [];
-    expect(fields.find((f) => f.name === "Position")?.value).toBe("Support");
-    expect(fields.find((f) => f.name === "Hinweise")?.value).toContain("Sehr kurze Antworten");
+    expect(m.flags).toBe(COMPONENTS_V2);
+    expect(v2Text(m)).toContain("**Position:** Support");
+    expect(v2Text(m)).toContain("Sehr kurze Antworten");
+    expect(buttons(m)[0]?.url).toContain("/team/bewerbungen/x");
     expect(m.allowed_mentions).toEqual({ parse: [] });
+  });
+  it("Bot-Log und Changelog ebenfalls als V2", () => {
+    const log = buildBotLogMessage("📥 Neue Bewerbung", { tone: "warn", url: "https://bewerbung.nordverkehr.xyz/team" });
+    expect(log.flags).toBe(COMPONENTS_V2);
+    expect(container(log).accent_color).toBe(WARN_COLOR);
+    const cl = buildChangelogMessage({ title: "Update", date: "2026-11-11", items: ["A", "B"] }, "https://bewerbung.nordverkehr.xyz/team/changelog");
+    expect(cl.flags).toBe(COMPONENTS_V2);
+    expect(v2Text(cl)).toContain("• A\n• B");
   });
 });
 

@@ -18,7 +18,8 @@
     "db:dev": "tsx scripts/dev-mongo.mts",
     "db:push": "tsx scripts/db-push.mts",
     "db:migrate-questions": "tsx scripts/migrate-questions.mts",
-    "db:test-migration": "tsx scripts/test-migration.mts"
+    "db:test-migration": "tsx scripts/test-migration.mts",
+    "db:test-workflow": "node --conditions=react-server --import tsx scripts/test-workflow.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",

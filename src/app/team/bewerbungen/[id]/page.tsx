@@ -15,6 +15,8 @@ import {
   VotePanel,
 } from "@/components/team/DetailControls";
 import { MessageComposer } from "@/components/team/MessageComposer";
+import { ClaimBox } from "@/components/team/ClaimBox";
+import { avatarUrl } from "@/lib/discord/snowflake";
 import { AiPanel } from "@/components/team/AiPanel";
 import { TagPills } from "@/components/team/TagPills";
 import { RetagButton } from "@/components/team/RetagButton";
@@ -22,7 +24,7 @@ import { requireTeam, getAccess } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 import { getTemplateVarsFor } from "@/lib/team/service";
-import { STATUS_LABEL, SUGGESTED_CATEGORIES, allowedTeamTargets } from "@/lib/applications/status";
+import { FOLLOW_UP_DAYS, STATUS_LABEL, SUGGESTED_CATEGORIES, allowedTeamTargets, canFollowUp } from "@/lib/applications/status";
 import { formatAnswerForDisplay, type AnswerValue } from "@/lib/applications/form";
 import type { ApplicationFlag } from "@/lib/applications/flags";
 import type { ApplicationStatus } from "@prisma/client";
@@ -50,6 +52,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
     include: {
       user: true,
       position: true,
+      claimedBy: { select: { id: true, globalName: true, username: true, discordId: true, avatar: true } },
       answers: { orderBy: { sortOrder: "asc" } },
       votes: { include: { user: { select: { globalName: true, username: true } } }, orderBy: { createdAt: "asc" } },
       comments: { include: { author: { select: { globalName: true, username: true, discordId: true, avatar: true } } }, orderBy: { createdAt: "asc" } },
@@ -121,6 +124,15 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
         </div>
         <StatusBadge status={app.status} className="!text-sm !px-3.5 !py-1.5 self-start sm:self-center" />
       </header>
+
+      {app.status === "WITHDRAWN" && app.withdrawnInReview && (
+        <Notice tone="warn" icon={WarningCircle} title="Während der Bearbeitung zurückgezogen">
+          {app.withdrawReason ? <>„{app.withdrawReason}“</> : "Ohne Begründung."}{" "}
+          {canFollowUp(app)
+            ? `Du kannst unten nachfragen – der Bewerber kann bis ${formatDay(new Date(app.decidedAt!.getTime() + FOLLOW_UP_DAYS * 86_400_000))} antworten.`
+            : "Die Frist für Rückfragen ist abgelaufen."}
+        </Notice>
+      )}
 
       {(dmIssue || flags.length > 0 || activeBan) && (
         <div className="grid gap-2">
@@ -217,6 +229,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
                                   : personName(m.author, "Team")}
                           </span>
                           <ChatRoleBadge direction={m.direction} person={person} />
+                          {m.asTeam && <span className="nv-pill nv-tone-muted !text-[0.65rem] !py-0 !px-1.5">als Team gesendet</span>}
                           <span>· {formatDayTime(m.createdAt)}</span>
                         </p>
                         <div className={cn("mt-1 inline-block text-left rounded-2xl px-4 py-3 text-sm", fromApplicant ? "bg-surface-2" : "bg-card border border-line", m.flagged && "ring-1 ring-[var(--tone-danger)]")}>
@@ -248,12 +261,26 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
                 vars={vars ?? {}}
                 suggested={suggested}
                 statusTargets={allowedTeamTargets(app.status)}
+                sender={{ name: me.globalName || me.username, avatarUrl: avatarUrl(me.discordId, me.avatar, 128), claimedByMe: app.claimedById === me.id }}
               />
             </div>
           </section>
         </div>
 
         <aside className="space-y-6">
+          <div className="nv-card p-5">
+            <ClaimBox
+              applicationId={app.id}
+              me={{ id: me.id, isAdmin: access.isAdmin }}
+              claimedBy={
+                app.claimedBy
+                  ? { id: app.claimedBy.id, name: app.claimedBy.globalName || app.claimedBy.username, discordId: app.claimedBy.discordId, avatar: app.claimedBy.avatar }
+                  : null
+              }
+              claimedAgo={app.claimedAt ? formatRelative(app.claimedAt) : null}
+            />
+          </div>
+
           <div className="nv-card p-5 space-y-5">
             <StatusControl applicationId={app.id} current={app.status} targets={allowedTeamTargets(app.status)} />
             <div className="nv-divider" />

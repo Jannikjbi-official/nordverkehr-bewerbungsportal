@@ -8,7 +8,7 @@ import { requireAdmin, requireTeam } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 import { rateLimit } from "@/lib/rate-limit";
 import { runOutbox } from "@/lib/discord/outbox-db";
-import { changeStatus, sendTeamMessage } from "@/lib/team/service";
+import { changeStatus, sendTeamMessage, setClaim } from "@/lib/team/service";
 import { UserFacingError } from "@/lib/applications/service";
 import type { ActionResult } from "@/app/actions/application";
 
@@ -121,6 +121,7 @@ const messageSchema = z.object({
   templateIds: z.array(id).max(10).default([]),
   grund: z.string().trim().max(1000).optional(),
   alsoStatus: STATUS.optional(),
+  asTeam: z.boolean().default(false),
 });
 
 export async function sendMessageAction(input: z.input<typeof messageSchema>): Promise<ActionResult<{ missing: string[] }>> {
@@ -143,15 +144,30 @@ export async function sendMessageAction(input: z.input<typeof messageSchema>): P
     const res = await sendTeamMessage({
       applicationId: p.data.applicationId,
       actor: user,
+      asTeam: p.data.asTeam,
       title: p.data.title,
       body: p.data.body,
       templateIds: p.data.templateIds,
       vars: { grund: p.data.grund },
     });
-    jobIds.push(res.jobId);
+    jobIds.push(...res.jobIds);
     kick(jobIds);
     revalidatePath(`/team/bewerbungen/${p.data.applicationId}`);
     return { ok: true, data: { missing: res.missing } };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+export async function claimAction(applicationId: string, action: "claim" | "release"): Promise<ActionResult> {
+  const { user } = await requireTeam();
+  if (!id.safeParse(applicationId).success || !["claim", "release"].includes(action)) return { ok: false, error: "Ungültig." };
+  try {
+    const r = await setClaim({ applicationId, actor: user, action });
+    kick(r.jobIds);
+    revalidatePath(`/team/bewerbungen/${applicationId}`);
+    revalidatePath("/team/bewerbungen");
+    return { ok: true };
   } catch (err) {
     return fail(err);
   }

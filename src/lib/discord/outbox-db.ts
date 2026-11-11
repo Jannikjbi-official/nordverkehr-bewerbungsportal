@@ -47,6 +47,16 @@ export const prismaOutboxStore: OutboxStore = {
         await tx.application.update({ where: { id: job.applicationId }, data: { confirmationDmStatus: status } });
       }
     });
+    // Nur DM-Fehler protokollieren (ein fehlgeschlagener Log-Post erzeugt keinen weiteren Log)
+    const p = job.payload as OutboxPayload;
+    if (p.type === "DM") {
+      const { botLog } = await import("@/lib/discord/botlog");
+      const app = job.applicationId ? await db.application.findUnique({ where: { id: job.applicationId }, select: { publicId: true } }) : null;
+      await botLog(
+        `⚠️ DM an <@${p.discordUserId}>${app?.publicId ? ` (${app.publicId})` : ""} nicht zugestellt: ${dmClosed ? "DMs geschlossen" : error.slice(0, 200)}`,
+        { applicationId: job.applicationId ?? undefined, tone: "warn" },
+      ).catch(() => null);
+    }
   },
 };
 
