@@ -1,0 +1,50 @@
+# Optional: komplettes Selbsthosting (statt Vercel + Atlas).
+#   docker compose up -d --build
+#   docker compose run --rm setup      # Schema, Indizes, Seed (einmalig)
+services:
+  mongo:
+    image: mongo:8
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      # Initialisiert das Replica Set beim ersten Start (nötig für Transaktionen)
+      test: ["CMD", "mongosh", "--quiet", "--eval", "try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}).ok }"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  web:
+    build: { context: ., target: web }
+    env_file: .env
+    environment:
+      DATABASE_URL: mongodb://mongo:27017/nordverkehr?replicaSet=rs0&directConnection=true
+    ports: ["3000:3000"]
+    depends_on:
+      mongo: { condition: service_healthy }
+    restart: unless-stopped
+
+  worker:
+    build: { context: ., target: worker }
+    env_file: .env
+    environment:
+      DATABASE_URL: mongodb://mongo:27017/nordverkehr?replicaSet=rs0&directConnection=true
+    depends_on:
+      mongo: { condition: service_healthy }
+    restart: unless-stopped
+
+  setup:
+    build: { context: ., target: worker }
+    env_file: .env
+    environment:
+      DATABASE_URL: mongodb://mongo:27017/nordverkehr?replicaSet=rs0&directConnection=true
+      SEED_DEMO: "false"
+    command: ["sh", "-c", "npx prisma db push --skip-generate && npx tsx scripts/mongo-indexes.ts && npx prisma db seed"]
+    depends_on:
+      mongo: { condition: service_healthy }
+    profiles: ["setup"]
+
+volumes:
+  mongo-data:

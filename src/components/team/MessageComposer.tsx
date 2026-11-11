@@ -1,0 +1,220 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useMemo, useRef, useState, useTransition } from "react";
+import { PaperPlaneTilt, Plus, Star, WarningCircle, X } from "@phosphor-icons/react/ssr";
+import { sendMessageAction } from "@/app/actions/team";
+import { CATEGORY_LABEL, CATEGORY_ORDER } from "@/lib/applications/status";
+import { PLACEHOLDERS, renderTemplate, type TemplateVars } from "@/lib/messages/placeholders";
+import { DiscordPreview } from "@/components/team/DiscordPreview";
+import { StatusSelect } from "@/components/team/StatusSelect";
+import type { ApplicationStatus, TemplateCategory } from "@prisma/client";
+
+interface Template {
+  id: string;
+  category: TemplateCategory;
+  title: string;
+  body: string;
+}
+
+interface Props {
+  applicationId: string;
+  publicId: string | null;
+  templates: Template[];
+  vars: TemplateVars;
+  suggested: TemplateCategory[];
+  statusTargets: ApplicationStatus[];
+}
+
+export function MessageComposer({ applicationId, publicId, templates, vars, suggested, statusTargets }: Props) {
+  const router = useRouter();
+  const textarea = useRef<HTMLTextAreaElement>(null);
+  const [category, setCategory] = useState<TemplateCategory>(suggested[0] ?? "EINGANG");
+  const [title, setTitle] = useState("Nachricht vom Nordverkehr-Team");
+  const [body, setBody] = useState("");
+  const [used, setUsed] = useState<string[]>([]);
+  const [grund, setGrund] = useState("");
+  const [alsoStatus, setAlsoStatus] = useState<ApplicationStatus | "">("");
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+  const [pending, start] = useTransition();
+
+  const rendered = useMemo(() => renderTemplate(body, { ...vars, grund: grund || undefined }), [body, vars, grund]);
+  const byCat = useMemo(() => templates.filter((t) => t.category === category), [templates, category]);
+  const needsGrund = /\{grund\}/.test(body);
+
+  function insert(t: Template) {
+    setBody((b) => (b.trim() ? `${b.trimEnd()}\n\n${t.body}` : t.body));
+    setUsed((u) => (u.includes(t.id) ? u : [...u, t.id]));
+    setSent(false);
+    requestAnimationFrame(() => textarea.current?.focus());
+  }
+
+  function send() {
+    setSendError(null);
+    if (rendered.missing.length && !confirm(`Nicht ersetzte Platzhalter: ${rendered.missing.map((m) => `{${m}}`).join(", ")}. Trotzdem senden?`)) return;
+    if (!confirm("Nachricht jetzt per Discord-DM senden? Sie erscheint auch im Portal des Bewerbers.")) return;
+    start(async () => {
+      const res = await sendMessageAction({
+        applicationId,
+        title,
+        body,
+        templateIds: used,
+        grund: grund || undefined,
+        alsoStatus: alsoStatus ? (alsoStatus as "SUBMITTED") : undefined,
+      });
+      if (!res.ok) setSendError(res.error);
+      else {
+        setBody("");
+        setUsed([]);
+        setGrund("");
+        setAlsoStatus("");
+        setSent(true);
+        router.refresh();
+      }
+    });
+  }
+
+  return (
+    <div className="grid gap-6 xl:grid-cols-2">
+      <div className="space-y-4 min-w-0">
+        {/* Bausteine */}
+        <div>
+          <p className="nv-mono mb-2">Bausteine</p>
+          <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Kategorien">
+            {CATEGORY_ORDER.map((c) => {
+              const isSuggested = suggested.includes(c);
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  role="tab"
+                  aria-selected={category === c}
+                  onClick={() => setCategory(c)}
+                  className={`nv-pill transition-colors ${category === c ? "nv-pill-red" : "hover:text-fg"}`}
+                >
+                  {isSuggested && <Star size={11} weight="fill" className="text-[var(--tone-warn)]" aria-label="Vorgeschlagen" />}
+                  {CATEGORY_LABEL[c]}
+                </button>
+              );
+            })}
+          </div>
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+            {byCat.length === 0 && <li className="text-sm text-muted">Keine Bausteine in dieser Kategorie.</li>}
+            {byCat.map((t) => (
+              <li key={t.id}>
+                <button
+                  type="button"
+                  onClick={() => insert(t)}
+                  className="group w-full text-left rounded-xl border border-line hover:border-red-line hover:bg-red-soft p-3 transition-colors"
+                >
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium">{t.title}</span>
+                    <Plus size={14} className="text-muted group-hover:text-red-text shrink-0" aria-hidden />
+                  </span>
+                  <span className="mt-1 block text-xs text-muted line-clamp-2">{t.body}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-muted">Klick fügt den Baustein ans Ende an – mehrere lassen sich kombinieren.</p>
+        </div>
+
+        {/* Editor */}
+        <div className="space-y-3">
+          <div>
+            <label htmlFor="msg-title" className="nv-field-label">
+              Titel
+            </label>
+            <input id="msg-title" className="nv-input" maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div>
+            <div className="flex items-center justify-between gap-2">
+              <label htmlFor="msg-body" className="nv-field-label">
+                Nachricht
+              </label>
+              {used.length > 0 && (
+                <button type="button" className="nv-btn nv-btn-quiet nv-btn-sm !py-0.5" onClick={() => { setBody(""); setUsed([]); }}>
+                  <X size={12} aria-hidden /> Leeren
+                </button>
+              )}
+            </div>
+            <textarea
+              id="msg-body"
+              ref={textarea}
+              className="nv-input font-mono text-sm !min-h-56"
+              rows={10}
+              maxLength={3800}
+              value={body}
+              onChange={(e) => {
+                setBody(e.target.value);
+                setSent(false);
+              }}
+              placeholder="Baustein wählen oder frei schreiben. Platzhalter wie {name} werden automatisch ersetzt."
+            />
+            <details className="mt-1.5">
+              <summary className="text-xs text-muted cursor-pointer">Platzhalter</summary>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {PLACEHOLDERS.map((p) => (
+                  <button
+                    key={p.key}
+                    type="button"
+                    title={p.label}
+                    className="nv-kbd hover:text-fg"
+                    onClick={() => setBody((b) => b + `{${p.key}}`)}
+                  >
+                    {`{${p.key}}`}
+                  </button>
+                ))}
+              </div>
+            </details>
+          </div>
+
+          {needsGrund && (
+            <div>
+              <label htmlFor="grund" className="nv-field-label">
+                Begründung für {"{grund}"}
+              </label>
+              <textarea id="grund" className="nv-input text-sm !min-h-16" rows={2} maxLength={1000} value={grund} onChange={(e) => setGrund(e.target.value)} />
+            </div>
+          )}
+
+          {statusTargets.length > 0 && (
+            <div>
+              <p className="nv-field-label">Gleichzeitig Status ändern (optional)</p>
+              <StatusSelect
+                label="Gleichzeitig Status ändern"
+                options={statusTargets}
+                value={alsoStatus || null}
+                onChange={(s) => setAlsoStatus(s ?? "")}
+                placeholder="Status nicht ändern"
+                allowNone
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Vorschau */}
+      <div className="space-y-3 min-w-0">
+        <p className="nv-mono">Vorschau wie in Discord</p>
+        <DiscordPreview title={title} body={rendered.text} publicId={publicId} />
+        {rendered.missing.length > 0 && (
+          <p className="flex items-start gap-1.5 text-xs text-[var(--tone-warn)]">
+            <WarningCircle size={14} className="shrink-0 mt-0.5" aria-hidden />
+            Ohne Wert: {rendered.missing.map((m) => `{${m}}`).join(", ")}
+          </p>
+        )}
+        <div className="flex items-center justify-between gap-3 pt-2">
+          <p className="text-xs text-muted" aria-live="polite">
+            {sent ? "Gesendet – Zustellstatus siehst du im Verlauf." : `${rendered.text.length} / 3800 Zeichen`}
+          </p>
+          <button type="button" className="nv-btn nv-btn-primary" disabled={pending || !body.trim()} onClick={send}>
+            <PaperPlaneTilt size={16} weight="fill" aria-hidden /> {pending ? "Sendet …" : "Per DM senden"}
+          </button>
+        </div>
+        {sendError && <p className="nv-error">{sendError}</p>}
+      </div>
+    </div>
+  );
+}

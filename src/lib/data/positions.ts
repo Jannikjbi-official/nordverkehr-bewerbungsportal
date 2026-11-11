@@ -1,0 +1,48 @@
+import "server-only";
+import { db } from "@/lib/db";
+import type { FormSectionDef } from "@/lib/applications/form";
+
+export async function listPublicPositions() {
+  return db.position.findMany({
+    where: { status: { in: ["OPEN", "CLOSED"] }, type: { key: "team", active: true } },
+    orderBy: [{ status: "asc" }, { sortOrder: "asc" }],
+  });
+}
+
+export async function getPublicPosition(slug: string) {
+  if (!/^[a-z0-9-]{1,60}$/.test(slug)) return null;
+  const p = await db.position.findUnique({ where: { slug }, include: { type: true } });
+  if (!p || p.status === "HIDDEN" || !p.type.active) return null;
+  return p;
+}
+
+/** Formular-Schritte: allgemeine zuerst, dann positionsspezifische. */
+export async function getFormDefinition(position: { id: string; typeId: string }): Promise<FormSectionDef[]> {
+  const sections = await db.formSection.findMany({
+    where: { typeId: position.typeId, OR: [{ positionId: null }, { positionId: position.id }] },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    include: { questions: { where: { archived: false }, orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] } },
+  });
+  // positionId=null zuerst, Reihenfolge innerhalb stabil
+  sections.sort((a, b) => Number(a.positionId !== null) - Number(b.positionId !== null) || a.sortOrder - b.sortOrder);
+  return sections
+    .filter((s) => s.questions.length > 0)
+    .map((s) => ({
+      id: s.id,
+      title: s.title,
+      description: s.description,
+      questions: s.questions.map((q) => ({
+        id: q.id,
+        label: q.label,
+        helpText: q.helpText,
+        placeholder: q.placeholder,
+        type: q.type,
+        required: q.required,
+        minLength: q.minLength,
+        maxLength: q.maxLength,
+        minValue: q.minValue,
+        maxValue: q.maxValue,
+        options: q.options,
+      })),
+    }));
+}

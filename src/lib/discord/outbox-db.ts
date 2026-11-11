@@ -1,0 +1,125 @@
+/**
+ * Prisma-Anbindung der Outbox (ohne `server-only`, wird auch vom Worker genutzt).
+ */
+import { db } from "@/lib/db";
+import { getDiscordApi } from "@/lib/discord/client";
+import { processJob, type OutboxJobLike, type OutboxPayload, type OutboxStore } from "@/lib/discord/outbox";
+import type { Prisma } from "@prisma/client";
+
+function purposeOf(job: OutboxJobLike) {
+  const p = job.payload as OutboxPayload;
+  return p.type === "DM" ? p.purpose : null;
+}
+
+export const prismaOutboxStore: OutboxStore = {
+  async complete(job, result) {
+    const now = new Date();
+    await db.$transaction(async (tx) => {
+      await tx.outboxJob.update({
+        where: { id: job.id },
+        data: { status: "DONE", attempts: { increment: 1 }, result, lastError: null, lockedAt: null },
+      });
+      if (job.messageId) {
+        await tx.message.update({ where: { id: job.messageId }, data: { deliveryStatus: "SENT", sentAt: now, deliveryError: null } });
+      }
+      if (job.applicationId && purposeOf(job) === "confirmation") {
+        await tx.application.update({ where: { id: job.applicationId }, data: { confirmationDmStatus: "SENT" } });
+      }
+    });
+  },
+  async reschedule(job, error, runAt) {
+    await db.outboxJob.update({
+      where: { id: job.id },
+      data: { status: "PENDING", attempts: { increment: 1 }, lastError: error, runAt, lockedAt: null },
+    });
+  },
+  async fail(job, error, { dmClosed }) {
+    const status = dmClosed ? "DM_CLOSED" : "FAILED";
+    await db.$transaction(async (tx) => {
+      await tx.outboxJob.update({
+        where: { id: job.id },
+        data: { status: "FAILED", attempts: { increment: 1 }, lastError: error, lockedAt: null },
+      });
+      if (job.messageId) {
+        await tx.message.update({ where: { id: job.messageId }, data: { deliveryStatus: status, deliveryError: error } });
+      }
+      if (job.applicationId && purposeOf(job) === "confirmation") {
+        await tx.application.update({ where: { id: job.applicationId }, data: { confirmationDmStatus: status } });
+      }
+    });
+  },
+};
+
+export async function enqueue(
+  payload: OutboxPayload,
+  opts: { messageId?: string; applicationId?: string; tx?: Prisma.TransactionClient } = {},
+) {
+  const client = opts.tx ?? db;
+  return client.outboxJob.create({
+    data: {
+      type: payload.type,
+      payload: payload as unknown as Prisma.InputJsonValue,
+      messageId: opts.messageId,
+      applicationId: opts.applicationId,
+    },
+    select: { id: true },
+  });
+}
+
+const JOB_SELECT = { id: true, type: true, payload: true, attempts: true, maxAttempts: true, messageId: true, applicationId: true } as const;
+
+/**
+ * Holt fällige Jobs exklusiv. Jeder Job wird per bedingtem Update
+ * (status PENDING → PROCESSING) "geclaimt" – das Einzeldokument-Update ist in
+ * MongoDB atomar, also verarbeiten parallele Instanzen (Vercel, Worker) einen
+ * Job nie doppelt.
+ */
+async function claim(limit: number, ids?: string[]): Promise<OutboxJobLike[]> {
+  const now = new Date();
+  const candidates = await db.outboxJob.findMany({
+    where: ids?.length ? { id: { in: ids }, status: "PENDING" } : { status: "PENDING", runAt: { lte: now } },
+    orderBy: { runAt: "asc" },
+    take: ids?.length ? ids.length : limit,
+    select: JOB_SELECT,
+  });
+  const claimed: OutboxJobLike[] = [];
+  for (const job of candidates) {
+    const res = await db.outboxJob.updateMany({
+      where: { id: job.id, status: "PENDING" },
+      data: { status: "PROCESSING", lockedAt: now },
+    });
+    if (res.count === 1) claimed.push(job);
+  }
+  return claimed;
+}
+
+/** Hängengebliebene Jobs (Prozess abgestürzt / Funktion abgebrochen) wieder freigeben. */
+export async function releaseStuckJobs(olderThanMinutes = 5) {
+  const res = await db.outboxJob.updateMany({
+    where: { status: "PROCESSING", lockedAt: { lt: new Date(Date.now() - olderThanMinutes * 60_000) } },
+    data: { status: "PENDING", lockedAt: null },
+  });
+  return res.count;
+}
+
+export async function runOutbox(opts: { ids?: string[]; limit?: number } = {}) {
+  let api;
+  try {
+    api = getDiscordApi();
+  } catch (err) {
+    console.warn("[outbox] Discord nicht konfiguriert – Jobs bleiben in der Warteschlange.", (err as Error).message);
+    return 0;
+  }
+  const jobs = await claim(opts.limit ?? 20, opts.ids);
+  for (const job of jobs) {
+    try {
+      await processJob(job, api, prismaOutboxStore);
+    } catch (err) {
+      console.error("[outbox] Job-Verarbeitung fehlgeschlagen", job.id, err);
+      await db.outboxJob
+        .update({ where: { id: job.id }, data: { status: "PENDING", lockedAt: null, lastError: String(err) } })
+        .catch(() => {});
+    }
+  }
+  return jobs.length;
+}

@@ -1,0 +1,497 @@
+@import "tailwindcss";
+
+/* ─────────────────────────────────────────────────────────────
+   Nordverkehr Design-System
+   Abgeleitet von nordverkehr.xyz (Astro/Tailwind v4):
+   DM Serif Display (Headlines, kursiver roter Teil), DM Sans (Text),
+   JetBrains Mono (Labels "NORDVERKEHR // TEAM"), Rot #C41E1E.
+   Dunkel ist Standard, Hell per Umschalter (data-theme="light").
+   ───────────────────────────────────────────────────────────── */
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --nv-red: #c41e1e;
+  --nv-red-hover: #a51818;
+  --nv-red-text: #f06060;
+  --nv-red-soft: rgba(196, 30, 30, 0.12);
+  --nv-red-line: rgba(196, 30, 30, 0.3);
+  --nv-bg: #0a0a0c;
+  --nv-surface: #111114;
+  --nv-surface-2: #17171b;
+  --nv-card: rgba(255, 255, 255, 0.025);
+  --nv-card-hover: rgba(255, 255, 255, 0.045);
+  --nv-border: rgba(255, 255, 255, 0.07);
+  --nv-border-strong: rgba(255, 255, 255, 0.14);
+  --nv-text: #ffffff;
+  --nv-text-2: rgba(255, 255, 255, 0.72);
+  --nv-muted: rgba(255, 255, 255, 0.55);
+  --nv-faint: rgba(255, 255, 255, 0.38);
+  --nv-input: rgba(255, 255, 255, 0.035);
+  --nv-overlay: rgba(10, 10, 12, 0.82);
+  --nv-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+  --nv-glow: 0 4px 20px rgba(196, 30, 30, 0.3);
+
+  --tone-info: #7fb0ff;
+  --tone-info-bg: rgba(127, 176, 255, 0.1);
+  --tone-warn: #f3c25b;
+  --tone-warn-bg: rgba(243, 194, 91, 0.1);
+  --tone-success: #4fd69c;
+  --tone-success-bg: rgba(79, 214, 156, 0.1);
+  --tone-danger: #ff7a7a;
+  --tone-danger-bg: rgba(255, 122, 122, 0.1);
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --nv-red: #c41e1e;
+  --nv-red-hover: #a51818;
+  --nv-red-text: #a51818;
+  --nv-red-soft: rgba(196, 30, 30, 0.08);
+  --nv-red-line: rgba(196, 30, 30, 0.28);
+  --nv-bg: #f5f4f1;
+  --nv-surface: #ffffff;
+  --nv-surface-2: #efeee9;
+  --nv-card: #ffffff;
+  --nv-card-hover: #fbfaf8;
+  --nv-border: rgba(10, 10, 12, 0.09);
+  --nv-border-strong: rgba(10, 10, 12, 0.18);
+  --nv-text: #0a0a0c;
+  --nv-text-2: rgba(10, 10, 12, 0.78);
+  --nv-muted: rgba(10, 10, 12, 0.62);
+  --nv-faint: rgba(10, 10, 12, 0.45);
+  --nv-input: #ffffff;
+  --nv-overlay: rgba(245, 244, 241, 0.86);
+  --nv-shadow: 0 10px 40px rgba(10, 10, 12, 0.08);
+  --nv-glow: 0 4px 18px rgba(196, 30, 30, 0.22);
+
+  --tone-info: #1f5fbf;
+  --tone-info-bg: rgba(31, 95, 191, 0.08);
+  --tone-warn: #8a5a00;
+  --tone-warn-bg: rgba(200, 140, 0, 0.12);
+  --tone-success: #11744a;
+  --tone-success-bg: rgba(17, 116, 74, 0.1);
+  --tone-danger: #b3261e;
+  --tone-danger-bg: rgba(179, 38, 30, 0.08);
+}
+
+@theme inline {
+  --color-red: var(--nv-red);
+  --color-red-hover: var(--nv-red-hover);
+  --color-red-text: var(--nv-red-text);
+  --color-red-soft: var(--nv-red-soft);
+  --color-red-line: var(--nv-red-line);
+  --color-bg: var(--nv-bg);
+  --color-surface: var(--nv-surface);
+  --color-surface-2: var(--nv-surface-2);
+  --color-card: var(--nv-card);
+  --color-card-hover: var(--nv-card-hover);
+  --color-line: var(--nv-border);
+  --color-line-strong: var(--nv-border-strong);
+  --color-fg: var(--nv-text);
+  --color-fg-2: var(--nv-text-2);
+  --color-muted: var(--nv-muted);
+  --color-faint: var(--nv-faint);
+  --color-input: var(--nv-input);
+  --color-discord: #5865f2;
+
+  --font-display: var(--font-dm-serif), "DM Serif Display", Georgia, serif;
+  --font-sans: var(--font-dm-sans), "DM Sans", system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), "JetBrains Mono", ui-monospace, monospace;
+}
+
+@layer base {
+  html {
+    background: var(--nv-bg);
+    color: var(--nv-text);
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+  body {
+    background: var(--nv-bg);
+    color: var(--nv-text);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  @media (min-width: 640px) {
+    body { font-size: 17px; }
+  }
+  h1, h2, h3 {
+    line-height: 1.1;
+  }
+  ::selection {
+    background: var(--nv-red);
+    color: #fff;
+  }
+  :focus-visible {
+    outline: 2px solid var(--nv-red);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  /* Scrollbar dezent */
+  * {
+    scrollbar-color: var(--nv-border-strong) transparent;
+    scrollbar-width: thin;
+  }
+}
+
+@layer components {
+  /* Headline wie auf der Hauptseite: "Hamburg RP. *So wie es sein soll.*" */
+  .nv-headline {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    color: var(--nv-text);
+  }
+  .nv-headline em {
+    font-style: italic;
+    color: var(--nv-red);
+  }
+
+  .nv-label {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--nv-red);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .nv-label::before {
+    content: "";
+    display: block;
+    width: 20px;
+    height: 1px;
+    background: currentColor;
+  }
+  .nv-mono {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--nv-faint);
+  }
+
+  .nv-card {
+    background: var(--nv-card);
+    border: 1px solid var(--nv-border);
+    border-radius: 16px;
+  }
+  [data-theme="light"] .nv-card {
+    box-shadow: 0 1px 2px rgba(10, 10, 12, 0.04);
+  }
+  .nv-card-hover {
+    transition: background 0.3s ease, border-color 0.3s ease, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .nv-card-hover:hover {
+    background: var(--nv-card-hover);
+    border-color: var(--nv-red-line);
+    transform: translateY(-2px);
+  }
+
+  .nv-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    background: color-mix(in srgb, var(--nv-text) 5%, transparent);
+    border: 1px solid var(--nv-border);
+    color: var(--nv-muted);
+    white-space: nowrap;
+  }
+  .nv-pill-red {
+    background: var(--nv-red-soft);
+    border-color: var(--nv-red-line);
+    color: var(--nv-red-text);
+  }
+  .nv-tone-muted { color: var(--nv-muted); }
+  .nv-tone-info { color: var(--tone-info); background: var(--tone-info-bg); border-color: color-mix(in srgb, var(--tone-info) 30%, transparent); }
+  .nv-tone-warn { color: var(--tone-warn); background: var(--tone-warn-bg); border-color: color-mix(in srgb, var(--tone-warn) 30%, transparent); }
+  .nv-tone-accent { color: var(--nv-red-text); background: var(--nv-red-soft); border-color: var(--nv-red-line); }
+  .nv-tone-success { color: var(--tone-success); background: var(--tone-success-bg); border-color: color-mix(in srgb, var(--tone-success) 30%, transparent); }
+  .nv-tone-danger { color: var(--tone-danger); background: var(--tone-danger-bg); border-color: color-mix(in srgb, var(--tone-danger) 30%, transparent); }
+
+  .nv-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.35rem;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    line-height: 1.2;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .nv-btn:disabled,
+  .nv-btn[aria-disabled="true"] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+  .nv-btn-sm {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+    border-radius: 8px;
+  }
+  .nv-btn-primary {
+    background: var(--nv-red);
+    color: #fff;
+    box-shadow: var(--nv-glow);
+  }
+  .nv-btn-primary:hover:not(:disabled) {
+    background: var(--nv-red-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 28px rgba(196, 30, 30, 0.45);
+  }
+  .nv-btn-primary:active:not(:disabled) { transform: translateY(0); }
+  .nv-btn-ghost {
+    background: transparent;
+    color: var(--nv-text-2);
+    border: 1px solid var(--nv-border);
+    font-weight: 500;
+  }
+  .nv-btn-ghost:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--nv-text) 5%, transparent);
+    color: var(--nv-text);
+    border-color: var(--nv-border-strong);
+  }
+  .nv-btn-quiet {
+    background: transparent;
+    color: var(--nv-muted);
+    font-weight: 500;
+  }
+  .nv-btn-quiet:hover:not(:disabled) {
+    color: var(--nv-text);
+    background: color-mix(in srgb, var(--nv-text) 5%, transparent);
+  }
+  .nv-btn-danger {
+    background: transparent;
+    color: var(--tone-danger);
+    border: 1px solid color-mix(in srgb, var(--tone-danger) 35%, transparent);
+  }
+  .nv-btn-danger:hover:not(:disabled) { background: var(--tone-danger-bg); }
+
+  /* Discord-Button wie auf der Hauptseite (3D-Verlauf) */
+  .nv-btn-discord {
+    color: #fff;
+    background: linear-gradient(135deg, #c41e1e 0%, #8b1515 100%);
+    box-shadow: 0 2px 0 #6b0f0f, 0 4px 8px rgba(196, 30, 30, 0.35), 0 0 20px rgba(196, 30, 30, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+  .nv-btn-discord:hover {
+    transform: translateY(-1px);
+    background: linear-gradient(135deg, #d42222 0%, #9b1a1a 100%);
+    box-shadow: 0 3px 0 #6b0f0f, 0 6px 12px rgba(196, 30, 30, 0.45), 0 0 25px rgba(196, 30, 30, 0.2);
+  }
+  .nv-btn-discord:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 0 #6b0f0f, 0 2px 4px rgba(196, 30, 30, 0.3);
+  }
+
+  /* Formularfelder */
+  .nv-input {
+    width: 100%;
+    background: var(--nv-input);
+    border: 1px solid var(--nv-border);
+    border-radius: 10px;
+    padding: 0.7rem 0.9rem;
+    color: var(--nv-text);
+    font-size: 0.95rem;
+    line-height: 1.5;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  }
+  .nv-input::placeholder { color: var(--nv-faint); }
+  .nv-input:hover { border-color: var(--nv-border-strong); }
+  .nv-input:focus {
+    outline: none;
+    border-color: var(--nv-red-line);
+    box-shadow: 0 0 0 3px var(--nv-red-soft);
+  }
+  .nv-input[aria-invalid="true"] {
+    border-color: color-mix(in srgb, var(--tone-danger) 60%, transparent);
+  }
+  textarea.nv-input { resize: vertical; min-height: 7rem; }
+  select.nv-input {
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--nv-muted) 50%), linear-gradient(135deg, var(--nv-muted) 50%, transparent 50%);
+    background-position: calc(100% - 18px) 55%, calc(100% - 13px) 55%;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+    padding-right: 2.2rem;
+  }
+  .nv-field-label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--nv-text);
+    margin-bottom: 0.35rem;
+  }
+  .nv-help { font-size: 0.82rem; color: var(--nv-muted); }
+  .nv-error { font-size: 0.82rem; color: var(--tone-danger); }
+
+  .nv-check {
+    appearance: none;
+    flex: none;
+    width: 1.15rem;
+    height: 1.15rem;
+    margin-top: 0.2rem;
+    border-radius: 5px;
+    border: 1.5px solid var(--nv-border-strong);
+    background: var(--nv-input);
+    display: grid;
+    place-content: center;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .nv-check::after {
+    content: "";
+    width: 0.55rem;
+    height: 0.3rem;
+    border-left: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    transform: rotate(-45deg) translate(1px, -1px) scale(0);
+    transition: transform 0.15s ease;
+  }
+  .nv-check:checked { background: var(--nv-red); border-color: var(--nv-red); }
+  .nv-check:checked::after { transform: rotate(-45deg) translate(1px, -1px) scale(1); }
+  .nv-check[type="radio"] { border-radius: 999px; }
+
+  .nv-link {
+    color: var(--nv-text);
+    text-decoration: underline;
+    text-decoration-color: var(--nv-red-line);
+    text-underline-offset: 3px;
+    transition: text-decoration-color 0.2s ease, color 0.2s ease;
+  }
+  .nv-link:hover { text-decoration-color: var(--nv-red); }
+
+  .nv-divider { height: 1px; background: var(--nv-border); }
+
+  .nv-table th {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--nv-faint);
+    text-align: left;
+    padding: 0.75rem 1rem;
+    white-space: nowrap;
+  }
+  .nv-table td {
+    padding: 0.85rem 1rem;
+    border-top: 1px solid var(--nv-border);
+    vertical-align: middle;
+  }
+  .nv-table tbody tr { transition: background 0.15s ease; }
+  .nv-table tbody tr:hover { background: color-mix(in srgb, var(--nv-text) 3%, transparent); }
+
+  .nv-kbd {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 5px;
+    border: 1px solid var(--nv-border);
+    color: var(--nv-muted);
+  }
+
+  /* Hintergrund-Glow wie im Hero der Hauptseite */
+  .nv-hero-glow {
+    background:
+      radial-gradient(60% 50% at 15% 0%, rgba(196, 30, 30, 0.16) 0%, transparent 70%),
+      radial-gradient(40% 40% at 90% 10%, rgba(196, 30, 30, 0.06) 0%, transparent 70%);
+  }
+  [data-theme="light"] .nv-hero-glow {
+    background:
+      radial-gradient(60% 50% at 15% 0%, rgba(196, 30, 30, 0.08) 0%, transparent 70%),
+      radial-gradient(40% 40% at 90% 10%, rgba(196, 30, 30, 0.04) 0%, transparent 70%);
+  }
+  .nv-grid-bg {
+    background-image:
+      linear-gradient(var(--nv-border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--nv-border) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(70% 60% at 50% 0%, #000 0%, transparent 75%);
+  }
+
+  .nv-skeleton {
+    background: linear-gradient(90deg, var(--nv-card) 0%, var(--nv-card-hover) 50%, var(--nv-card) 100%);
+    background-size: 200% 100%;
+    animation: nvShimmer 1.4s ease-in-out infinite;
+    border-radius: 10px;
+  }
+}
+
+/* ─── Animationen ─── */
+@keyframes nvFadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes nvFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes nvPulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.5); }
+}
+@keyframes nvShimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+@keyframes nvBlink {
+  50% { opacity: 0; }
+}
+
+@layer utilities {
+  .nv-anim {
+    animation: nvFadeUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(var(--i, 0) * 80ms);
+  }
+  .nv-fade { animation: nvFade 0.4s ease both; }
+  .nv-pulse-dot { animation: nvPulseDot 2s ease infinite; }
+  .nv-caret::after {
+    content: "▍";
+    margin-left: 1px;
+    color: var(--nv-red);
+    animation: nvBlink 1s steps(1) infinite;
+  }
+  .nv-underline { position: relative; }
+  .nv-underline::after {
+    content: "";
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 0;
+    height: 1px;
+    background: var(--nv-red);
+    transition: width 0.3s ease;
+  }
+  .nv-underline:hover::after { width: 100%; }
+  .nv-scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .nv-anim, .nv-fade { animation: none; }
+  .nv-pulse-dot, .nv-skeleton { animation: none; }
+  .nv-card-hover:hover, .nv-btn:hover { transform: none !important; }
+}

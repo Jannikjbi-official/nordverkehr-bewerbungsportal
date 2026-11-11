@@ -1,0 +1,482 @@
+// Nordverkehr Bewerbungsportal – Datenmodell (MongoDB)
+// Nach jeder Änderung: `npm run db:push` (überträgt Schema + Indizes)
+// MongoDB muss als Replica Set laufen (Atlas: immer; lokal: `npm run db:dev`),
+// weil das Portal Transaktionen nutzt.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────────────────────
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  IN_REVIEW
+  INTERVIEW
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum PositionStatus {
+  OPEN
+  CLOSED
+  HIDDEN
+}
+
+enum QuestionType {
+  SHORT_TEXT
+  LONG_TEXT
+  NUMBER
+  SELECT
+  MULTI_SELECT
+  CHECKBOX
+  URL
+  FILE
+  SCENARIO
+}
+
+enum VoteValue {
+  PRO
+  CONTRA
+  ABSTAIN
+}
+
+enum MessageDirection {
+  TEAM_TO_APPLICANT
+  APPLICANT_TO_TEAM
+  SYSTEM
+  /// Automatische KI-Antwort, wenn kein Teammitglied online ist
+  AI_TO_APPLICANT
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+  DM_CLOSED
+  NOT_SENT
+}
+
+enum TemplateCategory {
+  EINGANG
+  RUECKFRAGE
+  EINLADUNG
+  ANNAHME
+  ABLEHNUNG
+  ERINNERUNG
+  SONSTIGES
+}
+
+enum OutboxType {
+  DM
+  CHANNEL_MESSAGE
+  ADD_ROLE
+}
+
+enum OutboxStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+}
+
+// ─────────────────────────────────────────────────────────────
+// Nutzer & Zugriff
+// ─────────────────────────────────────────────────────────────
+
+model User {
+  id               String    @id @default(cuid()) @map("_id")
+  discordId        String    @unique
+  username         String
+  globalName       String?
+  avatar           String?
+  discordCreatedAt DateTime
+  // Erhöhen = alle Sitzungen dieses Nutzers sofort ungültig
+  sessionVersion   Int       @default(0)
+
+  // Rollen-Cache (kurzlebig, siehe src/lib/auth/access.ts)
+  inGuild          Boolean   @default(false)
+  isTeam           Boolean   @default(false)
+  isAdmin          Boolean   @default(false)
+  guildJoinedAt    DateTime?
+  roleCheckedAt    DateTime?
+
+  lastLoginAt      DateTime?
+  /// Letzte Aktivität im Team-Bereich (für "Team online?")
+  lastTeamActiveAt DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  applications     Application[]   @relation("Applicant")
+  decisions        Application[]   @relation("Decider")
+  votes            Vote[]
+  comments         Comment[]
+  messages         Message[]
+  statusChanges    StatusChange[]
+  uploads          Upload[]
+  notesAbout       UserNote[]      @relation("NoteSubject")
+  notesWritten     UserNote[]      @relation("NoteAuthor")
+  bansAbout        UserBan[]       @relation("BanSubject")
+  bansCreated      UserBan[]       @relation("BanCreator")
+  bansLifted       UserBan[]       @relation("BanLifter")
+  templates        MessageTemplate[]
+  auditLogs        AuditLog[]
+  aiUsage          AiUsage[]
+}
+
+model UserNote {
+  id        String   @id @default(cuid()) @map("_id")
+  subjectId String
+  subject   User     @relation("NoteSubject", fields: [subjectId], references: [id], onDelete: Cascade)
+  authorId  String?
+  author    User?    @relation("NoteAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([subjectId])
+}
+
+model UserBan {
+  id          String    @id @default(cuid()) @map("_id")
+  subjectId   String
+  subject     User      @relation("BanSubject", fields: [subjectId], references: [id], onDelete: Cascade)
+  reason      String
+  expiresAt   DateTime?
+  createdById String?
+  createdBy   User?     @relation("BanCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  liftedAt    DateTime?
+  liftedById  String?
+  liftedBy    User?     @relation("BanLifter", fields: [liftedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+
+  @@index([subjectId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Positionen & Formular
+// ─────────────────────────────────────────────────────────────
+
+/// Bewerbungsart (heute nur "team", später z. B. "whitelist", "fraktion")
+model ApplicationType {
+  id          String        @id @default(cuid()) @map("_id")
+  key         String        @unique
+  name        String
+  description String?
+  active      Boolean       @default(true)
+  positions   Position[]
+  sections    FormSection[]
+  createdAt   DateTime      @default(now())
+}
+
+model Position {
+  id            String          @id @default(cuid()) @map("_id")
+  typeId        String
+  type          ApplicationType @relation(fields: [typeId], references: [id], onDelete: Restrict)
+  slug          String          @unique
+  title         String
+  tagline       String
+  description   String
+  tasks         String[]
+  requirements  String[]
+  icon          String          @default("users")
+  status        PositionStatus  @default(OPEN)
+  sortOrder     Int             @default(0)
+  minAge        Int?
+  cooldownDays  Int?
+  acceptRoleId  String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  sections      FormSection[]
+  applications  Application[]
+
+  @@index([typeId, status])
+}
+
+/// Formular-Schritt. positionId = null → gilt für alle Positionen der Bewerbungsart.
+model FormSection {
+  id          String          @id @default(cuid()) @map("_id")
+  typeId      String
+  type        ApplicationType @relation(fields: [typeId], references: [id], onDelete: Cascade)
+  positionId  String?
+  position    Position?       @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  sortOrder   Int             @default(0)
+  questions   Question[]
+  createdAt   DateTime        @default(now())
+
+  @@index([typeId, positionId])
+}
+
+model Question {
+  id          String       @id @default(cuid()) @map("_id")
+  sectionId   String
+  section     FormSection  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  label       String
+  helpText    String?
+  placeholder String?
+  type        QuestionType
+  required    Boolean      @default(true)
+  minLength   Int?
+  maxLength   Int?
+  minValue    Int?
+  maxValue    Int?
+  options     String[]
+  sortOrder   Int          @default(0)
+  archived    Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([sectionId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Bewerbungen
+// ─────────────────────────────────────────────────────────────
+
+model Application {
+  id                   String            @id @default(cuid()) @map("_id")
+  publicId             String?           @unique
+  userId               String
+  user                 User              @relation("Applicant", fields: [userId], references: [id], onDelete: Cascade)
+  positionId           String
+  position             Position          @relation(fields: [positionId], references: [id], onDelete: Restrict)
+  status               ApplicationStatus @default(DRAFT)
+
+  age                  Int?
+  /// Entwurfsdaten (Autosave): { [questionId]: value }
+  draftData            Json              @default("{}")
+  draftStep            Int               @default(0)
+  confirmations        Json?
+  consentVersion       String?
+  consentAt            DateTime?
+
+  submittedAt          DateTime?
+  firstReviewedAt      DateTime?
+  decidedAt            DateTime?
+  decidedById          String?
+  decidedBy            User?             @relation("Decider", fields: [decidedById], references: [id], onDelete: SetNull)
+  interviewAt          DateTime?
+  interviewNote        String?
+  rejectionReason      String?
+
+  confirmationDmStatus DeliveryStatus?
+  /// Automatische Hinweise (kein Score!): [{ code, message }]
+  flags                Json              @default("[]")
+  aiSummary            String?
+  aiSummaryAt          DateTime?
+  /// KI-Einordnung (beschreibende Kategorien, kein Ranking)
+  aiTags               String[]          @default([])
+  aiTaggedAt           DateTime?
+
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  answers              Answer[]
+  uploads              Upload[]
+  statusChanges        StatusChange[]
+  votes                Vote[]
+  comments             Comment[]
+  messages             Message[]
+
+  @@index([status])
+  @@index([positionId])
+  @@index([userId])
+  @@index([submittedAt])
+}
+
+/// Eingereichte Antwort inkl. Snapshot der Frage (Formular-Änderungen verfälschen alte Bewerbungen nicht)
+model Answer {
+  id            String       @id @default(cuid()) @map("_id")
+  applicationId String
+  application   Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  questionId    String?
+  sectionTitle  String
+  label         String
+  type          QuestionType
+  value         Json
+  sortOrder     Int          @default(0)
+
+  @@index([applicationId])
+}
+
+model Upload {
+  id            String       @id @default(cuid()) @map("_id")
+  ownerId       String
+  owner         User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  applicationId String?
+  application   Application? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  questionId    String?
+  fileName      String
+  mime          String
+  size          Int
+  width         Int
+  height        Int
+  sha256        String
+  /// Bild als WebP (ohne Metadaten) – in der DB, damit es auf Vercel ohne Dateisystem läuft
+  data          Bytes
+  createdAt     DateTime     @default(now())
+
+  @@index([applicationId])
+  @@index([ownerId])
+}
+
+model StatusChange {
+  id            String             @id @default(cuid()) @map("_id")
+  applicationId String
+  application   Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  from          ApplicationStatus?
+  to            ApplicationStatus
+  actorId       String?
+  actor         User?              @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  note          String?
+  createdAt     DateTime           @default(now())
+
+  @@index([applicationId])
+}
+
+model Vote {
+  id            String      @id @default(cuid()) @map("_id")
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  value         VoteValue
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([applicationId, userId])
+}
+
+model Comment {
+  id            String      @id @default(cuid()) @map("_id")
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  authorId      String?
+  author        User?       @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  body          String
+  createdAt     DateTime    @default(now())
+
+  @@index([applicationId])
+}
+
+model Message {
+  id             String           @id @default(cuid()) @map("_id")
+  applicationId  String
+  application    Application      @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  direction      MessageDirection
+  authorId       String?
+  author         User?            @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  body           String
+  templateIds    String[]
+  deliveryStatus DeliveryStatus   @default(NOT_SENT)
+  deliveryError  String?
+  sentAt         DateTime?
+  readAt         DateTime?
+  /// Verdacht auf Manipulationsversuch (Prompt Injection) – nur Hinweis fürs Team
+  flagged        Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+  outboxJobs     OutboxJob[]
+
+  @@index([applicationId, createdAt])
+}
+
+model MessageTemplate {
+  id          String           @id @default(cuid()) @map("_id")
+  category    TemplateCategory
+  title       String
+  body        String
+  sortOrder   Int              @default(0)
+  active      Boolean          @default(true)
+  createdById String?
+  createdBy   User?            @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([category, sortOrder])
+}
+
+// ─────────────────────────────────────────────────────────────
+// System
+// ─────────────────────────────────────────────────────────────
+
+model Setting {
+  key         String   @id @map("_id")
+  value       Json
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(cuid()) @map("_id")
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action     String
+  targetType String?
+  targetId   String?
+  meta       Json?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([targetType, targetId])
+  @@index([actorId])
+}
+
+model AiUsage {
+  id           String   @id @default(cuid()) @map("_id")
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  feature      String
+  model        String
+  inputTokens  Int
+  outputTokens Int
+  /// Kosten in Millionstel USD (Ganzzahl, keine Rundungsfehler)
+  costMicroUsd Int
+  success      Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([feature, createdAt])
+}
+
+model RateLimit {
+  key     String   @id @map("_id")
+  count   Int
+  resetAt DateTime
+}
+
+model OutboxJob {
+  id            String       @id @default(cuid()) @map("_id")
+  type          OutboxType
+  payload       Json
+  status        OutboxStatus @default(PENDING)
+  attempts      Int          @default(0)
+  maxAttempts   Int          @default(5)
+  runAt         DateTime     @default(now())
+  lockedAt      DateTime?
+  lastError     String?
+  result        Json?
+  messageId     String?
+  message       Message?     @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  applicationId String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([status, runAt])
+}
+
+model Counter {
+  key   String @id @map("_id")
+  value Int
+}
