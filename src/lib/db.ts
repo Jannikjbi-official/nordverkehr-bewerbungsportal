@@ -7,10 +7,26 @@ import { PrismaClient } from "@prisma/client";
  */
 const globalForPrisma = globalThis as unknown as { __nvPrisma?: PrismaClient };
 
+export const DEFAULT_DB_NAME = "nordverkehr";
+
+/**
+ * Prisma braucht einen Datenbanknamen im Connection String. Die Vercel-Atlas-
+ * Integration liefert oft `…mongodb.net/?retryWrites=true` ohne Namen –
+ * dann wird `nordverkehr` ergänzt.
+ */
+export function withDatabaseName(url: string, name = DEFAULT_DB_NAME): string {
+  const match = url.match(/^(mongodb(?:\+srv)?:\/\/[^/?#]+)(\/[^?#]*)?(\?[^#]*)?(#.*)?$/);
+  if (!match) return url;
+  const [, base, path, query = ""] = match;
+  if (path && path !== "/") return url;
+  return `${base}/${name}${query}`;
+}
+
 export function getDb(): PrismaClient {
   if (!globalForPrisma.__nvPrisma) {
-    if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL ist nicht gesetzt.");
-    globalForPrisma.__nvPrisma = new PrismaClient();
+    const url = process.env.DATABASE_URL;
+    if (!url) throw new Error("DATABASE_URL ist nicht gesetzt.");
+    globalForPrisma.__nvPrisma = new PrismaClient({ datasourceUrl: withDatabaseName(url) });
   }
   return globalForPrisma.__nvPrisma;
 }

@@ -4,6 +4,7 @@
  */
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
+import { withDatabaseName } from "../src/lib/db";
 
 const OPEN = ["DRAFT", "SUBMITTED", "IN_REVIEW", "INTERVIEW"];
 
@@ -28,7 +29,7 @@ export async function ensureIndexes(db: PrismaClient) {
 }
 
 if (process.argv[1]?.includes("mongo-indexes")) {
-  const db = new PrismaClient();
+  const db = new PrismaClient({ datasourceUrl: withDatabaseName(process.env.DATABASE_URL ?? "") });
   ensureIndexes(db)
     .then(() => console.log("✓ MongoDB-Indizes angelegt"))
     .catch((e) => {

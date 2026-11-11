@@ -12,8 +12,9 @@ import { PrismaClient, type Prisma } from "@prisma/client";
 import type { ApplicationStatus, QuestionType, VoteValue } from "@prisma/client";
 import { GENERAL_SECTIONS, POSITIONS, TEMPLATES, type SeedSection } from "./seed-data";
 import { ensureIndexes } from "../scripts/mongo-indexes";
+import { withDatabaseName } from "../src/lib/db";
 
-const db = new PrismaClient();
+const db = new PrismaClient({ datasourceUrl: withDatabaseName(process.env.DATABASE_URL ?? "") });
 
 async function createSections(typeId: string, positionId: string | null, sections: SeedSection[], offset = 0) {
   for (const [i, s] of sections.entries()) {

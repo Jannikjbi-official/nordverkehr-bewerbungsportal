@@ -16,7 +16,7 @@
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
     "db:dev": "tsx scripts/dev-mongo.mts",
-    "db:push": "prisma db push && tsx scripts/mongo-indexes.ts"
+    "db:push": "tsx scripts/db-push.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",

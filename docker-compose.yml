@@ -41,7 +41,7 @@ services:
     environment:
       DATABASE_URL: mongodb://mongo:27017/nordverkehr?replicaSet=rs0&directConnection=true
       SEED_DEMO: "false"
-    command: ["sh", "-c", "npx prisma db push --skip-generate && npx tsx scripts/mongo-indexes.ts && npx prisma db seed"]
+    command: ["sh", "-c", "npx tsx scripts/db-push.mts --skip-generate && npx prisma db seed"]
     depends_on:
       mongo: { condition: service_healthy }
     profiles: ["setup"]
