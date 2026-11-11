@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { confirmDialog } from "@/components/ConfirmDialog";
 import { Select } from "@/components/Select";
 import { useState, useTransition } from "react";
 import { Trash } from "@phosphor-icons/react/ssr";
@@ -52,7 +53,7 @@ export function NoteForm({ subjectId }: { subjectId: string }) {
 export function DeleteNoteButton({ noteId }: { noteId: string }) {
   const { pending, run } = useRun();
   return (
-    <button type="button" className="nv-btn nv-btn-quiet !p-1" aria-label="Notiz löschen" disabled={pending} onClick={() => confirm("Notiz löschen?") && run(() => deleteNoteAction(noteId))}>
+    <button type="button" className="nv-btn nv-btn-quiet !p-1" aria-label="Notiz löschen" disabled={pending} onClick={async () => (await confirmDialog({ title: "Notiz löschen?", confirmLabel: "Löschen", tone: "danger" })) && run(() => deleteNoteAction(noteId))}>
       <Trash size={14} aria-hidden />
     </button>
   );
@@ -65,9 +66,9 @@ export function BanForm({ subjectId }: { subjectId: string }) {
   return (
     <form
       className="space-y-3"
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
-        if (!confirm("Nutzer für Bewerbungen sperren?")) return;
+        if (!(await confirmDialog({ title: "Nutzer sperren?", body: "Gesperrte können sich nicht mehr bewerben.", confirmLabel: "Sperren", tone: "danger" }))) return;
         run(() => banUserAction({ subjectId, reason, days: days === "0" ? null : Number(days) }), () => setReason(""));
       }}
     >
@@ -109,7 +110,7 @@ export function BanForm({ subjectId }: { subjectId: string }) {
 export function LiftBanButton({ banId }: { banId: string }) {
   const { pending, run } = useRun();
   return (
-    <button type="button" className="nv-btn nv-btn-ghost nv-btn-sm" disabled={pending} onClick={() => confirm("Sperre aufheben?") && run(() => liftBanAction(banId))}>
+    <button type="button" className="nv-btn nv-btn-ghost nv-btn-sm" disabled={pending} onClick={async () => (await confirmDialog({ title: "Sperre aufheben?", confirmLabel: "Aufheben" })) && run(() => liftBanAction(banId))}>
       Sperre aufheben
     </button>
   );

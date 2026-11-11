@@ -287,6 +287,17 @@
     border: 1px solid color-mix(in srgb, var(--tone-danger) 35%, transparent);
   }
   .nv-btn-danger:hover:not(:disabled) { background: var(--tone-danger-bg); }
+  /* Gefüllter roter Knopf (Bestätigen von Löschen & Co.) */
+  .nv-btn-danger-solid {
+    background: var(--nv-red);
+    color: #fff;
+    border: 1px solid var(--nv-red);
+  }
+  .nv-btn-danger-solid:hover:not(:disabled) { filter: brightness(1.08); }
+
+  /* Bestätigungs-Box: sanft einblenden */
+  .nv-confirm[open] { animation: nvConfirmIn 0.18s ease-out both; }
+  .nv-confirm[open]::backdrop { animation: nvFade 0.18s ease-out both; }
 
   /* Discord-Button wie auf der Hauptseite (3D-Verlauf) */
   .nv-btn-discord {
@@ -444,6 +455,10 @@
 @keyframes nvFadeUp {
   from { opacity: 0; transform: translateY(18px); }
   to { opacity: 1; transform: translateY(0); }
+}
+@keyframes nvConfirmIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
 }
 @keyframes nvFade {
   from { opacity: 0; }

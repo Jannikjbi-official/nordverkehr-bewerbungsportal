@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { confirmDialog } from "@/components/ConfirmDialog";
 import { Select } from "@/components/Select";
 import { POSITION_STATUS_OPTIONS } from "@/lib/positions-status";
 import { useState, useTransition } from "react";
@@ -175,8 +176,8 @@ export function PositionForm({ position }: { position: PositionData | null }) {
           <button
             type="button"
             className="nv-btn nv-btn-danger nv-btn-sm"
-            onClick={() => {
-              if (!confirm("Position löschen? Geht nur ohne Bewerbungen.")) return;
+            onClick={async () => {
+              if (!(await confirmDialog({ title: "Position löschen?", body: "Geht nur, solange es keine Bewerbungen darauf gibt.", confirmLabel: "Löschen", tone: "danger" }))) return;
               start(async () => {
                 const res = await deletePositionAction(p.id!);
                 if (!res.ok) setError(res.error);

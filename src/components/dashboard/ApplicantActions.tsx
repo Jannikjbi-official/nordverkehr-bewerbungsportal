@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { confirmDialog } from "@/components/ConfirmDialog";
 import { useEffect, useState, useTransition } from "react";
 import { PaperPlaneRight } from "@phosphor-icons/react/ssr";
 import { markMessagesReadAction, replyToTeamAction, withdrawApplicationAction } from "@/app/actions/application";
@@ -79,7 +80,9 @@ export function WithdrawButton({ applicationId, needsReason }: { applicationId: 
         disabled={pending}
         onClick={() => {
           if (needsReason) return setOpen(true);
-          if (confirm("Bewerbung wirklich zurückziehen? Das kann nicht rückgängig gemacht werden.")) withdraw();
+          void confirmDialog({ title: "Bewerbung zurückziehen?", body: "Das kann nicht rückgängig gemacht werden.", confirmLabel: "Zurückziehen", tone: "danger" }).then(
+            (ok) => ok && withdraw(),
+          );
         }}
       >
         {pending ? "Wird zurückgezogen …" : "Bewerbung zurückziehen"}

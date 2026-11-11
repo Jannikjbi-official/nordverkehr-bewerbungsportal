@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { confirmDialog } from "@/components/ConfirmDialog";
 import { useState, useTransition } from "react";
 import { ArrowClockwise, ArrowDown, PaperPlaneTilt } from "@phosphor-icons/react/ssr";
 import { publishJobsPostAction, publishSpotlightAction } from "@/app/actions/admin";
@@ -32,7 +33,9 @@ export function JobsPostButtons({ posted, slug, compact }: { posted: boolean; sl
               type="button"
               className={`nv-btn nv-btn-quiet ${size}`}
               disabled={pending}
-              onClick={() => confirm("Alten Post löschen und neu (unten im Kanal) posten?") && run("new")}
+              onClick={async () =>
+                (await confirmDialog({ title: "Neu posten?", body: "Der alte Post wird gelöscht und unten im Kanal neu gepostet.", confirmLabel: "Neu posten" })) && run("new")
+              }
             >
               <ArrowDown size={14} aria-hidden /> Neu posten
             </button>

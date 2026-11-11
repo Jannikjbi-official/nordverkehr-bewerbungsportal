@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { confirmDialog } from "@/components/ConfirmDialog";
 import { useMemo, useRef, useState, useTransition } from "react";
 import { PaperPlaneTilt, Plus, Star, WarningCircle, X } from "@phosphor-icons/react/ssr";
 import { sendMessageAction } from "@/app/actions/team";
@@ -67,10 +68,18 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
     requestAnimationFrame(() => textarea.current?.focus());
   }
 
-  function send() {
+  async function send() {
     setSendError(null);
-    if (rendered.missing.length && !confirm(`Nicht ersetzte Platzhalter: ${rendered.missing.map((m) => `{${m}}`).join(", ")}. Trotzdem senden?`)) return;
-    if (!confirm("Nachricht jetzt per Discord-DM senden? Sie erscheint auch im Portal des Bewerbers.")) return;
+    if (
+      rendered.missing.length &&
+      !(await confirmDialog({
+        title: "Platzhalter ohne Wert",
+        body: `Nicht ersetzt: ${rendered.missing.map((m) => `{${m}}`).join(", ")}. Trotzdem senden?`,
+        confirmLabel: "Trotzdem senden",
+      }))
+    )
+      return;
+    if (!(await confirmDialog({ title: "Nachricht senden?", body: "Sie geht per Discord-DM raus und erscheint im Portal des Bewerbers.", confirmLabel: "Senden" }))) return;
     start(async () => {
       const res = await sendMessageAction({
         applicationId,

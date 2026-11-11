@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { confirmDialog } from "@/components/ConfirmDialog";
 import { useState, useTransition } from "react";
 import { CheckCircle } from "@phosphor-icons/react/ssr";
 import { acknowledgeWithdrawalAction } from "@/app/actions/team";
@@ -16,8 +17,12 @@ export function AckWithdrawalButton({ applicationId, size = "sm" }: { applicatio
         type="button"
         className={`nv-btn nv-btn-ghost ${size === "sm" ? "nv-btn-sm" : ""}`}
         disabled={pending}
-        onClick={() =>
-          confirm("Rückzug bestätigen? Der Bewerber bekommt eine kurze Bestätigung, Rückfragen sind danach nicht mehr möglich.") &&
+        onClick={async () =>
+          (await confirmDialog({
+            title: "Rückzug bestätigen?",
+            body: "Der Bewerber bekommt eine kurze Bestätigung im Portal und per DM. Rückfragen sind danach nicht mehr möglich.",
+            confirmLabel: "Rückzug bestätigen",
+          })) &&
           start(async () => {
             setError(null);
             const r = await acknowledgeWithdrawalAction(applicationId);

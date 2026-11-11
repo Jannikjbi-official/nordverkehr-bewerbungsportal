@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { confirmDialog } from "@/components/ConfirmDialog";
 import { useState, useTransition } from "react";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -154,7 +155,14 @@ function SortableSection({ section, index, ctx }: { section: FormSectionDef; ind
           type="button"
           className="nv-btn nv-btn-quiet !p-1.5"
           aria-label="Schritt löschen"
-          onClick={() => confirm(`Schritt „${section.title}“ samt Fragen löschen? Eingereichte Antworten bleiben erhalten.`) && run(() => deleteSectionAction(section.id))}
+          onClick={async () =>
+            (await confirmDialog({
+              title: "Schritt löschen?",
+              body: `„${section.title}“ wird samt Fragen gelöscht. Eingereichte Antworten bleiben erhalten.`,
+              confirmLabel: "Löschen",
+              tone: "danger",
+            })) && run(() => deleteSectionAction(section.id))
+          }
         >
           <Trash size={15} aria-hidden />
         </button>
@@ -169,7 +177,10 @@ function SortableSection({ section, index, ctx }: { section: FormSectionDef; ind
                   key={q.id}
                   q={q}
                   onEdit={() => setEditing(q)}
-                  onArchive={() => confirm("Frage entfernen? Bereits eingereichte Antworten bleiben erhalten.") && run(() => archiveQuestionAction(q.id))}
+                  onArchive={async () =>
+                    (await confirmDialog({ title: "Frage entfernen?", body: "Bereits eingereichte Antworten bleiben erhalten.", confirmLabel: "Entfernen", tone: "danger" })) &&
+                    run(() => archiveQuestionAction(q.id))
+                  }
                 />
               ))}
             </ul>

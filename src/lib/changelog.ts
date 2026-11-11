@@ -60,6 +60,14 @@ export const versionLabel = (e: Pick<ChangelogEntry, "version">) => `Version ${e
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "v1.1",
+    version: "1.1",
+    date: "2026-11-12",
+    items: [
+      { kind: "besser", text: "**Bestätigungen** – eigene Abfrage-Fenster im Nordverkehr-Stil statt der grauen Browser-Boxen, mit rotem Knopf bei Löschen, Sperren & Co." },
+    ],
+  },
+  {
     id: "v1.0",
     version: "1.0",
     date: "2026-11-11",

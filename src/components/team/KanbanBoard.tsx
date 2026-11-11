@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { confirmDialog } from "@/components/ConfirmDialog";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
@@ -44,7 +45,7 @@ export function KanbanBoard({ items: initial }: { items: BoardItem[] }) {
   const [, start] = useTransition();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(KeyboardSensor));
 
-  function onDragEnd(e: DragEndEvent) {
+  async function onDragEnd(e: DragEndEvent) {
     setDragging(null);
     const item = items.find((i) => i.id === e.active.id);
     const to = e.over?.id as ApplicationStatus | undefined;
@@ -53,7 +54,12 @@ export function KanbanBoard({ items: initial }: { items: BoardItem[] }) {
       setMessage({ tone: "err", text: `${STATUS_LABEL[item.status]} → ${STATUS_LABEL[to]} ist nicht möglich.` });
       return;
     }
-    if ((to === "ACCEPTED" || to === "REJECTED") && !confirm(`${item.name} wirklich auf „${STATUS_LABEL[to]}“ setzen?`)) return;
+    if ((to === "ACCEPTED" || to === "REJECTED") && !(await confirmDialog({
+        title: `${item.name} auf „${STATUS_LABEL[to]}“ setzen?`,
+        body: to === "REJECTED" ? "Die Bewerbung wird abgelehnt, die Sperrfrist startet." : "Die Person wird ins Team aufgenommen.",
+        confirmLabel: STATUS_LABEL[to],
+        tone: to === "REJECTED" ? "danger" : "default",
+      }))) return;
 
     const prev = items;
     setItems((list) => list.map((i) => (i.id === item.id ? { ...i, status: to } : i)));

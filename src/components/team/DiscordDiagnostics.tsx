@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { confirmDialog } from "@/components/ConfirmDialog";
 import { useState, useTransition } from "react";
 import { ArrowClockwise, CheckCircle, PaperPlaneTilt, WarningCircle } from "@phosphor-icons/react/ssr";
 import { deleteChangelogPostsAction, discordTestAction, flushOutboxAction, postChangelogNowAction } from "@/app/actions/admin";
@@ -51,7 +52,14 @@ export function DiscordDiagnostics({ failed, pending }: { failed: FailedJob[]; p
           type="button"
           className="nv-btn nv-btn-ghost nv-btn-sm"
           disabled={busy}
-          onClick={() => confirm("Alle Changelog-Posts des Bots im Kanal löschen? Die Versionen werden danach beim nächsten Lauf neu gepostet.") && run("Changelog", () => deleteChangelogPostsAction())}
+          onClick={async () =>
+            (await confirmDialog({
+              title: "Changelog-Posts löschen?",
+              body: "Alle Changelog-Posts des Bots im Kanal werden gelöscht. Die Versionen werden beim nächsten Lauf neu gepostet.",
+              confirmLabel: "Löschen",
+              tone: "danger",
+            })) && run("Changelog", () => deleteChangelogPostsAction())
+          }
         >
           Changelog-Posts im Kanal löschen
         </button>

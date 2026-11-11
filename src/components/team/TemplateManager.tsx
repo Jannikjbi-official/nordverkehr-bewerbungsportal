@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { confirmDialog } from "@/components/ConfirmDialog";
 import { Select } from "@/components/Select";
 import { useState, useTransition } from "react";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
@@ -110,8 +111,8 @@ export function TemplateManager({ templates: initial }: { templates: Template[] 
                   t={t}
                   active={editing?.id === t.id}
                   onEdit={() => setEditing(t)}
-                  onDelete={() => {
-                    if (!confirm(`Baustein „${t.title}“ löschen?`)) return;
+                  onDelete={async () => {
+                    if (!(await confirmDialog({ title: "Baustein löschen?", body: `„${t.title}“ wird gelöscht.`, confirmLabel: "Löschen", tone: "danger" }))) return;
                     start(async () => {
                       await deleteTemplateAction(t.id);
                       router.refresh();

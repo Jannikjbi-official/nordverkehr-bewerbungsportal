@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { confirmDialog } from "@/components/ConfirmDialog";
 import { useState, useTransition } from "react";
 import { HandGrabbing, LockSimpleOpen, PushPin } from "@phosphor-icons/react/ssr";
 import { claimAction } from "@/app/actions/team";
@@ -68,7 +69,13 @@ export function ClaimBox({ applicationId, me, claimedBy, claimedAgo }: Props) {
             type="button"
             className="nv-btn nv-btn-ghost nv-btn-sm"
             disabled={pending}
-            onClick={() => confirm(`${claimedBy.name} betreut diese Bewerbung. Übernehmen?`) && run("claim")}
+            onClick={async () =>
+              (await confirmDialog({
+                title: "Bewerbung übernehmen?",
+                body: `${claimedBy.name} betreut diese Bewerbung gerade. Danach bist du zuständig.`,
+                confirmLabel: "Übernehmen",
+              })) && run("claim")
+            }
           >
             <HandGrabbing size={14} aria-hidden /> Übernehmen
           </button>

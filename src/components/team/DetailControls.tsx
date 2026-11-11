@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { confirmDialog } from "@/components/ConfirmDialog";
 import { useState, useTransition } from "react";
 import { ArrowClockwise, CalendarPlus, MinusCircle, ThumbsDown, ThumbsUp, Trash } from "@phosphor-icons/react/ssr";
 import {
@@ -41,10 +42,15 @@ export function StatusControl({ applicationId, current, targets }: { application
   return (
     <form
       className="space-y-2"
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
         if (!to) return;
-        if ((to === "ACCEPTED" || to === "REJECTED") && !confirm(`Status wirklich auf „${STATUS_LABEL[to]}“ setzen?`)) return;
+        if ((to === "ACCEPTED" || to === "REJECTED") && !(await confirmDialog({
+            title: `Status auf „${STATUS_LABEL[to]}“ setzen?`,
+            body: to === "REJECTED" ? "Die Bewerbung wird abgelehnt, die Sperrfrist startet." : "Die Person wird ins Team aufgenommen.",
+            confirmLabel: STATUS_LABEL[to],
+            tone: to === "REJECTED" ? "danger" : "default",
+          }))) return;
         run(
           () => changeStatusAction({ applicationId, to: to as "SUBMITTED", reason: reason || undefined }),
           () => {
@@ -187,7 +193,9 @@ export function DeleteCommentButton({ commentId }: { commentId: string }) {
       aria-label="Kommentar löschen"
       className="nv-btn nv-btn-quiet !p-1"
       disabled={pending}
-      onClick={() => confirm("Kommentar löschen?") && run(() => deleteCommentAction(commentId))}
+      onClick={async () =>
+        (await confirmDialog({ title: "Kommentar löschen?", confirmLabel: "Löschen", tone: "danger" })) && run(() => deleteCommentAction(commentId))
+      }
     >
       <Trash size={14} aria-hidden />
     </button>

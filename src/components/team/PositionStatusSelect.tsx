@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { alertDialog } from "@/components/ConfirmDialog";
 import { useTransition } from "react";
 import { setPositionStatusAction } from "@/app/actions/admin";
 import { Select } from "@/components/Select";
@@ -20,7 +21,7 @@ export function PositionStatusSelect({ positionId, status }: { positionId: strin
       onChange={(v) =>
         start(async () => {
           const res = await setPositionStatusAction(positionId, v);
-          if (!res.ok) alert(res.error);
+          if (!res.ok) await alertDialog({ title: "Status nicht geändert", body: res.error });
           router.refresh();
         })
       }
