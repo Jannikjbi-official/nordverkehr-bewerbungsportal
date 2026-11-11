@@ -77,6 +77,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       { kind: "neu", text: "**Hilfe & Begriffe** – alle Begriffe erklärt, „Was heißt das?“-Links direkt an Hinweisen und Knöpfen." },
       { kind: "neu", text: "**Gefahrenzone** – Admins können alle Bewerbungen löschen, mit eingetipptem Bestätigungssatz." },
       { kind: "neu", text: "**Eigene Auswahlmenüs** – überall im Nordverkehr-Stil statt Browser-Dropdowns, voll per Tastatur bedienbar." },
+      { kind: "neu", text: "**Stellenaufruf** – „Wir suchen neue Teammitglieder!“ im Discord, automatisch aus den Positionen erzeugt und bei Änderungen aktualisiert." },
       { kind: "neu", text: "**Changelog** – jeden Tag um 0 Uhr eine neue Version im Team-Bereich und auf Discord. Admins sehen den laufenden Tag vorab als Vorschau." },
     ],
   },

@@ -91,6 +91,8 @@ export interface DiscordApi {
   getMember(guildId: string, userId: string): Promise<GuildMemberInfo | null>;
   openDm(userId: string): Promise<string>;
   postMessage(channelId: string, body: RESTPostAPIChannelMessageJSONBody): Promise<string>;
+  /** Eigene Nachricht des Bots bearbeiten (z. B. Stellenaufruf aktualisieren). */
+  editMessage(channelId: string, messageId: string, body: RESTPostAPIChannelMessageJSONBody): Promise<void>;
   /** Eigene Nachricht des Bots löschen. Bereits gelöschte Nachrichten sind kein Fehler. */
   deleteMessage(channelId: string, messageId: string): Promise<void>;
 
@@ -123,6 +125,13 @@ export function createDiscordApi(token: string, opts: { timeoutMs?: number } = {
       try {
         const msg = (await rest.post(Routes.channelMessages(channelId), { body })) as APIMessage;
         return msg.id;
+      } catch (err) {
+        throw classifyDiscordError(err);
+      }
+    },
+    async editMessage(channelId, messageId, body) {
+      try {
+        await rest.patch(Routes.channelMessage(channelId, messageId), { body });
       } catch (err) {
         throw classifyDiscordError(err);
       }

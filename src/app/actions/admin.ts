@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth/session";
@@ -11,6 +12,14 @@ import { KEY_PATTERN, findSimilarQuestions, suggestKey } from "@/lib/application
 import { normalizeLabel } from "@/lib/setup/questions";
 
 const id = z.string().min(10).max(40);
+
+/** Stellenaufruf in Discord nach der Antwort aktualisieren (falls schon gepostet). */
+function refreshJobsAfter() {
+  after(async () => {
+    const { refreshJobsPostQuietly } = await import("@/lib/discord/jobs-post");
+    await refreshJobsPostQuietly(db);
+  });
+}
 const QTYPE = z.enum(["SHORT_TEXT", "LONG_TEXT", "NUMBER", "SELECT", "MULTI_SELECT", "CHECKBOX", "URL", "FILE", "SCENARIO"]);
 const snowflake = z.string().regex(/^\d{15,25}$/, "Ungültige Rollen-ID").nullable();
 
@@ -67,6 +76,7 @@ export async function savePositionAction(input: z.input<typeof positionSchema>):
   }
   revalidatePath("/team/positionen");
   revalidatePath("/");
+  refreshJobsAfter();
   return { ok: true, data: { id: saved.id } };
 }
 
@@ -77,6 +87,7 @@ export async function setPositionStatusAction(positionId: string, status: "OPEN"
   await audit("position.status", { actorId: user.id, targetType: "position", targetId: positionId, meta: { status } });
   revalidatePath("/team/positionen");
   revalidatePath("/");
+  refreshJobsAfter();
   return { ok: true };
 }
 
@@ -87,6 +98,7 @@ export async function deletePositionAction(positionId: string): Promise<ActionRe
   await db.position.delete({ where: { id: positionId } });
   await audit("position.delete", { actorId: user.id, targetType: "position", targetId: positionId });
   revalidatePath("/team/positionen");
+  refreshJobsAfter();
   return { ok: true };
 }
 
@@ -336,5 +348,23 @@ export async function resetApplicationsAction(input: z.input<typeof resetSchema>
   } catch (err) {
     console.error("[reset]", err);
     return { ok: false, error: "Zurücksetzen fehlgeschlagen – es wurde nichts gelöscht." };
+  }
+}
+
+// ─── Stellenaufruf ────────────────────────────────────────────
+
+/** Stellenaufruf posten ("new": neu unten im Kanal) oder vorhandenen aktualisieren ("update"). */
+export async function publishJobsPostAction(mode: "new" | "update"): Promise<ActionResult<{ message: string }>> {
+  const { user } = await requireAdmin();
+  if (!["new", "update"].includes(mode)) return { ok: false, error: "Ungültig." };
+  try {
+    const { publishJobsPost } = await import("@/lib/discord/jobs-post");
+    const r = await publishJobsPost(db, { mode, createIfMissing: true });
+    if (!r.ok) return { ok: false, error: `Discord: ${r.error}` };
+    await audit("settings.update", { actorId: user.id, meta: { jobsPost: r.action } });
+    revalidatePath("/team/positionen");
+    return { ok: true, data: { message: r.action === "updated" ? "Stellenaufruf aktualisiert." : "Stellenaufruf gepostet." } };
+  } catch (err) {
+    return { ok: false, error: `Discord: ${err instanceof Error ? err.message : String(err)}` };
   }
 }

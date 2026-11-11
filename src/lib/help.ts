@@ -167,6 +167,11 @@ export const HELP: HelpSection[] = [
         text: "**Bewerbungs-Kanal:** ein Post pro neuer Bewerbung. **Bot-Log:** Status, Claims, Nachrichten, Antworten von Bewerbern, Zustellfehler. **Changelog:** einmal am Tag um 0 Uhr alle Änderungen des Vortags als neue Version (gleichzeitig unter „Changelog“ im Team-Bereich). Admins ändern die Kanäle in den Einstellungen und können dort mit „Discord-Zustellung prüfen“ eine Testnachricht schicken.",
       },
       {
+        id: "stellenaufruf",
+        term: "Stellenaufruf",
+        text: "Der Post „Wir suchen neue Teammitglieder!“ im Discord wird aus den Positionen erzeugt: offene Stellen mit Beschreibung und Aufgaben, gemeinsame Voraussetzungen, Statusübersicht (🟢 offen / 🔴 geschlossen) und Knöpfe zur Bewerbung. Ändert ein Admin eine Position, **bearbeitet** der Bot den Post automatisch – es kommt kein neuer. Posten, aktualisieren und Vorschau unter „Positionen & Fragen“.",
+      },
+      {
         id: "bestaetigung",
         term: "Bestätigungs-DM",
         text: "Geht direkt nach dem Absenden an den Bewerber. Hat er DMs zu, erscheint oben in der Bewerbung „Bestätigungs-DM konnte nicht zugestellt werden“ – er sieht alles trotzdem im Portal.",

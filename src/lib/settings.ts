@@ -56,6 +56,9 @@ export const settingsSchema = z.object({
   /** Protokoll (Status, Claims, Nachrichten, Zustellfehler) im Bot-Log-Kanal */
   "discord.botLogEnabled": bool(true),
   "discord.botLogChannelId": channel("1569736621019111515"),
+  /** Stellenaufruf („Wir suchen neue Teammitglieder!“) – Kanal + automatisch aktualisieren */
+  "discord.jobsChannelId": channel("1569736461933084792"),
+  "discord.jobsAutoUpdate": bool(true),
   /** Neue Changelog-Einträge des Portals posten */
   "discord.changelogEnabled": bool(true),
   "discord.changelogChannelId": channel("1570181667627475146"),

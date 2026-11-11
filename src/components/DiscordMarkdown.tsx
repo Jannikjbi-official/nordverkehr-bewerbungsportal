@@ -4,9 +4,9 @@ import { Fragment, type ReactNode } from "react";
  * Sehr kleiner, sicherer Markdown-Renderer im Discord-Stil (kein HTML,
  * kein dangerouslySetInnerHTML): **fett**, *kursiv*, __unterstrichen__,
  * ~~durchgestrichen~~, `code`, Links, Listen, Überschriften (#, ##, ###),
- * Zitate (> ).
+ * Zitate (> ), kleine Zeilen (-# ) und Erwähnungen (<@&Rolle>, <@Nutzer>).
  */
-const INLINE = /(\*\*[^*]+\*\*|__[^_]+__|~~[^~]+~~|`[^`]+`|\*[^*\s][^*]*\*|_[^_\s][^_]*_|https?:\/\/[^\s<>()]+)/g;
+const INLINE = /(<@&?\d{15,25}>|\*\*[^*]+\*\*|__[^_]+__|~~[^~]+~~|`[^`]+`|\*[^*\s][^*]*\*|_[^_\s][^_]*_|https?:\/\/[^\s<>()]+)/g;
 
 function inline(text: string, keyBase: string): ReactNode[] {
   const out: ReactNode[] = [];
@@ -17,7 +17,13 @@ function inline(text: string, keyBase: string): ReactNode[] {
     if (idx > last) out.push(text.slice(last, idx));
     const tok = m[0];
     const k = `${keyBase}-${i++}`;
-    if (tok.startsWith("**")) out.push(<strong key={k}>{inline(tok.slice(2, -2), k)}</strong>);
+    if (tok.startsWith("<@"))
+      out.push(
+        <span key={k} className="rounded px-1 font-medium bg-[#5865f2]/30 text-[#c9cdfb]">
+          {tok.startsWith("<@&") ? "@Rolle" : "@Nutzer"}
+        </span>,
+      );
+    else if (tok.startsWith("**")) out.push(<strong key={k}>{inline(tok.slice(2, -2), k)}</strong>);
     else if (tok.startsWith("__")) out.push(<u key={k}>{inline(tok.slice(2, -2), k)}</u>);
     else if (tok.startsWith("~~")) out.push(<s key={k}>{inline(tok.slice(2, -2), k)}</s>);
     else if (tok.startsWith("`"))
@@ -69,6 +75,15 @@ export function DiscordMarkdown({ text, className }: { text: string; className?:
       return;
     }
     flush(`${key}-f`);
+    const sub = line.match(/^-#\s+(.*)$/);
+    if (sub) {
+      blocks.push(
+        <p key={key} className="text-xs opacity-70 my-0.5">
+          {inline(sub[1], key)}
+        </p>,
+      );
+      return;
+    }
     const h = line.match(/^(#{1,3})\s+(.*)$/);
     if (h) {
       const size = h[1].length === 1 ? "text-lg" : h[1].length === 2 ? "text-base" : "text-sm";
