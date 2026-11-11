@@ -286,6 +286,16 @@ export async function repostChangelogAction(entryId?: string): Promise<ActionRes
   return { ok: false, error: `Nicht gepostet (${job?.status ?? "?"}): ${job?.lastError ?? "unbekannter Fehler"}` };
 }
 
+/** Alle Changelog-Einträge chronologisch neu posten (nachdem alte Posts im Kanal gelöscht wurden). */
+export async function repostAllChangelogAction(): Promise<ActionResult<{ message: string }>> {
+  await requireAdmin();
+  const { repostAllChangelog } = await import("@/lib/discord/changelog-post");
+  const r = await repostAllChangelog(db);
+  if (r.total === 0) return { ok: false, error: "Changelog-Posts sind ausgeschaltet oder kein Kanal eingetragen." };
+  if (r.errors.length) return { ok: false, error: `${r.sent} von ${r.total} gepostet. Fehler: ${r.errors.join(" · ")}` };
+  return { ok: true, data: { message: `${r.sent} von ${r.total} Einträgen gepostet (älteste zuerst).` } };
+}
+
 /** Ausstehende Zustellungen jetzt senden. */
 export async function flushOutboxAction(): Promise<ActionResult<{ message: string }>> {
   await requireAdmin();

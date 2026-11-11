@@ -10,6 +10,8 @@ import { DiscordPreview } from "@/components/team/DiscordPreview";
 import { StatusSelect } from "@/components/team/StatusSelect";
 import type { ApplicationStatus, TemplateCategory } from "@prisma/client";
 
+const DEFAULT_TITLE = "Nachricht vom Nordverkehr-Team";
+
 interface Template {
   id: string;
   category: TemplateCategory;
@@ -32,7 +34,8 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
   const router = useRouter();
   const textarea = useRef<HTMLTextAreaElement>(null);
   const [category, setCategory] = useState<TemplateCategory>(suggested[0] ?? "EINGANG");
-  const [title, setTitle] = useState("Nachricht vom Nordverkehr-Team");
+  const [title, setTitle] = useState(DEFAULT_TITLE);
+  const [titleTouched, setTitleTouched] = useState(false);
   const [body, setBody] = useState("");
   const [used, setUsed] = useState<string[]>([]);
   const [grund, setGrund] = useState("");
@@ -47,10 +50,16 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
     () => renderTemplate(body, { ...vars, ...(asTeam ? { teammitglied: "das Nordverkehr-Team" } : {}), grund: grund || undefined }),
     [body, vars, grund, asTeam],
   );
+  const renderedTitle = useMemo(
+    () => renderTemplate(title, { ...vars, ...(asTeam ? { teammitglied: "das Nordverkehr-Team" } : {}) }).text,
+    [title, vars, asTeam],
+  );
   const byCat = useMemo(() => templates.filter((t) => t.category === category), [templates, category]);
   const needsGrund = /\{grund\}/.test(body);
 
   function insert(t: Template) {
+    // Betreff: erster gewählter Baustein bestimmt den Titel, solange niemand ihn selbst geändert hat
+    if (!titleTouched && used.length === 0) setTitle(t.title);
     setBody((b) => (b.trim() ? `${b.trimEnd()}\n\n${t.body}` : t.body));
     setUsed((u) => (u.includes(t.id) ? u : [...u, t.id]));
     setSent(false);
@@ -76,6 +85,8 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
         setBody("");
         setUsed([]);
         setGrund("");
+        setTitle(DEFAULT_TITLE);
+        setTitleTouched(false);
         setAlsoStatus("");
         setSent(true);
         router.refresh();
@@ -134,7 +145,17 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
             <label htmlFor="msg-title" className="nv-field-label">
               Titel
             </label>
-            <input id="msg-title" className="nv-input" maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} />
+            <input
+              id="msg-title"
+              className="nv-input"
+              maxLength={120}
+              value={title}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                setTitleTouched(true);
+              }}
+            />
+            <p className="nv-help mt-1">Wird als Betreff der Discord-DM gesendet. Der erste gewählte Baustein setzt ihn automatisch.</p>
           </div>
           <div>
             <div className="flex items-center justify-between gap-2">
@@ -142,7 +163,11 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
                 Nachricht
               </label>
               {used.length > 0 && (
-                <button type="button" className="nv-btn nv-btn-quiet nv-btn-sm !py-0.5" onClick={() => { setBody(""); setUsed([]); }}>
+                <button type="button" className="nv-btn nv-btn-quiet nv-btn-sm !py-0.5" onClick={() => {
+                    setBody("");
+                    setUsed([]);
+                    if (!titleTouched) setTitle(DEFAULT_TITLE);
+                  }}>
                   <X size={12} aria-hidden /> Leeren
                 </button>
               )}
@@ -226,7 +251,7 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
             ))}
           </div>
         </div>
-        <DiscordPreview title={title} body={rendered.text} publicId={publicId} author={asTeam ? null : { name: sender.name, iconUrl: sender.avatarUrl }} />
+        <DiscordPreview title={renderedTitle} body={rendered.text} publicId={publicId} author={asTeam ? null : { name: sender.name, iconUrl: sender.avatarUrl }} />
         {rendered.missing.length > 0 && (
           <p className="flex items-start gap-1.5 text-xs text-[var(--tone-warn)]">
             <WarningCircle size={14} className="shrink-0 mt-0.5" aria-hidden />

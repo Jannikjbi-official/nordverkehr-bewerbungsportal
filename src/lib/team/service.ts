@@ -159,6 +159,7 @@ export async function sendTeamMessage(opts: {
   const asTeam = !!opts.asTeam;
   const baseVars = await getTemplateVarsFor(app.id, asTeam ? { globalName: "das Nordverkehr-Team", username: "team" } : opts.actor);
   const rendered = renderTemplate(opts.body, { ...baseVars, ...opts.vars });
+  const title = renderTemplate(opts.title || "Nachricht vom Nordverkehr-Team", { ...baseVars, ...opts.vars }).text.slice(0, 200);
   if (rendered.text.trim().length < 2) throw new UserFacingError("Die Nachricht ist leer.");
 
   return db.$transaction(async (tx) => {
@@ -179,7 +180,7 @@ export async function sendTeamMessage(opts: {
         discordUserId: app.user.discordId,
         purpose: "team_message",
         message: buildApplicantMessage({
-          title: opts.title || "Nachricht vom Nordverkehr-Team",
+          title,
           body: rendered.text,
           publicId: app.publicId,
           statusUrl: `${publicEnv.appUrl}/dashboard/${app.id}`,

@@ -39,6 +39,15 @@ export function groupItems(items: ChangelogItem[]) {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-11-claim-betreff",
+    date: "2026-11-11",
+    title: "Claimen sichtbarer, Betreff aus Bausteinen",
+    items: [
+      { kind: "besser", text: "**Claimen** – direkt oben in jeder Bewerbung statt versteckt in der Seitenleiste." },
+      { kind: "neu", text: "**Betreff aus Baustein** – der erste gewählte Baustein setzt den Betreff der DM." },
+    ],
+  },
+  {
     id: "2026-11-11-discord-design",
     date: "2026-11-11",
     title: "Aufgeräumte Discord-Posts",

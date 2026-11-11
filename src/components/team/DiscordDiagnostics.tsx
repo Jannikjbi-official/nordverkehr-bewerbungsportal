@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { ArrowClockwise, CheckCircle, PaperPlaneTilt, WarningCircle } from "@phosphor-icons/react/ssr";
-import { discordTestAction, flushOutboxAction, repostChangelogAction } from "@/app/actions/admin";
+import { discordTestAction, flushOutboxAction, repostAllChangelogAction, repostChangelogAction } from "@/app/actions/admin";
 
 export interface FailedJob {
   id: string;
@@ -46,6 +46,9 @@ export function DiscordDiagnostics({ failed, pending }: { failed: FailedJob[]; p
         ))}
         <button type="button" className="nv-btn nv-btn-ghost nv-btn-sm" disabled={busy} onClick={() => run("Changelog", () => repostChangelogAction())}>
           <ArrowClockwise size={14} aria-hidden /> Neuesten Changelog-Eintrag posten
+        </button>
+        <button type="button" className="nv-btn nv-btn-ghost nv-btn-sm" disabled={busy} onClick={() => confirm("Alle Changelog-Einträge neu posten? Alte Posts vorher im Kanal löschen, sonst gibt es Doppelte.") && run("Changelog", () => repostAllChangelogAction())}>
+          <ArrowClockwise size={14} aria-hidden /> Ganzes Changelog neu posten
         </button>
         <button type="button" className="nv-btn nv-btn-quiet nv-btn-sm" disabled={busy} onClick={() => run("Warteschlange", () => flushOutboxAction())}>
           Ausstehende senden{pending ? ` (${pending})` : ""}

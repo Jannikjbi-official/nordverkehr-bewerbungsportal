@@ -15,6 +15,7 @@ function fakeApi(over: Partial<DiscordApi> = {}): DiscordApi {
     getMember: vi.fn(async () => null),
     openDm: vi.fn(async () => "dm-channel-1"),
     postMessage: vi.fn(async () => "msg-1"),
+    deleteMessage: vi.fn(async () => {}),
     addRole: vi.fn(async () => {}),
     ...over,
   };

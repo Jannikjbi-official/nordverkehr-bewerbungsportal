@@ -91,6 +91,9 @@ export interface DiscordApi {
   getMember(guildId: string, userId: string): Promise<GuildMemberInfo | null>;
   openDm(userId: string): Promise<string>;
   postMessage(channelId: string, body: RESTPostAPIChannelMessageJSONBody): Promise<string>;
+  /** Eigene Nachricht des Bots löschen. Bereits gelöschte Nachrichten sind kein Fehler. */
+  deleteMessage(channelId: string, messageId: string): Promise<void>;
+
   addRole(guildId: string, userId: string, roleId: string, reason?: string): Promise<void>;
 }
 
@@ -122,6 +125,15 @@ export function createDiscordApi(token: string, opts: { timeoutMs?: number } = {
         return msg.id;
       } catch (err) {
         throw classifyDiscordError(err);
+      }
+    },
+    async deleteMessage(channelId, messageId) {
+      try {
+        await rest.delete(Routes.channelMessage(channelId, messageId));
+      } catch (err) {
+        const e = classifyDiscordError(err);
+        if (e.kind === "not_found") return; // schon weg (z. B. von Hand gelöscht)
+        throw e;
       }
     },
     async addRole(guildId, userId, roleId, reason) {

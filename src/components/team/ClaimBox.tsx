@@ -13,7 +13,10 @@ interface Props {
   claimedAgo: string | null;
 }
 
-/** Bewerbung claimen: zeigt, wer sie betreut – mit Claimen / Freigeben / Übernehmen. */
+/**
+ * Leiste oben in der Bewerbung: wer sie betreut, mit Claimen / Übernehmen /
+ * Freigeben. Bewusst prominent – nicht in der Seitenleiste versteckt.
+ */
 export function ClaimBox({ applicationId, me, claimedBy, claimedAgo }: Props) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -29,19 +32,29 @@ export function ClaimBox({ applicationId, me, claimedBy, claimedAgo }: Props) {
     });
 
   return (
-    <div className="space-y-3">
-      <p className="nv-mono">Bearbeitung</p>
-      {claimedBy ? (
-        <div className="flex items-center gap-3">
+    <div
+      className={`rounded-xl border px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center ${
+        mine ? "border-red-line bg-red-soft" : claimedBy ? "border-line bg-surface" : "border-dashed border-line-strong bg-surface"
+      }`}
+      data-testid="claim-box"
+    >
+      <div className="flex items-center gap-3 min-w-0 flex-1">
+        {claimedBy ? (
           <Avatar discordId={claimedBy.discordId} avatar={claimedBy.avatar} size={36} />
-          <div className="min-w-0">
-            <p className="text-sm font-medium truncate">{mine ? "Du betreust diese Bewerbung" : claimedBy.name}</p>
-            <p className="text-xs text-muted">geclaimt {claimedAgo}</p>
-          </div>
+        ) : (
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface-2 text-muted">
+            <PushPin size={18} aria-hidden />
+          </span>
+        )}
+        <div className="min-w-0">
+          <p className="text-sm font-medium truncate">
+            {mine ? "Du betreust diese Bewerbung" : claimedBy ? `${claimedBy.name} betreut diese Bewerbung` : "Noch nicht geclaimt"}
+          </p>
+          <p className="text-xs text-muted">
+            {claimedBy ? `seit ${claimedAgo}` : "Wer claimt, betreut die Bewerbung und schreibt standardmäßig mit eigenem Namen."}
+          </p>
         </div>
-      ) : (
-        <p className="text-sm text-muted">Noch niemand betreut diese Bewerbung.</p>
-      )}
+      </div>
       <div className="flex flex-wrap gap-2">
         {!claimedBy && (
           <button type="button" className="nv-btn nv-btn-primary nv-btn-sm" disabled={pending} onClick={() => run("claim")}>
@@ -64,8 +77,7 @@ export function ClaimBox({ applicationId, me, claimedBy, claimedAgo }: Props) {
           </button>
         )}
       </div>
-      <p className="text-xs text-muted">Wer claimt, schreibt standardmäßig mit eigenem Namen – „als Team senden“ bleibt immer möglich.</p>
-      {error && <p className="nv-error">{error}</p>}
+      {error && <p className="nv-error sm:basis-full">{error}</p>}
     </div>
   );
 }

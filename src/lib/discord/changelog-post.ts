@@ -11,6 +11,33 @@ import { buildChangelogMessage } from "@/lib/messages/embed";
 import { getSettings } from "@/lib/settings";
 import { publicEnv } from "@/lib/env";
 
+/**
+ * Alle Einträge chronologisch neu posten. Vorher werden die noch vorhandenen
+ * Changelog-Posts des Bots in diesem Kanal entfernt (nur die über die Outbox
+ * gesendeten, also eigene Posts) – sonst gäbe es Doppelte und die Reihenfolge
+ * stimmte nicht. Andere Nachrichten im Kanal bleiben unberührt.
+ */
+export async function repostAllChangelog(db: PrismaClient) {
+  const s = await getSettings();
+  const channelId = s["discord.changelogChannelId"];
+  if (channelId) {
+    const { getDiscordApi } = await import("@/lib/discord/client");
+    const api = getDiscordApi();
+    const previous = await db.outboxJob.findMany({ where: { type: "CHANNEL_MESSAGE", status: "DONE" }, select: { id: true, payload: true, result: true } });
+    for (const job of previous) {
+      const messageId = (job.result as { messageId?: string } | null)?.messageId;
+      if ((job.payload as { channelId?: string }).channelId !== channelId || !messageId) continue;
+      await api.deleteMessage(channelId, messageId).catch((e) => console.warn("[changelog] alter Post nicht gelöscht", e));
+      // Ergebnis leeren, damit ein späterer Neuaufbau ihn nicht erneut anfasst
+      await db.outboxJob.update({ where: { id: job.id }, data: { result: { deleted: true } } });
+    }
+  }
+  await db.setting.deleteMany({ where: { key: { in: CHANGELOG.map((e) => `changelog:${e.id}`) } } });
+  const ids = await postNewChangelogEntries(db);
+  const jobs = await db.outboxJob.findMany({ where: { id: { in: ids } }, select: { status: true, lastError: true } });
+  return { sent: jobs.filter((j) => j.status === "DONE").length, total: ids.length, errors: jobs.map((j) => j.lastError).filter(Boolean) as string[] };
+}
+
 /** Einen Eintrag (erneut) posten – für den Button in den Einstellungen. Gibt die Job-ID zurück. */
 export async function repostChangelogEntry(db: PrismaClient, id: string) {
   await db.setting.deleteMany({ where: { key: `changelog:${id}` } });

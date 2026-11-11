@@ -125,6 +125,17 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
         <StatusBadge status={app.status} className="!text-sm !px-3.5 !py-1.5 self-start sm:self-center" />
       </header>
 
+      <ClaimBox
+        applicationId={app.id}
+        me={{ id: me.id, isAdmin: access.isAdmin }}
+        claimedBy={
+          app.claimedBy
+            ? { id: app.claimedBy.id, name: app.claimedBy.globalName || app.claimedBy.username, discordId: app.claimedBy.discordId, avatar: app.claimedBy.avatar }
+            : null
+        }
+        claimedAgo={app.claimedAt ? formatRelative(app.claimedAt) : null}
+      />
+
       {app.status === "WITHDRAWN" && app.withdrawnInReview && (
         <Notice tone="warn" icon={WarningCircle} title="Während der Bearbeitung zurückgezogen">
           {app.withdrawReason ? <>„{app.withdrawReason}“</> : "Ohne Begründung."}{" "}
@@ -268,19 +279,6 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
         </div>
 
         <aside className="space-y-6">
-          <div className="nv-card p-5">
-            <ClaimBox
-              applicationId={app.id}
-              me={{ id: me.id, isAdmin: access.isAdmin }}
-              claimedBy={
-                app.claimedBy
-                  ? { id: app.claimedBy.id, name: app.claimedBy.globalName || app.claimedBy.username, discordId: app.claimedBy.discordId, avatar: app.claimedBy.avatar }
-                  : null
-              }
-              claimedAgo={app.claimedAt ? formatRelative(app.claimedAt) : null}
-            />
-          </div>
-
           <div className="nv-card p-5 space-y-5">
             <StatusControl applicationId={app.id} current={app.status} targets={allowedTeamTargets(app.status)} />
             <div className="nv-divider" />
