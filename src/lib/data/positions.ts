@@ -16,10 +16,11 @@ export async function listPublicPositions() {
   return positions;
 }
 
+/** Auf der Website stehen nur offene Stellen (geschlossene erreicht man nur noch per Direktlink). */
 function queryPublicPositions() {
   return db.position.findMany({
-    where: { status: { in: ["OPEN", "CLOSED"] }, type: { key: "team", active: true } },
-    orderBy: [{ status: "asc" }, { sortOrder: "asc" }],
+    where: { status: "OPEN", type: { key: "team", active: true } },
+    orderBy: { sortOrder: "asc" },
   });
 }
 

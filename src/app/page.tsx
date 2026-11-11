@@ -126,7 +126,7 @@ async function PositionList() {
   await connection();
   const positions = await listPublicPositions();
   if (positions.length === 0) {
-    return <p className="text-muted">Aktuell sind keine Positionen ausgeschrieben. Schau bald wieder vorbei.</p>;
+    return <p className="text-muted">Aktuell sind keine Stellen offen. Schau bald wieder vorbei.</p>;
   }
   return (
     <ul className="grid gap-4 md:grid-cols-2">
