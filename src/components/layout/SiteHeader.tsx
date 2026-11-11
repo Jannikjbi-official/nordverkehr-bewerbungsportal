@@ -6,18 +6,9 @@ import { publicEnv } from "@/lib/env";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { MobileMenu } from "@/components/layout/MobileMenu";
 import { UserMenu } from "@/components/layout/UserMenu";
+import { PortalNavLinks } from "@/components/layout/PortalNavLinks";
 
-const main = publicEnv.mainSiteUrl;
-
-/** Gleiche Navigation wie auf nordverkehr.xyz – plus Bewerbungsbereich. */
-export const MAIN_LINKS = [
-  { href: `${main}/`, label: "Start" },
-  { href: `${main}/ueber-uns`, label: "Über uns" },
-  { href: `${main}/team`, label: "Team" },
-  { href: `${main}/regeln`, label: "Regeln" },
-  { href: `${main}/#faq`, label: "FAQ" },
-];
-
+/** Kopfzeile des Bewerbungsportals – nur Portal-Navigation (Hauptseite steht im Footer). */
 export function SiteHeader() {
   return (
     <header className="fixed top-0 inset-x-0 z-40">
@@ -28,8 +19,8 @@ export function SiteHeader() {
           className="flex items-center justify-between gap-3 rounded-2xl border border-line px-4 sm:px-5 py-2.5 backdrop-blur-xl"
           style={{ background: "var(--nv-overlay)" }}
         >
-          <div className="flex items-center gap-6 min-w-0">
-            <Link href="/" className="flex items-center shrink-0" aria-label="Nordverkehr Bewerbungsportal – Startseite">
+          <div className="flex items-center gap-4 sm:gap-6 min-w-0">
+            <Link href="/" className="flex items-center gap-3 shrink-0" aria-label="Nordverkehr Bewerbungsportal – Startseite">
               <Image
                 src="/Nord-Verkehr-Wordmark.png"
                 alt="Nordverkehr"
@@ -39,24 +30,9 @@ export function SiteHeader() {
                 fetchPriority="high"
                 className="h-[22px] sm:h-[24px] w-auto"
               />
+              <span className="hidden sm:inline nv-mono !text-[0.65rem] border-l border-line pl-3">Bewerbung</span>
             </Link>
-            <div className="hidden lg:flex items-center gap-0.5">
-              {MAIN_LINKS.map((l) => (
-                <a
-                  key={l.href}
-                  href={l.href}
-                  className="px-3 py-2 rounded-lg text-sm font-medium text-muted hover:text-fg hover:bg-[color-mix(in_srgb,var(--nv-text)_5%,transparent)] transition-colors"
-                >
-                  {l.label}
-                </a>
-              ))}
-              <Link
-                href="/"
-                className="relative px-3 py-2 rounded-lg text-sm font-medium text-fg after:absolute after:left-3 after:right-3 after:-bottom-0.5 after:h-[2px] after:bg-red after:rounded-full"
-              >
-                Bewerben
-              </Link>
-            </div>
+            <PortalNavLinks />
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2">
@@ -73,7 +49,7 @@ export function SiteHeader() {
               <DiscordLogo weight="fill" size={16} aria-hidden />
               Discord
             </a>
-            <MobileMenu links={MAIN_LINKS} discordInvite={publicEnv.discordInvite} />
+            <MobileMenu discordInvite={publicEnv.discordInvite} />
           </div>
         </nav>
       </div>

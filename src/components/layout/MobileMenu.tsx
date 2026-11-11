@@ -6,11 +6,10 @@ import { createPortal } from "react-dom";
 import { DiscordLogo, List, X } from "@phosphor-icons/react/ssr";
 
 interface Props {
-  links: { href: string; label: string }[];
   discordInvite: string;
 }
 
-export function MobileMenu({ links, discordInvite }: Props) {
+export function MobileMenu({ discordInvite }: Props) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -25,7 +24,7 @@ export function MobileMenu({ links, discordInvite }: Props) {
   }, [open]);
 
   const portal = [
-    { href: "/", label: "Offene Positionen" },
+    { href: "/", label: "Positionen" },
     { href: "/dashboard", label: "Meine Bewerbungen" },
     { href: "/konto", label: "Konto & Daten" },
   ];
@@ -61,18 +60,6 @@ export function MobileMenu({ links, discordInvite }: Props) {
                 {l.label}
               </Link>
             ))}
-            <div className="nv-divider w-full my-3" />
-            <p className="nv-mono mb-1">Nordverkehr</p>
-            {links.map((l, i) => (
-              <a
-                key={l.href}
-                href={l.href}
-                className="nv-anim w-full text-center py-2 rounded-xl text-base text-fg-2 hover:text-fg"
-                style={{ "--i": i + portal.length } as React.CSSProperties}
-              >
-                {l.label}
-              </a>
-            ))}
             <a
               href={discordInvite}
               target="_blank"
@@ -82,7 +69,7 @@ export function MobileMenu({ links, discordInvite }: Props) {
               <DiscordLogo weight="fill" size={18} aria-hidden /> Discord beitreten
             </a>
           </nav>
-          <p className="absolute bottom-10 nv-mono">NORDVERKEHR // TEAM</p>
+          <p className="absolute bottom-10 nv-mono">NORDVERKEHR // BEWERBUNG</p>
         </div>,
           document.body,
         )}
