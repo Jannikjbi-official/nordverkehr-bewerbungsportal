@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { requireTeam } from "@/lib/auth/session";
-import { groupItems, publishedEntries, versionLabel } from "@/lib/changelog";
+import { CHANGELOG, groupItems, isPublished, publishedEntries, versionLabel } from "@/lib/changelog";
 import { DiscordMarkdown } from "@/components/DiscordMarkdown";
 import { formatDay } from "@/components/ui";
 
@@ -27,15 +27,28 @@ export default function ChangelogPage() {
 }
 
 async function Entries() {
-  await requireTeam();
-  const entries = publishedEntries();
+  const { access } = await requireTeam();
+  // Admins sehen den laufenden Tag schon vorab (als Vorschau), alle anderen erst ab 0 Uhr
+  const entries = access.isAdmin ? CHANGELOG : publishedEntries();
   if (!entries.length) return <p className="text-sm text-muted">Die erste Version erscheint heute um 0 Uhr.</p>;
   return (
     <ol className="relative space-y-6 border-l border-line pl-6 ml-2">
-      {entries.map((e, i) => (
+      {entries.map((e, i) => {
+        const preview = !isPublished(e);
+        return (
         <li key={e.id} className="relative">
-          <span className={`absolute -left-[31px] top-1.5 h-3 w-3 rounded-full border-2 ${i === 0 ? "bg-red border-red" : "bg-surface border-line-strong"}`} aria-hidden />
-          <article className="nv-card p-5">
+          <span
+            className={`absolute -left-[31px] top-1.5 h-3 w-3 rounded-full border-2 ${
+              preview ? "bg-surface border-dashed border-red" : i === 0 || (i === 1 && !isPublished(entries[0])) ? "bg-red border-red" : "bg-surface border-line-strong"
+            }`}
+            aria-hidden
+          />
+          <article className={`nv-card p-5 ${preview ? "border-dashed border-red-line" : ""}`}>
+            {preview && (
+              <p className="mb-2 inline-flex items-center gap-1.5 rounded-full nv-tone-warn border px-2.5 py-0.5 text-xs font-medium">
+                Vorschau nur für Admins · wird um 0 Uhr veröffentlicht und auf Discord gepostet
+              </p>
+            )}
             <p className="nv-mono">{formatDay(new Date(`${e.date}T12:00:00`))}</p>
             <h2 className="font-semibold text-lg mt-1">
               {versionLabel(e)}
@@ -59,7 +72,8 @@ async function Entries() {
             </div>
           </article>
         </li>
-      ))}
+        );
+      })}
     </ol>
   );
 }

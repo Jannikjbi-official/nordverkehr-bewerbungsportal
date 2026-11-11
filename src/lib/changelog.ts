@@ -75,6 +75,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       { kind: "neu", text: "**KI (optional)** – Einordnung in Kategorien und Auto-Antwort, wenn niemand online ist – mit Schutz vor Manipulation." },
       { kind: "neu", text: "**Hilfe & Begriffe** – alle Begriffe erklärt, „Was heißt das?“-Links direkt an Hinweisen und Knöpfen." },
       { kind: "neu", text: "**Gefahrenzone** – Admins können alle Bewerbungen löschen, mit eingetipptem Bestätigungssatz." },
+      { kind: "neu", text: "**Changelog** – jeden Tag um 0 Uhr eine neue Version im Team-Bereich und auf Discord. Admins sehen den laufenden Tag vorab als Vorschau." },
     ],
   },
 ];
