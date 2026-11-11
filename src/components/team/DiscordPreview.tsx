@@ -40,8 +40,10 @@ export function DiscordPreview({
                 </p>
                 {title && <p className="mt-1 text-xl font-bold leading-tight text-white">{title}</p>}
               </div>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={author?.iconUrl ?? "/logo.png"} alt="" className="h-16 w-16 shrink-0 rounded-lg object-contain" style={{ background: "#1e1f22" }} />
+              {author && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={author.iconUrl} alt="" className="h-16 w-16 shrink-0 rounded-lg object-cover" />
+              )}
             </div>
             <hr className="my-3 border-0 h-px" style={{ background: "#3f4147" }} />
             <DiscordMarkdown text={body || " "} className="text-sm [&_strong]:text-white" />

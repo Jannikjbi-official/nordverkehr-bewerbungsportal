@@ -1,45 +1,76 @@
 /**
  * Changelog des Bewerbungsportals – neueste Einträge zuerst.
  *
- * Bei JEDER Änderung am Portal hier einen Eintrag ergänzen (eindeutige `id`).
- * Neue Einträge erscheinen im Team-Bereich (/team/changelog) und werden nach
- * dem Deployment genau einmal in den Changelog-Kanal auf Discord gepostet.
+ * Bei JEDER Änderung am Portal hier einen Eintrag ergänzen (eindeutige `id`,
+ * nie umbenennen – sonst wird er erneut gepostet). Neue Einträge erscheinen im
+ * Team-Bereich (/team/changelog) und werden nach dem Deployment genau einmal
+ * in den Changelog-Kanal auf Discord gepostet.
+ *
+ * Stil: kurze Punkte, vorne ein fettes Stichwort („**Claimen** – …“).
+ * Details gehören nicht hierher.
  */
+export type ChangeKind = "neu" | "besser" | "fix";
+
+export interface ChangelogItem {
+  kind: ChangeKind;
+  /** Discord-Markdown erlaubt (**fett**) */
+  text: string;
+}
+
 export interface ChangelogEntry {
   /** Eindeutig und unveränderlich – daran wird erkannt, ob schon gepostet wurde */
   id: string;
   /** ISO-Datum (YYYY-MM-DD) */
   date: string;
   title: string;
-  items: string[];
+  items: ChangelogItem[];
+}
+
+export const CHANGE_GROUPS: { kind: ChangeKind; label: string; emoji: string }[] = [
+  { kind: "neu", label: "Neu", emoji: "✨" },
+  { kind: "besser", label: "Verbessert", emoji: "🛠️" },
+  { kind: "fix", label: "Behoben", emoji: "🐛" },
+];
+
+/** Punkte eines Eintrags nach Art gruppiert (leere Gruppen fallen weg). */
+export function groupItems(items: ChangelogItem[]) {
+  return CHANGE_GROUPS.map((g) => ({ ...g, items: items.filter((i) => i.kind === g.kind) })).filter((g) => g.items.length > 0);
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-11-discord-design",
+    date: "2026-11-11",
+    title: "Aufgeräumte Discord-Posts",
+    items: [
+      { kind: "besser", text: "**Changelog** – sortiert nach Neu, Verbessert und Behoben, kurze Punkte statt Textblock." },
+      { kind: "besser", text: "**Bot-Nachrichten** – ruhigeres Layout, Profilbild nur dort, wo eine Person schreibt." },
+    ],
+  },
+  {
     id: "2026-11-11-fachfragen",
     date: "2026-11-11",
-    title: "Mehr Fachfragen für Support, Moderator & Eventteam",
+    title: "Mehr Fachfragen",
     items: [
-      "Support: Fehlersuche bei SaltyChat, wann ein Ticket weitergegeben wird, Sicherheit mit TeamSpeak & SaltyChat.",
-      "Moderator: Regelverstöße nachvollziehbar dokumentieren, Entscheidungen erklären, erkennen, wann man besser nicht eingreift.",
-      "Eventteam: Event vorbereiten und ankündigen, Umgang mit Chaos am Eventabend, Feedback und Kritik.",
-      "Die Basisfragen bleiben für alle gleich – jede Stelle hat jetzt eigene, passende Fachfragen.",
+      { kind: "neu", text: "**Support** – Fehlersuche bei SaltyChat, wann ein Ticket weitergeht, TeamSpeak & SaltyChat." },
+      { kind: "neu", text: "**Moderator** – Verstöße dokumentieren, Entscheidungen erklären, nicht unnötig eingreifen." },
+      { kind: "neu", text: "**Eventteam** – Event vorbereiten, Chaos am Eventabend, Feedback & Kritik." },
     ],
   },
   {
     id: "2026-11-11-team-workflow",
     date: "2026-11-11",
-    title: "Claimen, Discord-Kanäle, Components V2, Rückzug & Changelog",
+    title: "Claimen, Discord-Kanäle & mehr",
     items: [
-      "Bewerbungen claimen: Wer eine Bewerbung betreut, steht in der Detailansicht und in der Liste („Betreut von“). Freigeben, Übernehmen per Klick.",
-      "Beim Schreiben wählbar: als du selbst (Name + Profilbild in der Discord-DM) oder als „Nordverkehr-Team“. Wer geclaimt hat, schreibt standardmäßig persönlich.",
-      "Chat-Verlauf zeigt Discord-Profilbilder und kennzeichnet Antworten als „Admin“ oder „Team“.",
-      "Neue Bewerbungen landen im Bewerbungs-Kanal, alles andere (Status, Claims, Nachrichten, Antworten, Zustellfehler) im Bot-Log-Kanal. Kanäle in den Einstellungen änderbar.",
-      "Zurückziehen: vor der Bearbeitung ohne Grund. Wird schon bearbeitet, fragt das Portal nach einem kurzen Grund – der Rückzug erscheint im Team-Dashboard, Rückfragen sind noch 14 Tage möglich.",
-      "Alle Discord-Nachrichten des Bots (DMs, Bewerbungs-Kanal, Bot-Logs, Changelog) im neuen Discord-Layout (Components V2) – die Vorschau im Portal zeigt es genauso.",
-      "Fehler behoben: Sperren, „ungelesen“-Zähler und das Aufräumen alter Uploads griffen bei manchen Einträgen nicht (MongoDB-Eigenheit bei leeren Feldern).",
-      "Dieses Changelog: im Team-Bereich und automatisch im Changelog-Kanal.",
-      "Einstellungen → „Discord-Zustellung prüfen“: Testnachricht pro Kanal mit genauer Fehlermeldung, Changelog erneut posten, Liste fehlgeschlagener Zustellungen.",
+      { kind: "neu", text: "**Claimen** – sehen, wer eine Bewerbung betreut. Übernehmen und Freigeben per Klick." },
+      { kind: "neu", text: "**Absender wählen** – Nachrichten mit eigenem Namen oder als Nordverkehr-Team." },
+      { kind: "neu", text: "**Discord-Kanäle** – neue Bewerbungen, Bot-Logs und Changelog getrennt." },
+      { kind: "neu", text: "**Changelog** – im Team-Bereich und hier im Kanal." },
+      { kind: "besser", text: "**Zurückziehen** – vor der Bearbeitung ohne Grund, danach mit kurzem Grund. Rückfragen bis 14 Tage." },
+      { kind: "besser", text: "**Chat** – Discord-Profilbilder, Kennzeichnung als Admin oder Team." },
+      { kind: "besser", text: "**Discord** – alle Bot-Nachrichten im Components-V2-Layout." },
+      { kind: "besser", text: "**Diagnose** – Testnachricht pro Kanal in den Einstellungen." },
+      { kind: "fix", text: "**Sperren & Zähler** – griffen bei manchen Einträgen nicht." },
     ],
   },
   {
@@ -47,11 +78,11 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: "2026-11-11",
     title: "Fragen bereinigt",
     items: [
-      "Allgemeine Fragen gibt es nur noch einmal, Positionen haben nur noch Fachfragen – keine doppelten Fragen mehr im Formular.",
-      "„Support // Support“ heißt jetzt „Fachfragen“, Szenario-Fragen sind einheitlich gekennzeichnet.",
-      "Allgemeine Antworten werden bei der nächsten Bewerbung vorausgefüllt („Deine Angaben“, mit Anpassen).",
-      "Formular-Builder: eindeutige Keys pro Frage, Warnung bei gleichen oder sehr ähnlichen Fragen.",
-      "Bestehende Duplikate wurden automatisch zusammengeführt – ohne dass Antworten verloren gehen.",
+      { kind: "besser", text: "**Keine Doppelungen** – Basisfragen gibt es einmal, pro Stelle nur Fachfragen." },
+      { kind: "neu", text: "**Vorausfüllen** – Basisantworten werden bei der nächsten Bewerbung übernommen." },
+      { kind: "neu", text: "**Formular-Builder** – eindeutige Keys, Warnung bei ähnlichen Fragen." },
+      { kind: "besser", text: "**Fachfragen** statt „Support // Support“, einheitliche Szenario-Kennzeichnung." },
+      { kind: "fix", text: "**Duplikate** zusammengeführt – keine Antwort ging verloren." },
     ],
   },
   {
@@ -59,9 +90,9 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: "2026-11-11",
     title: "Bewerbungsportal gestartet",
     items: [
-      "Login mit Discord, Team-Bereich nur mit Team-Rolle, Admin-Funktionen mit Admin-Rolle.",
-      "Bewerbungsformular in Schritten mit automatischem Speichern, Status im Dashboard, Bestätigung per Discord-DM.",
-      "Team-Bereich mit Tabelle und Board, Abstimmung, Kommentaren, Nachrichtenbausteinen, Statistiken und Audit-Log.",
+      { kind: "neu", text: "**Login mit Discord** – Team-Bereich mit Team-Rolle, Admin-Funktionen mit Admin-Rolle." },
+      { kind: "neu", text: "**Bewerben in Schritten** – automatisch gespeichert, Bestätigung per DM, Status im Dashboard." },
+      { kind: "neu", text: "**Team-Bereich** – Tabelle & Board, Abstimmung, Kommentare, Bausteine, Statistiken, Audit-Log." },
     ],
   },
 ];

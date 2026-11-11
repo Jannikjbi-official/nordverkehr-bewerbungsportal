@@ -108,9 +108,17 @@ describe("Discord-Nachrichten (Components V2)", () => {
     const log = buildBotLogMessage("📥 Neue Bewerbung", { tone: "warn", url: "https://bewerbung.nordverkehr.xyz/team" });
     expect(log.flags).toBe(COMPONENTS_V2);
     expect(container(log).accent_color).toBe(WARN_COLOR);
-    const cl = buildChangelogMessage({ title: "Update", date: "2026-11-11", items: ["A", "B"] }, "https://bewerbung.nordverkehr.xyz/team/changelog");
+    const cl = buildChangelogMessage(
+      { title: "Update", date: "2026-11-11", items: [{ kind: "neu", text: "A" }, { kind: "fix", text: "B" }, { kind: "neu", text: "C" }] },
+      "https://bewerbung.nordverkehr.xyz/team/changelog",
+    );
     expect(cl.flags).toBe(COMPONENTS_V2);
-    expect(v2Text(cl)).toContain("• A\n• B");
+    const t = v2Text(cl);
+    expect(t).toContain("### ✨ Neu\n- A\n- C");
+    expect(t).toContain("### 🐛 Behoben\n- B");
+    expect(t).not.toContain("Verbessert");
+    expect(t).toContain("11. November 2026");
+    expect(JSON.stringify(cl.components)).not.toContain("logo.png");
   });
 });
 

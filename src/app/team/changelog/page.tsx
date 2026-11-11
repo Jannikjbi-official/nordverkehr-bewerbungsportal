@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { requireTeam } from "@/lib/auth/session";
-import { CHANGELOG } from "@/lib/changelog";
+import { CHANGELOG, groupItems } from "@/lib/changelog";
+import { DiscordMarkdown } from "@/components/DiscordMarkdown";
 import { formatDay } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Changelog" };
@@ -33,11 +34,22 @@ async function Entries() {
           <article className="nv-card p-5">
             <p className="nv-mono">{formatDay(new Date(`${e.date}T12:00:00`))}</p>
             <h2 className="font-semibold text-lg mt-1">{e.title}</h2>
-            <ul className="mt-3 space-y-1.5 text-sm text-fg-2 list-disc pl-5 marker:text-red-text">
-              {e.items.map((it, k) => (
-                <li key={k}>{it}</li>
+            <div className="mt-3 space-y-4">
+              {groupItems(e.items).map((g) => (
+                <div key={g.kind}>
+                  <p className="text-sm font-semibold">
+                    <span aria-hidden>{g.emoji}</span> {g.label}
+                  </p>
+                  <ul className="mt-1.5 space-y-1 text-sm text-fg-2 list-disc pl-5 marker:text-red-text">
+                    {g.items.map((it, k) => (
+                      <li key={k}>
+                        <DiscordMarkdown text={it.text} className="inline [&_strong]:text-fg" />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ))}
-            </ul>
+            </div>
           </article>
         </li>
       ))}

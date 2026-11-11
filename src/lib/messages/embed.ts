@@ -13,6 +13,7 @@ import type {
   APITextDisplayComponent,
   RESTPostAPIChannelMessageJSONBody,
 } from "discord-api-types/v10";
+import { groupItems, type ChangeKind } from "@/lib/changelog";
 
 export const BRAND_COLOR = 0xc41e1e;
 export const WARN_COLOR = 0xf3c25b;
@@ -99,8 +100,10 @@ export function embedAuthor(author?: ApplicantEmbedInput["author"]) {
 export function buildApplicantMessage(input: ApplicantEmbedInput): RESTPostAPIChannelMessageJSONBody {
   const head = embedAuthor(input.author);
   const at = input.timestamp ?? new Date();
+  const headLines = [`-# ${head.name}`, `## ${truncate(input.title, 200)}`];
   return v2Message(BRAND_COLOR, [
-    section([`-# ${head.name}`, `## ${truncate(input.title, 200)}`], head.icon_url),
+    // Profilbild nur, wenn eine Person schreibt – als Team ruhiger Text-Kopf ohne großes Logo
+    input.author?.iconUrl ? section(headLines, input.author.iconUrl) : text(headLines.join("\n")),
     separator(),
     text(truncate(input.body || " ", BODY_LIMIT)),
     separator(false),
@@ -150,12 +153,27 @@ export function buildBotLogMessage(line: string, opts: { tone?: "default" | "war
   ]);
 }
 
-/** Changelog-Eintrag für den Changelog-Kanal. */
-export function buildChangelogMessage(entry: { title: string; date: string; items: string[] }, url?: string | null): RESTPostAPIChannelMessageJSONBody {
-  return v2Message(BRAND_COLOR, [
-    section([`-# NORDVERKEHR // BEWERBUNGSPORTAL`, `## 📋 ${truncate(entry.title, 200)}`, `-# ${discordTime(new Date(`${entry.date}T12:00:00Z`), "D")}`], LOGO_URL),
-    separator(),
-    text(truncate(entry.items.map((i) => `• ${i}`).join("\n"), BODY_LIMIT)),
-    linkButtons([{ label: "Changelog im Team-Bereich", url }]),
-  ]);
+export const formatDateDe = (iso: string) =>
+  new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Berlin" }).format(new Date(`${iso}T12:00:00Z`));
+
+/**
+ * Changelog-Eintrag: kleiner Kopf, Titel, Datum – dann je Art (Neu, Verbessert,
+ * Behoben) eine Überschrift mit echter Markdown-Liste. Kein Logo-Bild.
+ */
+export function buildChangelogMessage(
+  entry: { title: string; date: string; items: { kind: ChangeKind; text: string }[] },
+  url?: string | null,
+): RESTPostAPIChannelMessageJSONBody {
+  const groups = groupItems(entry.items);
+  const budget = Math.floor(BODY_LIMIT / Math.max(groups.length, 1));
+  const children: (APIComponentInContainer | null | false)[] = [
+    text(`-# 📋 CHANGELOG · NORDVERKEHR BEWERBUNGSPORTAL\n## ${truncate(entry.title, 200)}\n-# ${formatDateDe(entry.date)}`),
+  ];
+  for (const g of groups) {
+    children.push(separator(true, 1));
+    children.push(text(truncate(`### ${g.emoji} ${g.label}\n${g.items.map((i) => `- ${i.text}`).join("\n")}`, budget)));
+  }
+  children.push(separator(false, 1));
+  children.push(linkButtons([{ label: "Alle Änderungen ansehen", url }]));
+  return v2Message(BRAND_COLOR, children);
 }

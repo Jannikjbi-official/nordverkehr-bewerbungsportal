@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { ArrowRight, ArrowUUpLeft, CalendarCheck, Megaphone, ChatCircleDots, DiscordLogo, HandPointing, ShieldWarning } from "@phosphor-icons/react/ssr";
 import { Avatar, Notice, Stat, StatusBadge, formatDay, formatDayTime, formatRelative } from "@/components/ui";
 import { CHANGELOG } from "@/lib/changelog";
+import { DiscordMarkdown } from "@/components/DiscordMarkdown";
 import { requireTeam } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { ACTIVE_STATUSES, FOLLOW_UP_DAYS } from "@/lib/applications/status";
@@ -93,7 +94,7 @@ async function Overview({ searchParams }: Pick<PageProps<"/team">, "searchParams
           <ul className="mt-2 space-y-1 text-sm text-fg-2 list-disc pl-5 marker:text-red-text">
             {CHANGELOG[0].items.slice(0, 3).map((it, k) => (
               <li key={k} className="line-clamp-2">
-                {it}
+                <DiscordMarkdown text={it.text} className="inline [&_strong]:text-fg" />
               </li>
             ))}
           </ul>
