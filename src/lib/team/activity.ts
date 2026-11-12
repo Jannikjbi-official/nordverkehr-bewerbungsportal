@@ -65,31 +65,39 @@ export function aggregateActivity(input: {
 }
 
 export async function loadTeamActivity(db: PrismaClient, since: Date | null): Promise<ActivityRow[]> {
-  const at = since ? { gte: since } : undefined;
+  const at = since ? { createdAt: { gte: since } } : {};
+  // Zählen in der Datenbank (groupBy) statt Rohdaten zu laden
   const [claims, messages, statusChanges, comments, ratings, apps] = await Promise.all([
-    db.auditLog.findMany({ where: { action: "application.claim", ...(at ? { createdAt: at } : {}) }, select: { actorId: true }, take: 20_000 }),
-    db.message.findMany({ where: { direction: "TEAM_TO_APPLICANT", ...(at ? { createdAt: at } : {}) }, select: { authorId: true }, take: 20_000 }),
-    db.statusChange.findMany({ where: { ...(at ? { createdAt: at } : {}) }, select: { actorId: true, to: true }, take: 20_000 }),
-    db.comment.findMany({ where: { ...(at ? { createdAt: at } : {}) }, select: { authorId: true }, take: 20_000 }),
-    db.rating.findMany({ where: { ...(at ? { updatedAt: at } : {}) }, select: { userId: true }, take: 20_000 }),
+    db.auditLog.groupBy({ by: ["actorId"], where: { action: "application.claim", ...at }, _count: { _all: true } }),
+    db.message.groupBy({ by: ["authorId"], where: { direction: "TEAM_TO_APPLICANT", ...at }, _count: { _all: true } }),
+    db.statusChange.groupBy({ by: ["actorId", "to"], where: at, _count: { _all: true } }),
+    db.comment.groupBy({ by: ["authorId"], where: at, _count: { _all: true } }),
+    db.rating.groupBy({ by: ["userId"], where: since ? { updatedAt: { gte: since } } : {}, _count: { _all: true } }),
     db.application.findMany({
       where: { isTest: { not: true }, submittedAt: since ? { gte: since } : { not: null } },
       select: { submittedAt: true, messages: { where: { direction: "TEAM_TO_APPLICANT" }, orderBy: { createdAt: "asc" }, take: 1, select: { authorId: true, createdAt: true } } },
-      take: 5_000,
+      orderBy: { submittedAt: "desc" },
+      take: 2_000,
     }),
   ]);
   const ids = new Set<string>();
   for (const x of [...claims.map((c) => c.actorId), ...messages.map((m) => m.authorId), ...statusChanges.map((s) => s.actorId), ...comments.map((c) => c.authorId), ...ratings.map((r) => r.userId)]) if (x) ids.add(x);
-  const users = await db.user.findMany({ where: { id: { in: [...ids] } }, select: { id: true, globalName: true, username: true } });
+  // Nur Teammitglieder: Bewerber tauchen sonst über Einreichen/Rückzug (StatusChange) auf
+  const users = await db.user.findMany({ where: { id: { in: [...ids] }, OR: [{ isTeam: true }, { isAdmin: true }] }, select: { id: true, globalName: true, username: true } });
+  const team = new Set(users.map((u) => u.id));
+  const only = <T extends { userId: string | null }>(xs: T[]) => xs.filter((x) => x.userId && team.has(x.userId));
+  const repeat = <T,>(n: number, x: T) => Array.from({ length: n }, () => x);
   return aggregateActivity({
     names: new Map(users.map((u) => [u.id, u.globalName || u.username])),
-    claims: claims.map((c) => ({ userId: c.actorId })),
-    messages: messages.map((m) => ({ userId: m.authorId })),
-    statusChanges: statusChanges.map((s) => ({ userId: s.actorId, to: s.to })),
-    comments: comments.map((c) => ({ userId: c.authorId })),
-    ratings: ratings.map((r) => ({ userId: r.userId })),
-    firstReplies: apps
-      .filter((a) => a.submittedAt && a.messages[0])
-      .map((a) => ({ userId: a.messages[0].authorId, hours: Math.max(0, (a.messages[0].createdAt.getTime() - a.submittedAt!.getTime()) / 3_600_000) })),
+    claims: only(claims.flatMap((c) => repeat(c._count._all, { userId: c.actorId }))),
+    messages: only(messages.flatMap((m) => repeat(m._count._all, { userId: m.authorId }))),
+    statusChanges: only(statusChanges.flatMap((s) => repeat(s._count._all, { userId: s.actorId, to: s.to as string }))),
+    comments: only(comments.flatMap((c) => repeat(c._count._all, { userId: c.authorId }))),
+    ratings: only(ratings.flatMap((r) => repeat(r._count._all, { userId: r.userId }))),
+    firstReplies: only(
+      apps
+        .filter((a) => a.submittedAt && a.messages[0])
+        .map((a) => ({ userId: a.messages[0].authorId, hours: Math.max(0, (a.messages[0].createdAt.getTime() - a.submittedAt!.getTime()) / 3_600_000) })),
+    ),
   });
 }

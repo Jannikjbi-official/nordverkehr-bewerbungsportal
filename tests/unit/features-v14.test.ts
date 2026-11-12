@@ -32,13 +32,14 @@ describe("Knöpfe & Befehle", () => {
   it("custom_ids", () => {
     expect(parseCustomId("nv:claim:abcdefghij12")).toEqual({ kind: "claim", applicationId: "abcdefghij12" });
     expect(parseCustomId("nv:cancel:abcdefghij12")).toEqual({ kind: "cancelInterview", applicationId: "abcdefghij12" });
-    expect(parseCustomId("nv:cancelok:abcdefghij12")).toEqual({ kind: "cancelInterviewConfirmed", applicationId: "abcdefghij12" });
+    expect(parseCustomId("nv:cancel:abcdefghij12:1790000000")).toEqual({ kind: "cancelInterview", applicationId: "abcdefghij12", at: 1790000000 });
+    expect(parseCustomId("nv:cancelok:abcdefghij12:1790000000")).toEqual({ kind: "cancelInterviewConfirmed", applicationId: "abcdefghij12", at: 1790000000 });
     expect(parseCustomId("nv:cancel:../../x")).toBeNull();
   });
   it("Rückfrage vor dem Absagen ist ephemeral mit Bestätigungsknopf", () => {
-    const r = cancelConfirmReply("abcdefghij12", "morgen");
+    const r = cancelConfirmReply("abcdefghij12", new Date(1_790_000_000_000));
     expect(r.data.flags).toBe(64);
-    expect(JSON.stringify(r)).toContain("nv:cancelok:abcdefghij12");
+    expect(JSON.stringify(r)).toContain("nv:cancelok:abcdefghij12:1790000000");
   });
   it("Befehle haben eindeutige Namen", () => {
     const names = ALL_COMMANDS.map((c) => c.name);

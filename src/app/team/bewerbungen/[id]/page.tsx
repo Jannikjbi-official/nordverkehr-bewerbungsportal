@@ -33,7 +33,7 @@ import { RatingPanel } from "@/components/team/RatingPanel";
 import { OnboardingPanel } from "@/components/team/OnboardingPanel";
 import { MuteControl } from "@/components/team/MuteControl";
 import { onboardingItems, readOnboarding } from "@/lib/team/onboarding";
-import { cleanScores, criteriaFor, formatScore, summarizeRatings } from "@/lib/team/ratings";
+import { cleanScores, criteriaFor, formatScore, summarizeRatings, withLegacy } from "@/lib/team/ratings";
 import { claimAndScore, isScoringPending, readAiRating, scoringBlockedReason } from "@/lib/ai/scoring";
 import { after } from "next/server";
 import { applyGuildState, guildStateKnown } from "@/lib/applications/guild-watch";
@@ -134,7 +134,8 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
   const aiEnabled = settings["ai.enabled"] && isAiConfigured();
   const myRating = app.ratings.find((r) => r.userId === me.id);
   const criteria = criteriaFor(app.position);
-  const ratingSummary = summarizeRatings(app.ratings, criteria);
+  // Schnitt inkl. Bewertungen von vor einem Wechsel auf eigene Kriterien (Panel zeigt nur die aktuellen Kriterien)
+  const ratingSummary = summarizeRatings(app.ratings, withLegacy(criteria));
   // Phase 2 (Gespräch) erst ab X Sternen Team-Schnitt
   const interviewBlock = ["SUBMITTED", "IN_REVIEW"].includes(app.status) ? interviewBlockText(ratingSummary.overall, settings["interview.minStars"], formatScore) : null;
   const statusTargets = allowedTeamTargets(app.status).filter((s) => !(s === "INTERVIEW" && interviewBlock));
@@ -170,27 +171,28 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
     app.interviewChecks,
     app.interviewNotes,
   );
-  // Vergleich: andere laufende Bewerbungen derselben Stelle
-  const peers = await db.application.findMany({
-    where: { positionId: app.positionId, id: { not: app.id }, status: { in: ["SUBMITTED", "IN_REVIEW", "INTERVIEW"] } },
-    orderBy: { submittedAt: "asc" },
-    take: 8,
-    select: { id: true, publicId: true, user: { select: { globalName: true, username: true } } },
-  });
   // Reiter „Gespräch“: ab Einladung zum Gespräch oder sobald schon etwas notiert ist
   const showProtocol = protocol.started || ["INTERVIEW", "ACCEPTED", "REJECTED"].includes(app.status);
+  // Vergleich (andere laufende Bewerbungen derselben Stelle) und Mindestlängen für Nachfragen – parallel
+  const wantsFollowUps = showProtocol && app.status === "INTERVIEW";
+  const qIds = app.answers.map((a) => a.questionId).filter((x): x is string => !!x);
+  const [peers, minRows] = await Promise.all([
+    db.application.findMany({
+      where: { positionId: app.positionId, id: { not: app.id }, status: { in: ["SUBMITTED", "IN_REVIEW", "INTERVIEW"] } },
+      orderBy: { submittedAt: "asc" },
+      take: 8,
+      select: { id: true, publicId: true, user: { select: { globalName: true, username: true } } },
+    }),
+    wantsFollowUps ? db.question.findMany({ where: { id: { in: qIds } }, select: { id: true, minLength: true } }) : Promise.resolve([]),
+  ]);
+  const mins = new Map(minRows.map((q) => [q.id, q.minLength]));
   // Nachfragen aus der Bewerbung (knappe Antworten, Quizfehler) – nur solange das Gespräch noch ansteht
-  const followUps =
-    showProtocol && app.status === "INTERVIEW"
-      ? await (async () => {
-          const qIds = app.answers.map((a) => a.questionId).filter((x): x is string => !!x);
-          const mins = new Map((await db.question.findMany({ where: { id: { in: qIds } }, select: { id: true, minLength: true } })).map((q) => [q.id, q.minLength]));
-          return suggestFollowUps(
-            app.answers.map((a) => ({ label: a.label, type: a.type, value: a.value, correct: a.correct, minLength: a.questionId ? mins.get(a.questionId) : null })),
-            protocol.items.map((i) => i.question),
-          );
-        })()
-      : [];
+  const followUps = wantsFollowUps
+    ? suggestFollowUps(
+        app.answers.map((a) => ({ label: a.label, type: a.type, value: a.value, correct: a.correct, minLength: a.questionId ? mins.get(a.questionId) : null })),
+        protocol.items.map((i) => i.question),
+      )
+    : [];
 
   const sections = new Map<string, typeof app.answers>();
   for (const a of app.answers) {
@@ -586,7 +588,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
               isAdmin={access.isAdmin}
               raters={app.ratings
                 .filter((r) => r.userId !== me.id || Object.keys(cleanScores(r.scores, criteria)).length)
-                .map((r) => ({ name: r.user.globalName || r.user.username, avg: summarizeRatings([r], criteria).overall }))}
+                .map((r) => ({ name: r.user.globalName || r.user.username, avg: summarizeRatings([r], withLegacy(criteria)).overall }))}
             />
                     <div className="nv-divider" />
                     <p className="nv-mono flex items-center justify-between gap-2">

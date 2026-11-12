@@ -117,12 +117,8 @@ async function Apply({
         isTest: { not: true },
       },
       orderBy: { decidedAt: "desc" },
-      select: {
-        id: true,
-        publicId: true,
-        decidedAt: true,
-        rejectionReason: true,
-      },
+      // Bewusst ohne rejectionReason – das ist ein interner Grund fürs Team
+      select: { id: true, publicId: true, decidedAt: true },
     }),
   ]);
 
@@ -162,28 +158,21 @@ async function Apply({
           <Notice
             tone="info"
             icon={ArrowCounterClockwise}
-            title={`Schön, dass du es nochmal versuchst!`}
+            title="Schön, dass du es nochmal versuchst!"
           >
             <p>
-              Du hattest dich{" "}
+              Du hattest dich schon einmal als {position.title} beworben (
+              {previous.publicId}
               {previous.decidedAt
-                ? `bis ${formatDay(previous.decidedAt)} `
+                ? `, Entscheidung am ${formatDay(previous.decidedAt)}`
                 : ""}
-              schon einmal als {position.title} beworben ({previous.publicId}).
-              {previous.rejectionReason
-                ? " Damals hat es aus diesem Grund nicht gepasst:"
-                : " Damals hat es leider nicht gepasst."}
+              ). Was das Team dir damals geschrieben hat, steht in deiner alten
+              Bewerbung – nimm dir die Punkte diesmal besonders vor.
+              Ausführliche, ehrliche Antworten helfen am meisten.
             </p>
-            {previous.rejectionReason && (
-              <blockquote className="mt-2 border-l-2 border-line-strong pl-3 text-fg-2 whitespace-pre-line">
-                {previous.rejectionReason}
-              </blockquote>
-            )}
             <p className="mt-2">
-              Nimm dir die Punkte diesmal besonders vor – ausführliche, ehrliche
-              Antworten helfen dem Team am meisten.{" "}
               <Link className="nv-link" href={`/dashboard/${previous.id}`}>
-                Alte Bewerbung ansehen
+                Alte Bewerbung und Nachrichten ansehen
               </Link>
             </p>
           </Notice>

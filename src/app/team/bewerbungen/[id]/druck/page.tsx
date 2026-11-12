@@ -13,7 +13,7 @@ import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { STATUS_LABEL } from "@/lib/applications/status";
 import { formatAnswerForDisplay, type AnswerValue } from "@/lib/applications/form";
-import { STANDARD_CRITERIA, cleanScores, criteriaFor, formatScore, summarizeRatings } from "@/lib/team/ratings";
+import { STANDARD_CRITERIA, cleanScores, criteriaFor, formatScore, summarizeRatings, withLegacy } from "@/lib/team/ratings";
 import { readAiRating } from "@/lib/ai/scoring";
 
 export const metadata: Metadata = { title: "Bewerbung drucken" };
@@ -63,7 +63,7 @@ async function PrintView({ params, searchParams }: PageProps<"/team/bewerbungen/
   for (const a of app.answers) sections.set(a.sectionTitle, [...(sections.get(a.sectionTitle) ?? []), a]);
   const name = app.user.globalName || app.user.username;
   const criteria = criteriaFor(app.position);
-  const rating = summarizeRatings(app.ratings, criteria);
+  const rating = summarizeRatings(app.ratings, withLegacy(criteria));
   const standardCriteria = criteria === STANDARD_CRITERIA;
   const aiStored = readAiRating(app.aiRating);
   const ai = aiStored && !("blocked" in aiStored) ? aiStored : null;

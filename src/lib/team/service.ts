@@ -140,10 +140,10 @@ export async function changeStatus(opts: {
       jobIds.push(job.id);
     }
   });
-  // Kontingent: Annahme belegt einen Platz, Zurücknehmen gibt ihn frei
-  if (!app.isTest && app.position.seats !== null && (opts.to === "ACCEPTED" || app.status === "ACCEPTED")) {
-    const { adjustSeats } = await import("@/lib/positions/schedule");
-    await adjustSeats(db, app.positionId, opts.to === "ACCEPTED" ? -1 : 1).catch((e) => console.error("[seats]", e));
+  // Kontingent: Annahme belegt einen Platz, Zurücknehmen gibt ihn frei (nur wenn diese Annahme einen belegt hatte)
+  if (!app.isTest && (opts.to === "ACCEPTED" || app.status === "ACCEPTED")) {
+    const { takeSeat, returnSeat } = await import("@/lib/positions/schedule");
+    await (opts.to === "ACCEPTED" ? takeSeat(db, app.id, app.positionId) : returnSeat(db, app.id, app.positionId)).catch((e) => console.error("[seats]", e));
   }
   // Termin-Abgleich (Discord-Event, Erinnerung an den Betreuer) – nur wenn ein Gespräch beteiligt ist
   if (app.status === "INTERVIEW" || opts.to === "INTERVIEW" || app.interviewAt || app.discordEventId || app.teamReminderJobId) {
@@ -168,12 +168,12 @@ export function acceptRuleText(position: { minProVotes: number | null; requireAd
  */
 export async function interviewBlockReason(applicationId: string, minStars: number) {
   if (!minStars) return null;
-  const { summarizeRatings, formatScore, criteriaFor } = await import("@/lib/team/ratings");
+  const { summarizeRatings, formatScore, criteriaFor, withLegacy } = await import("@/lib/team/ratings");
   const [ratings, app] = await Promise.all([
     db.rating.findMany({ where: { applicationId }, select: { scores: true } }),
     db.application.findUnique({ where: { id: applicationId }, select: { position: { select: { ratingCriteria: true } } } }),
   ]);
-  return interviewBlockText(summarizeRatings(ratings, criteriaFor(app?.position)).overall, minStars, formatScore);
+  return interviewBlockText(summarizeRatings(ratings, withLegacy(criteriaFor(app?.position))).overall, minStars, formatScore);
 }
 
 /** Text für die Hürde (rein, für Tests und die Anzeige in der Detailansicht). */

@@ -136,7 +136,7 @@ export async function sendInterviewReminders(db: PrismaClient, now = new Date())
           publicId: a.publicId,
           statusUrl: `${publicEnv.appUrl}/dashboard/${a.id}`,
           // Absagen direkt aus der DM (fragt vorher nach)
-          action: { label: "Ich kann nicht", customId: cancelCustomId(a.id), emoji: "🚫" },
+          action: { label: "Ich kann nicht", customId: cancelCustomId(a.id, a.interviewAt), emoji: "🚫" },
         }),
       },
       { applicationId: a.id },
@@ -155,7 +155,7 @@ export async function sendInterviewReminders(db: PrismaClient, now = new Date())
  */
 export async function cancelInterviewByApplicant(
   db: PrismaClient,
-  opts: { applicationId: string; discordId?: string; userId?: string; now?: Date },
+  opts: { applicationId: string; discordId?: string; userId?: string; now?: Date; /** Knopf aus der DM: nur dieser Termin (Unix-Sekunden) */ expectAt?: number },
 ): Promise<{ ok: true; at: Date } | { ok: false; error: string }> {
   const now = opts.now ?? new Date();
   if (!opts.discordId && !opts.userId) return { ok: false, error: "Unbekannt." };
@@ -166,6 +166,9 @@ export async function cancelInterviewByApplicant(
   if (!app) return { ok: false, error: "Bewerbung nicht gefunden." };
   if (app.status !== "INTERVIEW" || !app.interviewAt) return { ok: false, error: "Du hast gerade keinen Gesprächstermin." };
   if (app.interviewAt.getTime() <= now.getTime()) return { ok: false, error: "Der Termin hat schon angefangen – schreib dem Team bitte direkt." };
+  if (opts.expectAt !== undefined && Math.floor(app.interviewAt.getTime() / 1000) !== opts.expectAt) {
+    return { ok: false, error: "Dieser Knopf gehört zu einem älteren Termin. Deinen aktuellen Termin kannst du im Portal absagen." };
+  }
   const at = app.interviewAt;
   const name = app.user.globalName || app.user.username;
 

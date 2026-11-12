@@ -28,6 +28,13 @@ export function OnboardingPanel({
 }) {
   const [state, setState] = useState<OnboardingState>(initial);
   const [saving, setSaving] = useState(0);
+  // Neuer Stand vom Server (LiveRefresh, andere Teammitglieder) → übernehmen, außer es wird gerade gespeichert
+  const initialKey = JSON.stringify(initial);
+  const [seenKey, setSeenKey] = useState(initialKey);
+  if (initialKey !== seenKey && saving === 0) {
+    setSeenKey(initialKey);
+    setState(initial);
+  }
   const [error, setError] = useState<string | null>(null);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
   const done = items.filter((i) => state[i]).length;

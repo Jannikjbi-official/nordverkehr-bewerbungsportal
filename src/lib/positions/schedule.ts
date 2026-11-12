@@ -130,20 +130,19 @@ async function refreshJobs(db: PrismaClient) {
 }
 
 /**
- * Kontingent („Freie Plätze“): Annahme zieht einen Platz ab, zurückgenommene Annahme
- * gibt ihn zurück. Bei 0 schließt die Stelle automatisch (Bot-Log). Testbewerbungen zählen nicht.
+ * Kontingent („Freie Plätze“): Annahme zieht einen Platz ab und merkt sich das an der
+ * Bewerbung (`seatTakenAt`); nur so markierte Annahmen geben beim Zurücknehmen einen
+ * Platz zurück. Bei 0 schließt die Stelle automatisch (Bot-Log). Testbewerbungen zählen nicht.
  */
-export async function adjustSeats(db: PrismaClient, positionId: string, delta: -1 | 1) {
-  const p = await db.position.findUnique({ where: { id: positionId }, select: { id: true, title: true, status: true, seats: true } });
+export async function takeSeat(db: PrismaClient, applicationId: string, positionId: string) {
+  const p = await db.position.findUnique({ where: { id: positionId }, select: { id: true, title: true, seats: true } });
   if (!p || p.seats === null || p.seats === undefined) return { seats: null as number | null, closed: false };
   // Atomar: nie unter 0
-  const res =
-    delta < 0
-      ? await db.position.updateMany({ where: { id: p.id, seats: { gt: 0 } }, data: { seats: { decrement: 1 } } })
-      : await db.position.updateMany({ where: { id: p.id, seats: { not: null } }, data: { seats: { increment: 1 } } });
+  const res = await db.position.updateMany({ where: { id: p.id, seats: { gt: 0 } }, data: { seats: { decrement: 1 } } });
   if (!res.count) return { seats: p.seats, closed: false };
+  await db.application.update({ where: { id: applicationId }, data: { seatTakenAt: new Date() } });
   const now = await db.position.findUniqueOrThrow({ where: { id: p.id }, select: { seats: true, status: true } });
-  if (delta < 0 && now.seats === 0 && now.status === "OPEN") {
+  if (now.seats === 0 && now.status === "OPEN") {
     await db.position.updateMany({ where: { id: p.id, status: "OPEN" }, data: { status: "CLOSED", opensAt: null, closesAt: null } });
     await db.auditLog.create({ data: { action: "position.auto", targetType: "position", targetId: p.id, meta: { to: "CLOSED", reason: "seats" } } });
     const job = await botLog(`🔴 **${p.title}** wurde automatisch geschlossen – alle Plätze sind vergeben.`, { tone: "warn" });
@@ -152,4 +151,12 @@ export async function adjustSeats(db: PrismaClient, positionId: string, delta: -
     return { seats: 0, closed: true };
   }
   return { seats: now.seats, closed: false };
+}
+
+/** Annahme zurückgenommen: Platz nur zurückgeben, wenn diese Annahme einen belegt hatte. */
+export async function returnSeat(db: PrismaClient, applicationId: string, positionId: string) {
+  const freed = await db.application.updateMany({ where: { id: applicationId, seatTakenAt: { not: null } }, data: { seatTakenAt: null } });
+  if (!freed.count) return false;
+  const res = await db.position.updateMany({ where: { id: positionId, seats: { not: null } }, data: { seats: { increment: 1 } } });
+  return res.count > 0;
 }

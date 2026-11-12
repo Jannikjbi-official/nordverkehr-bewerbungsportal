@@ -114,7 +114,13 @@ export async function executeJob(
       }
       case "REMOVE_ROLE": {
         if (isTestDiscordId(payload.discordUserId)) return { kind: "done", result: { skipped: "test" } };
-        await api.removeRole(payload.guildId, payload.discordUserId, payload.roleId, payload.reason);
+        try {
+          await api.removeRole(payload.guildId, payload.discordUserId, payload.roleId, payload.reason);
+        } catch (err) {
+          // Person nicht mehr auf dem Server bzw. Rolle weg → nichts mehr zu entfernen (keine Störung)
+          if (classifyDiscordError(err).status === 404) return { kind: "done", result: { skipped: "gone" } };
+          throw err;
+        }
         return { kind: "done", result: { roleId: payload.roleId } };
       }
       case "SET_NICK": {
@@ -123,7 +129,14 @@ export async function executeJob(
         if (!member) return { kind: "done", result: { skipped: "not_in_guild" } };
         const next = nickWithPrefix(member.nick ?? payload.fallbackName, payload.prefix, payload.mode);
         if (next === undefined) return { kind: "done", result: { skipped: "unchanged" } };
-        await api.setNick(payload.guildId, payload.discordUserId, next, payload.reason);
+        try {
+          await api.setNick(payload.guildId, payload.discordUserId, next, payload.reason);
+        } catch (err) {
+          // Server-Besitzer / höhere Rolle: Discord verbietet es – nur Kosmetik, keine Störung
+          const e = classifyDiscordError(err);
+          if (e.kind === "forbidden" || e.status === 404) return { kind: "done", result: { skipped: "forbidden", error: e.message.slice(0, 200) } };
+          throw err;
+        }
         return { kind: "done", result: { nick: next ?? "" } };
       }
       default:

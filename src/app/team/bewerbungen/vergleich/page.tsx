@@ -6,7 +6,7 @@ import { Notice, StatusBadge, formatDay } from "@/components/ui";
 import { requireTeam } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { canAccessApplication, viewerOf } from "@/lib/team/visibility";
-import { criteriaFor, formatScore, summarizeRatings } from "@/lib/team/ratings";
+import { criteriaFor, formatScore, summarizeRatings, withLegacy } from "@/lib/team/ratings";
 import { formatAnswerForDisplay, type AnswerValue } from "@/lib/applications/form";
 
 export const metadata: Metadata = { title: "Bewerbungen vergleichen", robots: { index: false } };
@@ -85,7 +85,7 @@ async function Compare({ searchParams }: Pick<PageProps<"/team/bewerbungen/vergl
           {/* Kopf */}
           <div className="sticky left-0 z-10 bg-card p-4 border-b border-line" />
           {apps.map((a) => {
-            const rating = summarizeRatings(a.ratings, criteriaFor(a.position));
+            const rating = summarizeRatings(a.ratings, withLegacy(criteriaFor(a.position)));
             const flags = Array.isArray(a.flags) ? a.flags : [];
             return (
               <div key={a.id} className="p-4 border-b border-l border-line space-y-1.5">

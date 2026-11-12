@@ -86,6 +86,8 @@ try {
     const { cancelInterviewByApplicant } = await import("../src/lib/team/slots");
     const cs = await db.interviewSlot.create({ data: { startsAt: new Date(Date.now() + 72 * H) } });
     await bookSlot(db, { userId: a1.id, applicationId: appR.id, slotId: cs.id });
+    const stale = await cancelInterviewByApplicant(db, { applicationId: appR.id, discordId: a1.discordId, expectAt: Math.floor(cs.startsAt.getTime() / 1000) - 3600 });
+    check(!stale.ok && (await db.application.findUniqueOrThrow({ where: { id: appR.id } })).interviewAt !== null, "Alter DM-Knopf (anderer Termin) sagt nichts ab");
     const foreign = await cancelInterviewByApplicant(db, { applicationId: appR.id, userId: a2.id });
     check(!foreign.ok, "Fremde Person kann den Termin nicht absagen");
     const c1 = await cancelInterviewByApplicant(db, { applicationId: appR.id, discordId: a1.discordId });

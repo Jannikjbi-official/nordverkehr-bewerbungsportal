@@ -33,9 +33,16 @@ export function HelpBrowser({ sections }: { sections: HelpSection[] }) {
   const [opened, setOpened] = useState<Set<string>>(new Set());
   const hash = useSyncExternalStore(subscribeHash, readHash, () => "");
 
-  // Sprungmarke auf einen Begriff → dessen Thema anzeigen
+  // Sprungmarke auf einen Begriff → immer dessen Thema anzeigen (auch wenn vorher ein anderes gewählt war)
   const hashSection = sections.find((s) => s.id === hash || s.terms.some((t) => t.id === hash))?.id ?? null;
-  const activeTopic = q.trim() ? null : (topic ?? hashSection);
+  const activeTopic = q.trim() ? null : (hashSection ?? topic);
+  const chooseTopic = (id: string | null) => {
+    setTopic(id);
+    if (hash) {
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    }
+  };
 
   const filtered = useMemo(() => {
     const n = norm(q.trim());
@@ -75,9 +82,9 @@ export function HelpBrowser({ sections }: { sections: HelpSection[] }) {
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <nav aria-label="Themen" className="flex flex-wrap gap-1.5">
-          <TopicChip active={!activeTopic} onClick={() => setTopic(null)} label="Alle" count={sections.reduce((n, s) => n + s.terms.length, 0)} />
+          <TopicChip active={!activeTopic} onClick={() => chooseTopic(null)} label="Alle" count={sections.reduce((n, s) => n + s.terms.length, 0)} />
           {sections.map((s) => (
-            <TopicChip key={s.id} active={activeTopic === s.id} onClick={() => setTopic(s.id)} label={s.title} count={s.terms.length} />
+            <TopicChip key={s.id} active={activeTopic === s.id} onClick={() => chooseTopic(s.id)} label={s.title} count={s.terms.length} />
           ))}
         </nav>
         <label className="relative block sm:w-64 shrink-0">

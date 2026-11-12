@@ -82,10 +82,13 @@ export async function POST(req: Request) {
     if (action.kind === "cancelInterview") {
       const app = await db.application.findFirst({ where: { id: action.applicationId, user: { discordId } }, select: { status: true, interviewAt: true } });
       if (!app || app.status !== "INTERVIEW" || !app.interviewAt || app.interviewAt.getTime() <= Date.now()) return Response.json(ephemeral("Für diese Bewerbung gibt es gerade keinen Termin, den du absagen kannst."));
-      return Response.json(cancelConfirmReply(action.applicationId, `<t:${Math.floor(app.interviewAt.getTime() / 1000)}:f>`));
+      if (action.at !== undefined && Math.floor(app.interviewAt.getTime() / 1000) !== action.at) {
+        return Response.json(ephemeral(`Dieser Knopf gehört zu einem älteren Termin. Deinen aktuellen Termin kannst du im Portal absagen: ${publicEnv.appUrl}/dashboard/${action.applicationId}`));
+      }
+      return Response.json(cancelConfirmReply(action.applicationId, app.interviewAt));
     }
     const { cancelInterviewByApplicant } = await import("@/lib/team/slots");
-    const r = await cancelInterviewByApplicant(db, { applicationId: action.applicationId, discordId });
+    const r = await cancelInterviewByApplicant(db, { applicationId: action.applicationId, discordId, expectAt: action.at });
     return Response.json(ephemeral(r.ok ? `Erledigt – das Team weiß Bescheid. Einen neuen Termin findest du im Portal: ${publicEnv.appUrl}/dashboard/${action.applicationId}` : r.error));
   }
 

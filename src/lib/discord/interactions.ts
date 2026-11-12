@@ -5,8 +5,9 @@
  *
  * Knöpfe (custom_id):
  *  - nv:claim:<applicationId>  → Bewerbung übernehmen (nur Team-Rolle)
- *  - nv:cancel:<applicationId> → Bewerber: Gespräch absagen (fragt nach)
- *  - nv:cancelok:<applicationId> → Bewerber: Absage bestätigt
+ *  - nv:cancel:<applicationId>:<Termin, Unix-Sek.> → Bewerber: Gespräch absagen (fragt nach)
+ *  - nv:cancelok:<applicationId>:<Termin> → Bewerber: Absage bestätigt
+ *    (Knopf gilt nur für den Termin, zu dem die Erinnerung gehörte)
  * Slash-Befehle:
  *  - /bewerbung                → eigener Bewerbungsstand (nur für die Person sichtbar)
  *
@@ -47,9 +48,9 @@ export const claimCustomId = (applicationId: string) => `${CLAIM_PREFIX}${applic
 
 export const CANCEL_PREFIX = "nv:cancel:";
 export const CANCEL_OK_PREFIX = "nv:cancelok:";
-export const cancelCustomId = (applicationId: string) => `${CANCEL_PREFIX}${applicationId}`;
+export const cancelCustomId = (applicationId: string, at: Date) => `${CANCEL_PREFIX}${applicationId}:${Math.floor(at.getTime() / 1000)}`;
 
-export type CustomAction = { kind: "claim" | "cancelInterview" | "cancelInterviewConfirmed"; applicationId: string };
+export type CustomAction = { kind: "claim" | "cancelInterview" | "cancelInterviewConfirmed"; applicationId: string; at?: number };
 
 export function parseCustomId(customId: string): CustomAction | null {
   const kinds: [string, CustomAction["kind"]][] = [
@@ -59,21 +60,24 @@ export function parseCustomId(customId: string): CustomAction | null {
   ];
   for (const [prefix, kind] of kinds) {
     if (!customId.startsWith(prefix)) continue;
-    const id = customId.slice(prefix.length);
-    return /^[a-z0-9]{10,40}$/i.test(id) ? { kind, applicationId: id } : null;
+    const m = customId.slice(prefix.length).match(/^([a-z0-9]{10,40})(?::(\d{1,12}))?$/i);
+    if (!m) return null;
+    return m[2] ? { kind, applicationId: m[1], at: Number(m[2]) } : { kind, applicationId: m[1] };
   }
   return null;
 }
 
 /** Rückfrage vor dem Absagen (nur für die Person sichtbar). */
-export function cancelConfirmReply(applicationId: string, when: string) {
+export function cancelConfirmReply(applicationId: string, at: Date) {
+  const sec = Math.floor(at.getTime() / 1000);
+  const when = `<t:${sec}:f>`;
   return {
     type: 4,
     data: {
       content: `Willst du dein Gespräch ${when} wirklich absagen? Das Team bekommt Bescheid, und du kannst im Portal einen neuen Termin aussuchen (falls freie Termine da sind).`,
       flags: 64,
       allowed_mentions: { parse: [] },
-      components: [{ type: 1, components: [{ type: 2, style: 4, label: "Ja, absagen", custom_id: `${CANCEL_OK_PREFIX}${applicationId}` }] }],
+      components: [{ type: 1, components: [{ type: 2, style: 4, label: "Ja, absagen", custom_id: `${CANCEL_OK_PREFIX}${applicationId}:${sec}` }] }],
     },
   };
 }

@@ -372,6 +372,8 @@ model Application {
   mutedUntil           DateTime?
   /// Erinnerung an den Betreuer wegen liegengebliebenem Claim (einmal pro Claim)
   claimRemindedAt      DateTime?
+  /// Annahme hat einen „freien Platz“ der Stelle belegt (nur dann gibt Zurücknehmen ihn wieder frei)
+  seatTakenAt          DateTime?
   rejectionReason      String?
   /// Feste Kategorie des Absagegrunds (lib/applications/rejection.ts) – für die Statistik
   rejectionCategory    String?

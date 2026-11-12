@@ -55,6 +55,16 @@ export function criteriaFor(position: { ratingCriteria?: string[] | null } | nul
   return out.length ? out : STANDARD_CRITERIA;
 }
 
+/**
+ * Für Schnitt und Phase-2-Hürde: eigene Kriterien plus Standard-Kriterien, damit
+ * Bewertungen von vor einem Wechsel auf einen eigenen Bogen weiter zählen.
+ */
+export function withLegacy(criteria: readonly Criterion[]): readonly Criterion[] {
+  if (criteria === STANDARD_CRITERIA) return criteria;
+  const keys = new Set(criteria.map((c) => c.key));
+  return [...criteria, ...STANDARD_CRITERIA.filter((c) => !keys.has(c.key))];
+}
+
 /** Nur bekannte Kriterien mit ganzen Punkten 1–5 übernehmen. */
 export function cleanScores(input: unknown, criteria: readonly Criterion[] = STANDARD_CRITERIA): Scores {
   const keys = new Set(criteria.map((c) => c.key));
