@@ -66,48 +66,47 @@ export function RatingPanel({
           <span className="text-sm text-muted"> / 5</span>
         </p>
       </div>
-      <ul className="space-y-2.5">
+      <ul className="space-y-1">
         {RATING_CRITERIA.map((c) => {
           const val = scores[c.key] ?? 0;
           const team = summary.perCriterion[c.key];
           return (
-            <li key={c.key}>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs text-fg-2" title={c.hint}>
-                  {c.label}
-                </span>
-                <span className="flex items-center gap-2 text-[0.7rem] text-muted tabular-nums">
-                  {aiScores && (
-                    <span className="nv-pill nv-tone-info !py-0 !px-1.5 cursor-help" title={ai.kind === "scores" ? (ai.reasons[c.key] ?? "Ohne Begründung") : undefined}>
-                      KI {aiScores[c.key] ?? "–"}
-                    </span>
-                  )}
-                  <span title="Schnitt des Teams">Ø {formatScore(team.avg)}</span>
-                </span>
-              </div>
-              <div className="mt-0.5 flex gap-0.5" role="radiogroup" aria-label={c.label}>
+            <li key={c.key} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-2">
+              <span className="text-xs text-fg-2 truncate" title={`${c.label} – ${c.hint}`}>
+                {c.label}
+              </span>
+              <span className="flex" role="radiogroup" aria-label={c.label}>
                 {[1, 2, 3, 4, 5].map((n) => (
                   <button
                     key={n}
                     type="button"
                     role="radio"
                     aria-checked={val === n}
-                    aria-label={`${n} von 5`}
+                    aria-label={`${c.label}: ${n} von 5`}
                     disabled={pending}
                     onClick={() => setScores((s) => ({ ...s, [c.key]: s[c.key] === n ? undefined : n }))}
-                    className={`p-0.5 rounded transition-colors ${n <= val ? "text-[var(--tone-warn)]" : "text-faint hover:text-muted"}`}
+                    className={`p-[3px] rounded transition-colors ${n <= val ? "text-[var(--tone-warn)]" : "text-faint hover:text-muted"}`}
                   >
-                    <Star size={18} weight={n <= val ? "fill" : "regular"} aria-hidden />
+                    <Star size={15} weight={n <= val ? "fill" : "regular"} aria-hidden />
                   </button>
                 ))}
-              </div>
+              </span>
+              <span className="flex items-center justify-end gap-1.5 text-[0.7rem] text-muted tabular-nums min-w-[4.5rem]">
+                {aiScores && (
+                  <span className="nv-pill nv-tone-info !py-0 !px-1.5 cursor-help" title={ai.kind === "scores" ? (ai.reasons[c.key] ?? "Ohne Begründung") : undefined}>
+                    KI {aiScores[c.key] ?? "–"}
+                  </span>
+                )}
+                <span title="Schnitt des Teams">Ø {formatScore(team.avg)}</span>
+              </span>
             </li>
           );
         })}
       </ul>
       <AiBlock applicationId={applicationId} ai={ai} overall={aiOverall} bot={bot} isAdmin={isAdmin} />
       <textarea
-        className="nv-input text-sm !min-h-16"
+        className="nv-input text-sm !min-h-12"
+        rows={2}
         placeholder="Kurze Begründung (nur intern, optional)"
         maxLength={1000}
         value={note}
@@ -177,9 +176,7 @@ function AiBlock({
         <p className="flex items-center gap-1.5 text-xs font-medium">
           <Robot size={14} aria-hidden /> KI-Einschätzung
         </p>
-        <p className="text-xs text-muted">
-          Diese Bewerbung kam vor Einführung der KI-Punkte (12.11.2026). Automatisch bewertet die KI nur neuere Bewerbungen – das deckt die Datenschutz-Einwilligung ab.
-        </p>
+        <p className="text-xs text-muted">Bewerbung von vor dem 12.11.2026 – automatisch bewertet die KI nur neuere (Datenschutz-Einwilligung).</p>
         {isAdmin ? (
           <button type="button" className="nv-btn nv-btn-ghost nv-btn-sm w-full" disabled={pending} onClick={override} data-testid="ai-override">
             <Robot size={14} aria-hidden /> {pending ? "KI bewertet … (bis zu 30 s)" : "KI-Punkte freigeben & berechnen"}

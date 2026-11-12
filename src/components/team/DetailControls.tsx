@@ -129,17 +129,17 @@ export function VotePanel({
               disabled={pending}
               aria-pressed={active}
               onClick={() => run(() => voteAction(applicationId, active ? null : o.v))}
-              className={`flex flex-col items-center gap-1 rounded-xl border px-2 py-3 text-xs transition-colors ${active ? o.tone : "border-line text-muted hover:text-fg hover:border-line-strong"}`}
+              className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs transition-colors ${active ? o.tone : "border-line text-muted hover:text-fg hover:border-line-strong"}`}
             >
               {o.icon}
-              <span>{o.label}</span>
-              <span className="text-lg font-display tabular-nums text-fg">{count}</span>
+              <span className="truncate">{o.label}</span>
+              <span className="font-display tabular-nums text-fg">{count}</span>
             </button>
           );
         })}
       </div>
       {votes.length > 0 && (
-        <ul className="mt-3 space-y-1 text-xs text-muted">
+        <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted">
           {votes.map((v, i) => (
             <li key={i}>
               {v.name}: <span className="text-fg-2">{v.value === "PRO" ? "Pro" : v.value === "CONTRA" ? "Contra" : "Enthaltung"}</span>
