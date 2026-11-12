@@ -1,5 +1,5 @@
 /**
- * Testbewerbungen (Admin → Einstellungen → „Testbewerbungen“): Für jede gewählte
+ * Testbewerbungen (Admin-Bereich → Daten & Tests): Für jede gewählte
  * Stelle legt das Portal pro Szenario eine eingereichte Bewerbung an – vorbildlich,
  * solide, knapp, beleidigend, Manipulationsversuch, kopiert, neuer Discord-Account,
  * Grenzfall Alter. So lässt sich der ganze Ablauf (Hinweise, KI, Bewertung, Status,

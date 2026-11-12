@@ -28,7 +28,7 @@ export async function botLog(
   if (!channelId) return null;
   const job = await enqueue(
     // Components V2; Namen/Erwähnungen werden angezeigt, pingen aber niemanden
-    { type: "CHANNEL_MESSAGE", channelId, message: buildBotLogMessage(text, { tone: opts.tone, url: opts.url }) },
+    { type: "CHANNEL_MESSAGE", kind: "botlog", channelId, message: buildBotLogMessage(text, { tone: opts.tone, url: opts.url }) },
     { applicationId: opts.applicationId, tx: opts.tx },
   );
   return job.id;

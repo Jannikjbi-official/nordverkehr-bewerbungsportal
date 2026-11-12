@@ -172,8 +172,8 @@ export async function postDailySummary(db: PrismaClient, opts: { now?: Date; for
       // Markierung zuerst: läuft der Cron doppelt, gewinnt nur eine Instanz
       if (opts.force) await tx.setting.upsert({ where: { key }, create: { key, value: { at: now.toISOString() } }, update: { value: { at: now.toISOString(), forced: true } } });
       else await tx.setting.create({ data: { key, value: { at: now.toISOString() } } });
-      const ids = [(await enqueue({ type: "CHANNEL_MESSAGE", channelId, message: buildDailySummaryMessage(summary, publicEnv.appUrl) }, { tx })).id];
-      if (escalation && lead) ids.push((await enqueue({ type: "CHANNEL_MESSAGE", channelId: lead, message: escalation }, { tx })).id);
+      const ids = [(await enqueue({ type: "CHANNEL_MESSAGE", kind: "summary", channelId, message: buildDailySummaryMessage(summary, publicEnv.appUrl) }, { tx })).id];
+      if (escalation && lead) ids.push((await enqueue({ type: "CHANNEL_MESSAGE", kind: "summary", channelId: lead, message: escalation }, { tx })).id);
       return ids;
     })
     .catch(() => null);
@@ -210,7 +210,7 @@ export async function sendPersonalDigests(db: PrismaClient, opts: { now?: Date; 
     const job = await enqueue({
       type: "DM",
       discordUserId: u.discordId,
-      purpose: "notify",
+      purpose: "digest",
       message: buildPersonalDigestMessage(u.globalName || u.username, groups.get(u.id)!, s["team.staleDays"], publicEnv.appUrl),
     });
     ids.push(job.id);

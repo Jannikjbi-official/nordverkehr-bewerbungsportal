@@ -28,7 +28,7 @@ export async function postNewChangelogEntries(db: PrismaClient, now = new Date()
       .$transaction(async (tx) => {
         await tx.setting.create({ data: { key, value: { at: new Date().toISOString() } } });
         return enqueue(
-          { type: "CHANNEL_MESSAGE", channelId, message: buildChangelogMessage(entry, `${publicEnv.appUrl}/team/changelog`) },
+          { type: "CHANNEL_MESSAGE", kind: "changelog", channelId, message: buildChangelogMessage(entry, `${publicEnv.appUrl}/team/changelog`) },
           { tx },
         );
       })

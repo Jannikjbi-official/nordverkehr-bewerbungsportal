@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { DEFAULT_NIGHT_HELD, DELIVERY_KIND_KEYS } from "@/lib/night";
 
 export const DEFAULT_SYSTEM_PROMPT = `Du unterstützt das Team von Nordverkehr, einem Hamburg-Roleplay-Server (Start auf GTA 5, danach GTA 6), bei der Bearbeitung von Team-Bewerbungen.
 
@@ -96,10 +97,8 @@ export const settingsSchema = z.object({
   "night.end": z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Uhrzeit als HH:MM").default("10:00"),
   /** Nachts antwortet die KI auf Bewerber-Nachrichten (auch wenn die Auto-Antwort sonst aus ist) */
   "night.aiReply": bool(true),
-  /** DMs an Bewerber (Team-Nachrichten, Status, Rundmails) nachts zurückhalten */
-  "night.holdApplicantDms": bool(true),
-  /** Posts in Team-Kanäle (Bot-Log, neue Bewerbungen, Teamchat) nachts zurückhalten */
-  "night.holdTeamPings": bool(true),
+  /** Zustellarten, die nachts bis zum Ende der Nachtruhe warten (lib/night.ts) – Wichtiges geht immer sofort */
+  "night.held": z.array(z.enum(DELIVERY_KIND_KEYS)).max(20).default(DEFAULT_NIGHT_HELD),
   /** Hinweis für Bewerber im Portal */
   "night.portalNotice": bool(true),
   /** Standard-Vorlage fürs Gesprächsprotokoll (eine Frage pro Zeile) – pro Stelle überschreibbar */

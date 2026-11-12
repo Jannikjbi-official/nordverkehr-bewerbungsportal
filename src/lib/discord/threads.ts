@@ -23,7 +23,7 @@ export async function postToThread(
   if (!s["discord.threadPerApplication"]) return null;
   if (opts.kind === "comment" && !s["discord.threadMirrorComments"]) return null;
   const job = await enqueue(
-    { type: "CHANNEL_MESSAGE", channelId: app.discordThreadId, message: buildBotLogMessage(line, { url: opts.url }), archiveThread: !!opts.archive },
+    { type: "CHANNEL_MESSAGE", kind: "threads", channelId: app.discordThreadId, message: buildBotLogMessage(line, { url: opts.url }), archiveThread: !!opts.archive },
     { tx: opts.tx, applicationId: app.id },
   );
   return job.id;

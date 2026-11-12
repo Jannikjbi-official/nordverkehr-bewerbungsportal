@@ -193,12 +193,12 @@ export const HELP: HelpSection[] = [
       {
         id: "discord-pflicht",
         term: "Discord-Pflicht",
-        text: "Absenden geht nur, wenn die Person auf dem Nordverkehr-Discord ist – das Formular zeigt sonst einen Hinweis mit Einladungslink (ausfüllen und speichern geht trotzdem). Verlässt jemand den Server, während die Bewerbung läuft, schreibt der Bot ihm **automatisch** eine Nachricht ins Portal (per DM geht nicht mehr) – einmal pro Austritt. Das Team sieht oben in der Bewerbung einen roten Hinweis, im Bot-Log eine Zeile und morgens in der Team-Übersicht die Liste „Nicht mehr auf dem Discord“. Kommt die Person zurück, verschwindet der Hinweis von selbst. Geprüft wird beim Öffnen einer Bewerbung, im Hintergrund höchstens alle 15 Minuten, wenn jemand das Team-Dashboard öffnet, nachts und morgens per Cron – Admins können unter Einstellungen → „Bewerber auf dem Discord prüfen“ sofort alle prüfen.",
+        text: "Absenden geht nur, wenn die Person auf dem Nordverkehr-Discord ist – das Formular zeigt sonst einen Hinweis mit Einladungslink (ausfüllen und speichern geht trotzdem). Verlässt jemand den Server, während die Bewerbung läuft, schreibt der Bot ihm **automatisch** eine Nachricht ins Portal (per DM geht nicht mehr) – einmal pro Austritt. Das Team sieht oben in der Bewerbung einen roten Hinweis, im Bot-Log eine Zeile und morgens in der Team-Übersicht die Liste „Nicht mehr auf dem Discord“. Kommt die Person zurück, verschwindet der Hinweis von selbst. Geprüft wird beim Öffnen einer Bewerbung, im Hintergrund höchstens alle 15 Minuten, wenn jemand das Team-Dashboard öffnet, nachts und morgens per Cron – Admins können unter Admin-Bereich → Discord → „Bewerber auf dem Discord prüfen“ sofort alle prüfen.",
       },
       {
         id: "discord-knoepfe",
         term: "Übernehmen in Discord",
-        text: "An jeder neuen Bewerbung im Bewerbungs-Kanal hängt (wenn eingeschaltet) der Knopf **📌 Übernehmen**. Wer die Team-Rolle hat und schon einmal im Portal eingeloggt war, claimt die Bewerbung damit direkt – die Antwort sieht nur er selbst. Betreut schon jemand die Bewerbung, sagt der Bot wer; übernehmen geht dann nur im Portal. Einmalig einrichten: Einstellungen → „Knopf ‚Übernehmen‘ einrichten“.",
+        text: "An jeder neuen Bewerbung im Bewerbungs-Kanal hängt (wenn eingeschaltet) der Knopf **📌 Übernehmen**. Wer die Team-Rolle hat und schon einmal im Portal eingeloggt war, claimt die Bewerbung damit direkt – die Antwort sieht nur er selbst. Betreut schon jemand die Bewerbung, sagt der Bot wer; übernehmen geht dann nur im Portal. Einmalig einrichten: Admin-Bereich → Discord → „Knopf ‚Übernehmen‘ einrichten“.",
       },
       {
         id: "stellen-automatisch",

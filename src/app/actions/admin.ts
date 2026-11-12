@@ -36,7 +36,7 @@ export async function saveSettingsAction(patch: Record<string, unknown>): Promis
   const data = Object.fromEntries(Object.entries(parsed.data).filter(([k]) => k in patch)) as Partial<Settings>;
   await saveSettings(data, user.id);
   await audit("settings.update", { actorId: user.id, meta: { keys: Object.keys(data) } });
-  revalidatePath("/team/einstellungen");
+  revalidatePath("/team/admin", "layout");
   return { ok: true };
 }
 
@@ -378,7 +378,7 @@ export async function setupInteractionsAction(): Promise<ActionResult<{ message:
   }
   await saveSettings({ "discord.claimButton": true }, user.id);
   await audit("settings.update", { actorId: user.id, meta: { interactionsEndpoint: url } });
-  revalidatePath("/team/einstellungen");
+  revalidatePath("/team/admin", "layout");
   // Slash-Befehl /bewerbung gleich mit registrieren (läuft über dieselbe URL)
   const cmd = await registerStatusCommand(token);
   return {
@@ -433,7 +433,7 @@ export async function flushOutboxAction(): Promise<ActionResult<{ message: strin
   const { runOutbox, releaseStuckJobs } = await import("@/lib/discord/outbox-db");
   await releaseStuckJobs(2);
   const n = await runOutbox({ limit: 25 });
-  revalidatePath("/team/einstellungen");
+  revalidatePath("/team/admin", "layout");
   return { ok: true, data: { message: n ? `${n} Zustellung(en) verarbeitet.` : "Nichts fällig." } };
 }
 
@@ -549,7 +549,7 @@ export async function createTestApplicationsAction(input: z.input<typeof testSch
       }
     });
   }
-  revalidatePath("/team/einstellungen");
+  revalidatePath("/team/admin", "layout");
   revalidatePath("/team/bewerbungen");
   const extra = [p.data.postToDiscord && "Discord-Posts", p.data.runAi && "KI-Einordnung"].filter(Boolean).join(" und ");
   return {
@@ -577,6 +577,7 @@ async function postTestApplications(ids: string[]) {
     const job = await enqueue(
       {
         type: "CHANNEL_MESSAGE",
+        kind: "applications",
         channelId: applications,
         message: buildLogMessage({
           positionTitle: `${a.position.title} (TEST)`,
@@ -604,7 +605,7 @@ export async function deleteTestApplicationsAction(): Promise<ActionResult<{ mes
   const { deleteTestApplications } = await import("@/lib/setup/test-applications");
   const r = await deleteTestApplications(db);
   await audit("data.test", { actorId: user.id, meta: { deleted: r.applications, users: r.users } });
-  revalidatePath("/team/einstellungen");
+  revalidatePath("/team/admin", "layout");
   revalidatePath("/team/bewerbungen");
   return { ok: true, data: { message: `${r.applications} Testbewerbung${r.applications === 1 ? "" : "en"} und ${r.users} Testbewerber gelöscht.` } };
 }

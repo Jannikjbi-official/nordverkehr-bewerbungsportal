@@ -61,7 +61,7 @@ export async function sendDraftReminders(db: PrismaClient, opts: { now?: Date; l
       {
         type: "DM",
         discordUserId: d.user.discordId,
-        purpose: "reminder",
+        purpose: "draft_reminder",
         message: buildApplicantMessage({
           title: "Deine Bewerbung wartet noch",
           body: draftReminderText(d.user.globalName || d.user.username, d.position.title, left > 0 ? left : null),

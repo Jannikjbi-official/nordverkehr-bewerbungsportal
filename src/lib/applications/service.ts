@@ -253,6 +253,7 @@ export async function submitApplication(
       const log = await enqueue(
         {
           type: "CHANNEL_MESSAGE",
+          kind: "applications",
           channelId: channels.applications,
           message: buildLogMessage({
             positionTitle: draft.position.title,

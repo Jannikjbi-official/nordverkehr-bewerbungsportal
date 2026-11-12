@@ -1,13 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { isNight, nightEndsAt, nightHoldUntil, type NightSettings } from "@/lib/night";
+import { DEFAULT_NIGHT_HELD, DELIVERY_KIND_KEYS, deliveryKind, isNight, nightEndsAt, nightHoldUntil, type NightSettings } from "@/lib/night";
 
 const S = (over: Partial<NightSettings> = {}): NightSettings => ({
   "night.enabled": true,
   "night.start": "22:00",
   "night.end": "10:00",
   "night.aiReply": true,
-  "night.holdApplicantDms": true,
-  "night.holdTeamPings": true,
+  "night.held": [...DEFAULT_NIGHT_HELD],
   "night.portalNotice": true,
   ...over,
 });
@@ -43,21 +42,32 @@ describe("Nachtruhe: was wartet", () => {
   const night = new Date("2026-01-16T01:00:00Z"); // 02:00
   const day = new Date("2026-01-16T12:00:00Z"); // 13:00
   const end = "2026-01-16T09:00:00.000Z";
-  it("DMs an Bewerber und Team-Posts warten bis 10 Uhr", () => {
-    for (const purpose of ["team_message", "status", "notify", "reminder"]) {
-      expect(nightHoldUntil({ type: "DM", purpose }, S(), night)?.toISOString(), purpose).toBe(end);
+  it("Standard: Wichtiges geht immer sofort (Bot-Log, Infos, Team-Nachrichten, neue Bewerbungen …)", () => {
+    for (const purpose of ["team_message", "status", "reminder", "digest", "confirmation", "autoreply"]) {
+      expect(nightHoldUntil({ type: "DM", purpose }, S(), night), purpose).toBeNull();
     }
-    expect(nightHoldUntil({ type: "CHANNEL_MESSAGE" }, S(), night)?.toISOString()).toBe(end);
+    for (const kind of ["botlog", "applications", "threads", "summary", undefined]) {
+      expect(nightHoldUntil({ type: "CHANNEL_MESSAGE", kind }, S(), night), String(kind)).toBeNull();
+    }
   });
-  it("sofort: Bestätigung, Auto-Antwort, Rollen, ignoreNight – und tagsüber alles", () => {
-    expect(nightHoldUntil({ type: "DM", purpose: "confirmation" }, S(), night)).toBeNull();
-    expect(nightHoldUntil({ type: "DM", purpose: "autoreply" }, S(), night)).toBeNull();
-    expect(nightHoldUntil({ type: "ADD_ROLE" }, S(), night)).toBeNull();
-    expect(nightHoldUntil({ type: "DM", purpose: "reminder", ignoreNight: true }, S(), night)).toBeNull();
-    expect(nightHoldUntil({ type: "DM", purpose: "team_message" }, S(), day)).toBeNull();
+  it("Standard: nur Changelog, Entwurfs-Erinnerungen und Rundmails warten", () => {
+    expect(nightHoldUntil({ type: "CHANNEL_MESSAGE", kind: "changelog" }, S(), night)?.toISOString()).toBe(end);
+    expect(nightHoldUntil({ type: "DM", purpose: "draft_reminder" }, S(), night)?.toISOString()).toBe(end);
+    expect(nightHoldUntil({ type: "DM", purpose: "notify" }, S(), night)?.toISOString()).toBe(end);
+    expect(nightHoldUntil({ type: "DM", purpose: "notify" }, S(), day)).toBeNull();
   });
-  it("Schalter einzeln abschaltbar", () => {
-    expect(nightHoldUntil({ type: "DM", purpose: "team_message" }, S({ "night.holdApplicantDms": false }), night)).toBeNull();
-    expect(nightHoldUntil({ type: "CHANNEL_MESSAGE" }, S({ "night.holdTeamPings": false }), night)).toBeNull();
+  it("Admin kann jede Art einzeln auf „warten“ stellen – Bestätigung, Auto-Antwort und Rollen nie", () => {
+    const all = S({ "night.held": [...DELIVERY_KIND_KEYS] });
+    expect(nightHoldUntil({ type: "DM", purpose: "team_message" }, all, night)?.toISOString()).toBe(end);
+    expect(nightHoldUntil({ type: "CHANNEL_MESSAGE", kind: "botlog" }, all, night)?.toISOString()).toBe(end);
+    expect(nightHoldUntil({ type: "DM", purpose: "confirmation" }, all, night)).toBeNull();
+    expect(nightHoldUntil({ type: "DM", purpose: "autoreply" }, all, night)).toBeNull();
+    expect(nightHoldUntil({ type: "ADD_ROLE" }, all, night)).toBeNull();
+    expect(nightHoldUntil({ type: "DM", purpose: "reminder", ignoreNight: true }, all, night)).toBeNull();
+  });
+  it("Zuordnung der Arten", () => {
+    expect(deliveryKind({ type: "DM", purpose: "reminder" })).toBe("interview_reminder");
+    expect(deliveryKind({ type: "CHANNEL_MESSAGE" })).toBe("botlog");
+    expect(deliveryKind({ type: "DM", purpose: "confirmation" })).toBeNull();
   });
 });

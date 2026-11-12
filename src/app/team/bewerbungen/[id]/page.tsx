@@ -26,7 +26,7 @@ import { QuizPill } from "@/components/team/QuizPill";
 import { InterviewProtocol } from "@/components/team/InterviewProtocol";
 import { buildProtocol, protocolQuestions } from "@/lib/team/interview";
 import { testScenarioLabel } from "@/lib/setup/test-applications";
-import { isNight } from "@/lib/night";
+import { isHeldNow } from "@/lib/night";
 import { RatingPanel } from "@/components/team/RatingPanel";
 import { OnboardingPanel } from "@/components/team/OnboardingPanel";
 import { onboardingItems, readOnboarding } from "@/lib/team/onboarding";
@@ -243,7 +243,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
 
       {app.isTest && (
         <Notice tone="warn" icon={Flask} title={`Testbewerbung${testScenarioLabel(app.testScenario) ? ` · Szenario „${testScenarioLabel(app.testScenario)}“` : ""}`}>
-          Kein echter Bewerber – Nachrichten erscheinen nur im Portal, DMs und Rollen werden nicht verschickt. Löschen unter Einstellungen → Testbewerbungen.
+          Kein echter Bewerber – Nachrichten erscheinen nur im Portal, DMs und Rollen werden nicht verschickt. Löschen unter Admin-Bereich → Daten & Tests.
         </Notice>
       )}
       {(dmIssue || flags.length > 0 || activeBan) && (
@@ -364,7 +364,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
             <p className="px-5 pt-4 text-xs text-muted">
               Alles hier geht per Discord-DM an {name} und steht in seinem Portal. <HelpLink id="zustellung" label="Zustellstatus?" className="ml-1" />
             </p>
-            {settings["night.holdApplicantDms"] && isNight(settings) && (
+            {isHeldNow("team_message", settings) && (
               <p className="px-5 pt-2 text-xs text-[var(--tone-warn)]">
                 🌙 Nachtruhe bis {settings["night.end"]} Uhr: Die Nachricht steht sofort im Portal, die DM geht erst um {settings["night.end"]} Uhr raus.
               </p>

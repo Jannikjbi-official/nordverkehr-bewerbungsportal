@@ -26,6 +26,10 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  // Alte Einstellungsseite → Admin-Bereich (Lesezeichen, Links in Hilfetexten)
+  async redirects() {
+    return [{ source: "/team/einstellungen", destination: "/team/admin", permanent: false }];
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

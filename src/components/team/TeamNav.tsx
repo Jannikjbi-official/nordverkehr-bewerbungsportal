@@ -29,7 +29,7 @@ const ITEMS = [
 ];
 const ADMIN = [
   { href: "/team/positionen", label: "Positionen & Fragen", icon: ListDashes },
-  { href: "/team/einstellungen", label: "Einstellungen", icon: Gear },
+  { href: "/team/admin", label: "Admin-Bereich", icon: Gear },
 ];
 
 export function TeamNav({ isAdmin }: { isAdmin: boolean }) {

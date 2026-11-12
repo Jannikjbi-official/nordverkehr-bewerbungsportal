@@ -62,7 +62,7 @@ export const prismaOutboxStore: OutboxStore = {
     });
     // Nur DM-Fehler protokollieren (ein fehlgeschlagener Log-Post erzeugt keinen weiteren Log)
     const p = job.payload as OutboxPayload;
-    if (p.type === "DM" && p.purpose !== "notify") {
+    if (p.type === "DM" && p.purpose !== "notify" && p.purpose !== "digest") {
       const { botLog } = await import("@/lib/discord/botlog");
       const app = job.applicationId ? await db.application.findUnique({ where: { id: job.applicationId }, select: { publicId: true } }) : null;
       await botLog(
@@ -81,7 +81,7 @@ export async function enqueue(
   // Nachtruhe: DMs an Bewerber / Team-Posts erst zum Ende der Nachtruhe
   const { getSettings } = await import("@/lib/settings");
   const { nightHoldUntil } = await import("@/lib/night");
-  const holdUntil = nightHoldUntil(payload as { type: string; purpose?: string; ignoreNight?: boolean }, await getSettings());
+  const holdUntil = nightHoldUntil(payload as { type: string; purpose?: string; kind?: string; ignoreNight?: boolean }, await getSettings());
   return client.outboxJob.create({
     data: {
       type: payload.type,

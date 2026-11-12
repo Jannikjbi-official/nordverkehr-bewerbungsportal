@@ -77,8 +77,8 @@ export function UserMenuDropdown({ name, username, avatar, isTeam, isAdmin }: Pr
             </Link>
           )}
           {isAdmin && (
-            <Link href="/team/einstellungen" className={item} role="menuitem" onClick={() => setOpen(false)}>
-              <Gear size={17} aria-hidden /> Einstellungen
+            <Link href="/team/admin" className={item} role="menuitem" onClick={() => setOpen(false)}>
+              <Gear size={17} aria-hidden /> Admin-Bereich
             </Link>
           )}
           <Link href="/konto" className={item} role="menuitem" onClick={() => setOpen(false)}>

@@ -7,8 +7,13 @@ import { saveSettingsAction } from "@/app/actions/admin";
 import { DiscordPreview } from "@/components/team/DiscordPreview";
 import { PLACEHOLDERS, renderTemplate } from "@/lib/messages/placeholders";
 import type { Settings } from "@/lib/settings";
+import { DELIVERY_KINDS } from "@/lib/night";
+
+export type SettingsSection = "uebersicht" | "discord" | "bewerbungen" | "zustellung" | "ki" | "daten";
 
 interface Props {
+  /** Nur diesen Bereich zeigen (Admin-Bereich). Ohne Angabe: alles */
+  section?: SettingsSection;
   settings: Settings;
   env: Record<"bot" | "guild" | "teamRole" | "adminRole" | "logChannel" | "anthropic", boolean>;
   spend: string;
@@ -24,13 +29,15 @@ const SAMPLE = {
   dashboard_link: "https://bewerbung.nordverkehr.xyz/dashboard",
 };
 
-export function SettingsForm({ settings, env, spend, spendMicro }: Props) {
+export function SettingsForm({ section, settings, env, spend, spendMicro }: Props) {
+  const show = (sec: SettingsSection) => !section || section === sec;
   const router = useRouter();
   const [s, setS] = useState<Settings>(settings);
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) => setS((x) => ({ ...x, [k]: v }));
-  const changed = (Object.keys(s) as (keyof Settings)[]).filter((k) => s[k] !== settings[k]);
+  // JSON-Vergleich: Listen (z. B. night.held) sind bei jeder Änderung neue Objekte
+  const changed = (Object.keys(s) as (keyof Settings)[]).filter((k) => JSON.stringify(s[k]) !== JSON.stringify(settings[k]));
 
   function save() {
     setMsg(null);
@@ -80,7 +87,8 @@ export function SettingsForm({ settings, env, spend, spendMicro }: Props) {
   const pct = budget > 0 ? Math.min(100, Math.round((spendMicro / budget) * 100)) : 100;
 
   return (
-    <div className="space-y-6 pb-24">
+    <div className={`space-y-6 ${section === "uebersicht" ? "" : "pb-24"}`}>
+      {show("uebersicht") && (
       <Card title="Systemstatus" desc="Wird über die .env konfiguriert (nicht hier änderbar).">
         <ul className="grid gap-2 sm:grid-cols-2 text-sm">
           {[
@@ -102,8 +110,10 @@ export function SettingsForm({ settings, env, spend, spendMicro }: Props) {
           ))}
         </ul>
       </Card>
+      )}
 
-      <Card title="Bewerbungen">
+      {show("bewerbungen") && (
+      <Card title="Bewerbungen" desc="Regeln für alle Stellen. Mindestalter und Sperrfrist lassen sich pro Stelle überschreiben (Positionen & Fragen).">
         <div className="grid gap-4 sm:grid-cols-2">
           {num("applications.minAge", "Mindestalter", "Pro Position überschreibbar.")}
           {num("applications.cooldownDays", "Sperrfrist nach Ablehnung (Tage)", "0 = keine Sperrfrist. Pro Position überschreibbar.")}
@@ -116,11 +126,12 @@ export function SettingsForm({ settings, env, spend, spendMicro }: Props) {
           </div>
           {num("applications.minFillSeconds", "Mindest-Ausfüllzeit (Sekunden)", "Spam-Schutz: schnellere Absendungen werden abgewiesen.")}
           {num("applications.minDiscordAccountDays", "Hinweis bei jungen Discord-Accounts (Tage)", "Nur Hinweis für das Team, keine Sperre.")}
-          {num("applications.draftReminderDays", "Erinnerung an liegengebliebene Entwürfe (Tage)", "Einmalige DM mit Link zum Weitermachen, wenn ein Entwurf so lange nicht angefasst wurde. 0 = aus.")}
         </div>
       </Card>
+      )}
 
-      <Card title="Discord">
+      {show("discord") && (
+      <Card title="Discord" desc="Kanäle und Funktionen des Bots. Kanal leer lassen = diese Posts aus.">
         <div className="space-y-3">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {channelField("discord.jobsChannelId", "Kanal: Stellenaufruf")}
@@ -137,20 +148,6 @@ export function SettingsForm({ settings, env, spend, spendMicro }: Props) {
           {toggle("discord.jobsAutoUpdate", "Stellenaufruf automatisch aktualisieren", "Ändert sich eine Position (Status, Texte), bearbeitet der Bot seine Posts (Gesamt- und Einzelaufrufe) – kein neuer Post.")}
           {toggle("discord.changelogEnabled", "Neue Changelog-Einträge posten", "Jeder Eintrag wird genau einmal gepostet, sobald er live ist.")}
           {toggle(
-            "discord.dailySummaryEnabled",
-            "Tägliche Team-Übersicht im Teamchat",
-            "Jeden Morgen gegen 8 Uhr: Gespräche heute, unbeantwortete Nachrichten, liegengebliebene Bewerbungen, offene Rückzüge. Ist nichts zu tun, kommt kein Post.",
-          )}
-          {toggle(
-            "team.personalDigestEnabled",
-            "Persönliche Morgen-DM an Betreuer",
-            "Wer Bewerbungen geclaimt hat, bekommt morgens eine kurze DM mit seinen offenen Punkten (nur wenn etwas ansteht). Jeder kann sie unter „Konto“ abschalten.",
-          )}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {num("team.staleDays", "„Liegengeblieben“ ab (Tagen)", "So lange ohne Statuswechsel, Nachricht oder Kommentar vom Team.")}
-            {num("team.escalateDays", "Leitung informieren ab (Tagen)", "Dann kommt zusätzlich ein Hinweis in den Leitungs-Chat (leere Kanal-ID = aus).")}
-          </div>
-          {toggle(
             "discord.claimButton",
             "Knopf „Übernehmen“ an neuen Bewerbungen",
             "Teammitglieder claimen direkt in Discord. Einmalig oben unter „Discord-Zustellung prüfen“ mit „Knopf ‚Übernehmen‘ einrichten“ freischalten.",
@@ -165,8 +162,33 @@ export function SettingsForm({ settings, env, spend, spendMicro }: Props) {
         </div>
       </Card>
 
-      <Card title="Nachtruhe" desc="Wenn das Team schläft (deutsche Zeit). Nur Admins können das ändern.">
+      )}
+
+      {show("zustellung") && (
+      <Card title="Team-Übersicht & Erinnerungen" desc="Was der Bot morgens ans Team schickt und wann er an Liegengebliebenes erinnert.">
         <div className="space-y-3">
+          {toggle(
+            "discord.dailySummaryEnabled",
+            "Tägliche Team-Übersicht im Teamchat",
+            "Jeden Morgen um 8 Uhr: Gespräche heute, unbeantwortete Nachrichten, liegengebliebene Bewerbungen, offene Rückzüge. Ist nichts zu tun, kommt kein Post.",
+          )}
+          {toggle(
+            "team.personalDigestEnabled",
+            "Persönliche Morgen-DM an Betreuer",
+            "Wer Bewerbungen geclaimt hat, bekommt morgens eine kurze DM mit seinen offenen Punkten (nur wenn etwas ansteht). Jeder kann sie unter „Konto“ abschalten.",
+          )}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {num("team.staleDays", "„Liegengeblieben“ ab (Tagen)", "So lange ohne Statuswechsel, Nachricht oder Kommentar vom Team.")}
+            {num("team.escalateDays", "Leitung informieren ab (Tagen)", "Dann kommt zusätzlich ein Hinweis in den Leitungs-Chat (leere Kanal-ID = aus).")}
+            {num("applications.draftReminderDays", "Erinnerung an Entwürfe nach (Tagen)", "Einmalige DM mit Link zum Weitermachen. 0 = aus.")}
+          </div>
+        </div>
+      </Card>
+      )}
+
+      {show("zustellung") && (
+      <Card title="Nachtruhe" desc="Wenn das Team schläft (deutsche Zeit). Der Bot antwortet Bewerbern, Unwichtiges wartet bis morgens – Wichtiges geht immer sofort raus.">
+        <div className="space-y-4">
           {toggle("night.enabled", "Nachtruhe aktiv")}
           <div className="grid gap-4 grid-cols-2 sm:max-w-sm">
             <div>
@@ -189,21 +211,69 @@ export function SettingsForm({ settings, env, spend, spendMicro }: Props) {
                 "KI antwortet nachts auf Bewerber",
                 "Auch wenn die Auto-Antwort tagsüber aus ist oder jemand aus dem Team noch als online gilt. Ohne KI (aus/kein Budget) kommt eine feste Antwort.",
               )}
-              {toggle(
-                "night.holdApplicantDms",
-                "Keine DMs an Bewerber nachts",
-                "Team-Nachrichten, Statusmeldungen und Rundmails gehen erst zum Ende der Nachtruhe raus. Ausgenommen: Bestätigung direkt nach dem Absenden, Auto-Antworten und Gesprächserinnerungen, wenn das Gespräch vor Ende der Nachtruhe ist.",
-              )}
-              {toggle("night.holdTeamPings", "Keine Posts in Team-Kanäle nachts", "Bot-Log, neue Bewerbungen, Team-Übersicht und Threads gehen gesammelt zum Ende der Nachtruhe raus.")}
               {toggle("night.portalNotice", "Hinweis für Bewerber im Portal", `„Nachtruhe – das Team antwortet ab ${s["night.end"]} Uhr.“ über dem Antwortfeld im Bewerber-Dashboard.`)}
-              <p className="nv-help">
-                Zurückgehaltenes wird zum Ende der Nachtruhe automatisch zugestellt (Cron stündlich zwischen 5 und 13 Uhr, sonst beim nächsten Besuch im Team-Bereich). Ende am besten zwischen 5 und 13 Uhr wählen.
-              </p>
+              <div>
+                <p className="nv-field-label">Was passiert nachts mit …</p>
+                <div className="nv-scroll-x">
+                  <table className="nv-table w-full text-sm min-w-[520px]">
+                    <thead>
+                      <tr>
+                        <th scope="col">Art</th>
+                        <th scope="col">An</th>
+                        <th scope="col">Nachts</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>
+                          <span className="font-medium">Bestätigung, Auto-Antworten, Rollen</span>
+                          <span className="block text-xs text-muted">Direkte Reaktion auf den Bewerber – nicht änderbar.</span>
+                        </td>
+                        <td className="text-muted">Bewerber</td>
+                        <td className="text-[var(--tone-success)]">immer sofort</td>
+                      </tr>
+                      {DELIVERY_KINDS.map((k) => {
+                        const held = s["night.held"].includes(k.key);
+                        return (
+                          <tr key={k.key}>
+                            <td>
+                              <span className="font-medium">{k.label}</span>
+                              <span className="block text-xs text-muted">{k.desc}</span>
+                            </td>
+                            <td className="text-muted whitespace-nowrap">{k.to === "team" ? "Team" : "Bewerber"}</td>
+                            <td>
+                              <div className="inline-flex rounded-lg border border-line p-0.5" role="group" aria-label={`${k.label} nachts`}>
+                                {[false, true].map((h) => (
+                                  <button
+                                    key={String(h)}
+                                    type="button"
+                                    aria-pressed={held === h}
+                                    className={`nv-btn nv-btn-sm !py-1 ${held === h ? "bg-red-soft text-fg" : "nv-btn-quiet"}`}
+                                    onClick={() => set("night.held", (h ? [...s["night.held"].filter((x) => x !== k.key), k.key] : s["night.held"].filter((x) => x !== k.key)) as never)}
+                                  >
+                                    {h ? "warten" : "sofort"}
+                                  </button>
+                                ))}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="nv-help mt-2">
+                  „warten“ = geht gesammelt zum Ende der Nachtruhe raus ({s["night.end"]} Uhr; Cron stündlich zwischen 5 und 13 Uhr – Ende am besten in diesem Bereich wählen).
+                  Gesprächserinnerungen gehen immer sofort raus, wenn das Gespräch vor Ende der Nachtruhe ist.
+                </p>
+              </div>
             </>
           )}
         </div>
       </Card>
+      )}
 
+      {show("bewerbungen") && (
       <Card title="Einarbeitung" desc="Checkliste und Probezeit für angenommene Bewerbungen.">
         <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
           <div>
@@ -216,7 +286,9 @@ export function SettingsForm({ settings, env, spend, spendMicro }: Props) {
           {num("onboarding.probationDays", "Probezeit (Tage)", "0 = keine Probezeit.")}
         </div>
       </Card>
+      )}
 
+      {show("bewerbungen") && (
       <Card title="Gesprächsprotokoll" desc="Fragen zum Abhaken im Bewerbungsgespräch. Pro Stelle eigene Vorlage möglich (Positionen & Fragen).">
         <label htmlFor="iv-q" className="nv-field-label">
           Standard-Fragen (eine pro Zeile)
@@ -224,7 +296,9 @@ export function SettingsForm({ settings, env, spend, spendMicro }: Props) {
         <textarea id="iv-q" className="nv-input text-sm !min-h-40" maxLength={3000} value={s["interview.defaultQuestions"]} onChange={(e) => set("interview.defaultQuestions", e.target.value)} />
         <p className="nv-help mt-1">Notizen hängen am Fragetext – benennst du eine Frage um, bleiben alte Notizen unter „Weitere Notizen“ sichtbar.</p>
       </Card>
+      )}
 
+      {show("bewerbungen") && (
       <Card title="Automatische Bestätigung" desc="Wird direkt nach dem Absenden per DM und im Portal angezeigt.">
         <div className="grid gap-4 xl:grid-cols-2">
           <div>
@@ -251,6 +325,9 @@ export function SettingsForm({ settings, env, spend, spendMicro }: Props) {
         </div>
       </Card>
 
+      )}
+
+      {show("daten") && (
       <Card title="Datenschutz & Löschfristen" desc="Der Worker löscht täglich automatisch. Entwürfe ab letzter Änderung, sonst ab Entscheidung.">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {num("retention.draftDays", "Entwürfe (Tage)")}
@@ -260,7 +337,9 @@ export function SettingsForm({ settings, env, spend, spendMicro }: Props) {
           {num("retention.auditDays", "Audit-Log (Tage)")}
         </div>
       </Card>
+      )}
 
+      {show("ki") && (
       <Card title="KI-Unterstützung (Claude)" desc="Optional. Die KI schreibt nur Entwürfe und Hinweise – sie entscheidet und sendet nie selbst.">
         <div className="space-y-4">
           {toggle("ai.enabled", "KI-Funktionen aktivieren", env.anthropic ? undefined : "Achtung: Es ist kein ANTHROPIC_API_KEY gesetzt.")}
@@ -306,6 +385,9 @@ export function SettingsForm({ settings, env, spend, spendMicro }: Props) {
         </div>
       </Card>
 
+      )}
+
+      {show("ki") && (
       <Card
         title="KI-Auto-Antwort an Bewerber"
         desc="Schreibt ein Bewerber im Portal und ist gerade niemand vom Team aktiv, antwortet die KI kurz und klar gekennzeichnet. Sie entscheidet nichts und verweist immer aufs Team."
@@ -326,7 +408,9 @@ export function SettingsForm({ settings, env, spend, spendMicro }: Props) {
           </div>
         </div>
       </Card>
+      )}
 
+      {section !== "uebersicht" && (
       <div className="fixed bottom-4 inset-x-4 sm:left-auto sm:right-8 z-30 flex items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 shadow-[var(--nv-shadow)]">
         <span className="text-sm text-muted" aria-live="polite">
           {msg ? <span className={msg.ok ? "text-[var(--tone-success)]" : "text-[var(--tone-danger)]"}>{msg.text}</span> : changed.length ? `${changed.length} Änderung(en)` : "Keine Änderungen"}
@@ -335,6 +419,7 @@ export function SettingsForm({ settings, env, spend, spendMicro }: Props) {
           <FloppyDisk size={15} aria-hidden /> {pending ? "Speichert …" : "Speichern"}
         </button>
       </div>
+      )}
     </div>
   );
 }

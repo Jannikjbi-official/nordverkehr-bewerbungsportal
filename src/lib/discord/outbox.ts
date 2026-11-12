@@ -11,7 +11,7 @@ import { classifyDiscordError, type DiscordApi } from "@/lib/discord/client";
 import { isTestDiscordId } from "@/lib/discord/test-ids";
 
 /** "notify" = Rundmail (z. B. neue Stelle) – Fehler werden nicht einzeln geloggt */
-export type DmPurpose = "confirmation" | "team_message" | "status" | "reminder" | "notify" | "autoreply";
+export type DmPurpose = "confirmation" | "team_message" | "status" | "reminder" | "notify" | "autoreply" | "digest" | "draft_reminder";
 
 export type OutboxPayload =
   | {
@@ -30,6 +30,8 @@ export type OutboxPayload =
       startThread?: string;
       /** Kanal ist ein Thread: nach dem Posten archivieren */
       archiveThread?: boolean;
+      /** Art des Posts (Nachtruhe-Einstellung, lib/night.ts); ohne Angabe = Bot-Log */
+      kind?: "botlog" | "applications" | "threads" | "summary" | "changelog";
     }
   | { type: "ADD_ROLE"; guildId: string; discordUserId: string; roleId: string; reason?: string };
 
