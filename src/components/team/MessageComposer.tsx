@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { confirmDialog } from "@/components/ConfirmDialog";
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { PaperPlaneTilt, Plus, Star, WarningCircle, X } from "@phosphor-icons/react/ssr";
 import { sendMessageAction } from "@/app/actions/team";
 import { CATEGORY_LABEL, CATEGORY_ORDER } from "@/lib/applications/status";
@@ -13,6 +14,15 @@ import { HelpLink } from "@/components/team/HelpLink";
 import type { ApplicationStatus, TemplateCategory } from "@prisma/client";
 
 const DEFAULT_TITLE = "Nachricht vom Nordverkehr-Team";
+
+/** Auf breiten Bildschirmen steht die Vorschau rechts in der Seitenleiste (Platzhalter #composer-preview-slot). */
+const WIDE = "(min-width: 1280px)";
+function subscribeWide(cb: () => void) {
+  const mq = window.matchMedia(WIDE);
+  mq.addEventListener("change", cb);
+  return () => mq.removeEventListener("change", cb);
+}
+const getSlot = () => (window.matchMedia(WIDE).matches ? document.getElementById("composer-preview-slot") : null);
 
 interface Template {
   id: string;
@@ -47,6 +57,17 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
   const [pending, start] = useTransition();
   // Wer die Bewerbung geclaimt hat, schreibt standardmäßig persönlich
   const [asTeam, setAsTeam] = useState(!sender.claimedByMe);
+  // Vorschau in der Seitenleiste – nur solange das Nachrichtenfeld sichtbar ist (Reiter offen)
+  const slot = useSyncExternalStore(subscribeWide, getSlot, () => null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setVisible(e.contentRect.width > 0));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const rendered = useMemo(
     () => renderTemplate(body, { ...vars, ...(asTeam ? { teammitglied: "das Nordverkehr-Team" } : {}), grund: grund || undefined }),
@@ -104,9 +125,22 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
     });
   }
 
+  const preview = (
+    <div className="space-y-3 min-w-0">
+      <p className="nv-mono">Vorschau wie in Discord</p>
+      <DiscordPreview title={renderedTitle} body={rendered.text} publicId={publicId} author={asTeam ? null : { name: sender.name, iconUrl: sender.avatarUrl }} />
+      {rendered.missing.length > 0 && (
+        <p className="flex items-start gap-1.5 text-xs text-[var(--tone-warn)]">
+          <WarningCircle size={14} className="shrink-0 mt-0.5" aria-hidden />
+          Ohne Wert: {rendered.missing.map((m) => `{${m}}`).join(", ")}
+        </p>
+      )}
+    </div>
+  );
+
   return (
-    <div className="@container">
-    <div className="grid gap-6 @4xl:grid-cols-2">
+    <div ref={rootRef} className="@container">
+    <div className={`grid gap-6 ${slot ? "" : "@4xl:grid-cols-2"}`}>
       <div className="space-y-4 min-w-0">
         {/* Bausteine */}
         <div>
@@ -245,50 +279,46 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
             </div>
           )}
         </div>
+
+        {/* Absender + Senden – direkt am Textfeld */}
+        <div className="space-y-3 border-t border-line pt-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted">Senden als</span>
+            <div className="inline-flex rounded-full border border-line p-0.5" role="radiogroup" aria-label="Absender">
+              {[
+                { team: false, label: sender.name },
+                { team: true, label: "Nordverkehr-Team" },
+              ].map((o) => (
+                <button
+                  key={String(o.team)}
+                  type="button"
+                  role="radio"
+                  aria-checked={asTeam === o.team}
+                  onClick={() => setAsTeam(o.team)}
+                  className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${asTeam === o.team ? "bg-red text-white" : "text-muted hover:text-fg"}`}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+            <HelpLink id="absender" label="Unterschied?" />
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs text-muted" aria-live="polite">
+              {sent ? "Gesendet – Zustellstatus siehst du im Verlauf." : `${rendered.text.length} / 3800 Zeichen`}
+            </p>
+            <button type="button" className="nv-btn nv-btn-primary" disabled={pending || !body.trim()} onClick={send}>
+              <PaperPlaneTilt size={16} weight="fill" aria-hidden /> {pending ? "Sendet …" : "Per DM senden"}
+            </button>
+          </div>
+          {sendError && <p className="nv-error">{sendError}</p>}
+        </div>
       </div>
 
-      {/* Vorschau */}
-      <div className="space-y-3 min-w-0">
-        <p className="nv-mono">Vorschau wie in Discord</p>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-muted">Senden als</span>
-          <div className="inline-flex rounded-full border border-line p-0.5" role="radiogroup" aria-label="Absender">
-            {[
-              { team: false, label: sender.name },
-              { team: true, label: "Nordverkehr-Team" },
-            ].map((o) => (
-              <button
-                key={String(o.team)}
-                type="button"
-                role="radio"
-                aria-checked={asTeam === o.team}
-                onClick={() => setAsTeam(o.team)}
-                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${asTeam === o.team ? "bg-red text-white" : "text-muted hover:text-fg"}`}
-              >
-                {o.label}
-              </button>
-            ))}
-          </div>
-          <HelpLink id="absender" label="Unterschied?" />
-        </div>
-        <DiscordPreview title={renderedTitle} body={rendered.text} publicId={publicId} author={asTeam ? null : { name: sender.name, iconUrl: sender.avatarUrl }} />
-        {rendered.missing.length > 0 && (
-          <p className="flex items-start gap-1.5 text-xs text-[var(--tone-warn)]">
-            <WarningCircle size={14} className="shrink-0 mt-0.5" aria-hidden />
-            Ohne Wert: {rendered.missing.map((m) => `{${m}}`).join(", ")}
-          </p>
-        )}
-        <div className="flex items-center justify-between gap-3 pt-2">
-          <p className="text-xs text-muted" aria-live="polite">
-            {sent ? "Gesendet – Zustellstatus siehst du im Verlauf." : `${rendered.text.length} / 3800 Zeichen`}
-          </p>
-          <button type="button" className="nv-btn nv-btn-primary" disabled={pending || !body.trim()} onClick={send}>
-            <PaperPlaneTilt size={16} weight="fill" aria-hidden /> {pending ? "Sendet …" : "Per DM senden"}
-          </button>
-        </div>
-        {sendError && <p className="nv-error">{sendError}</p>}
-      </div>
+      {/* Vorschau: schmal direkt hier, breit in der Seitenleiste */}
+      {!slot && preview}
     </div>
+    {slot && visible && createPortal(<div className="nv-card p-5">{preview}</div>, slot)}
     </div>
   );
 }

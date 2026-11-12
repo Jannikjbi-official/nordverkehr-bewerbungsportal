@@ -21,6 +21,7 @@ import { HelpLink } from "@/components/team/HelpLink";
 import { AckWithdrawalButton } from "@/components/team/AckWithdrawalButton";
 import { avatarUrl } from "@/lib/discord/snowflake";
 import { AiPanel } from "@/components/team/AiPanel";
+import { Tabs } from "@/components/Tabs";
 import { RatingPanel } from "@/components/team/RatingPanel";
 import { OnboardingPanel } from "@/components/team/OnboardingPanel";
 import { onboardingItems, readOnboarding } from "@/lib/team/onboarding";
@@ -94,6 +95,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
     getBotProfile(),
   ]);
 
+  const openMessages = typeof sp.status === "string" || app.messages.some((m) => m.direction === "APPLICANT_TO_TEAM" && !m.readAt);
   // Neue Antworten des Bewerbers als gelesen markieren (Team-Sicht)
   if (app.messages.some((m) => m.direction === "APPLICANT_TO_TEAM" && !m.readAt)) {
     await db.message.updateMany({ where: { applicationId: app.id, direction: "APPLICANT_TO_TEAM", readAt: null }, data: { readAt: new Date() } });
@@ -242,14 +244,18 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
         </div>
       )}
 
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[1fr_340px]">
-        <div className="space-y-6 min-w-0">
-          {aiEnabled && <AiPanel applicationId={app.id} cachedSummary={app.aiSummary} cachedAt={app.aiSummaryAt?.toISOString() ?? null} />}
-
-          <section className="nv-card" aria-labelledby="answers">
-            <h2 id="answers" className="px-5 py-4 border-b border-line font-semibold">
-              Antworten
-            </h2>
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="min-w-0">
+          <Tabs
+            id="bewerbung"
+            className="nv-card overflow-hidden"
+            defaultKey={openMessages ? "nachrichten" : "antworten"}
+            tabs={[
+              {
+                key: "antworten",
+                label: "Antworten",
+                content: (
+          <section aria-label="Antworten">
             <div className="divide-y divide-[var(--nv-border)]">
               <dl className="px-5 py-4 grid gap-1 sm:grid-cols-[220px_1fr] sm:gap-4">
                 <dt className="text-xs text-muted">Alter</dt>
@@ -287,12 +293,18 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
               ))}
             </div>
           </section>
-
-          <section id="nachricht" className="nv-card scroll-mt-28" aria-labelledby="msgs">
-            <h2 id="msgs" className="px-5 py-4 border-b border-line font-semibold">
-              Nachrichten an {name}
-              <HelpLink id="zustellung" label="Zustellstatus?" className="ml-2" />
-            </h2>
+                ),
+              },
+              {
+                key: "nachrichten",
+                label: "Nachrichten",
+                badge: app.messages.length,
+                aliases: ["nachricht"],
+                content: (
+          <section aria-label={`Nachrichten an ${name}`}>
+            <p className="px-5 pt-4 text-xs text-muted">
+              Alles hier geht per Discord-DM an {name} und steht in seinem Portal. <HelpLink id="zustellung" label="Zustellstatus?" className="ml-1" />
+            </p>
             {app.messages.length > 0 && (
               <ol className="p-5 space-y-4 border-b border-line">
                 {app.messages.map((m) => {
@@ -351,9 +363,26 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
               />
             </div>
           </section>
+                ),
+              },
+              ...(aiEnabled
+                ? [
+                    {
+                      key: "ki",
+                      label: "KI-Zusammenfassung",
+                      content: (
+                        <div className="p-5">
+                          <AiPanel applicationId={app.id} cachedSummary={app.aiSummary} cachedAt={app.aiSummaryAt?.toISOString() ?? null} />
+                        </div>
+                      ),
+                    },
+                  ]
+                : []),
+            ]}
+          />
         </div>
 
-        <aside className="space-y-6">
+        <aside className="space-y-4 min-w-0">
           <div className="nv-card p-5 space-y-5">
             <StatusControl applicationId={app.id} current={app.status} targets={allowedTeamTargets(app.status)} />
             <HelpLink id="status" label="Was bedeuten die Status?" />
@@ -364,17 +393,6 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
                 <CalendarCheck size={14} aria-hidden /> {formatDayTime(app.interviewAt)} Uhr{app.slot ? " · vom Bewerber gebucht" : ""}
               </p>
             )}
-          </div>
-
-          <div className="nv-card p-5">
-            <p className="nv-mono mb-3 flex items-center justify-between gap-2">
-              Abstimmung <HelpLink id="abstimmung" label="Wofür?" />
-            </p>
-            <VotePanel
-              applicationId={app.id}
-              mine={myVote}
-              votes={app.votes.map((v) => ({ value: v.value, name: v.user.globalName || v.user.username }))}
-            />
           </div>
 
           {app.status === "ACCEPTED" && (
@@ -402,10 +420,20 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
             </div>
           )}
 
-          <div className="nv-card p-5">
-            <p className="nv-mono mb-3 flex items-center justify-between gap-2">
-              Bewertungsbogen <HelpLink id="bewertungsbogen" label="Wie?" />
-            </p>
+          <Tabs
+            id="seite"
+            compact
+            className="nv-card overflow-hidden"
+            tabs={[
+              {
+                key: "bewertung",
+                label: "Bewertung",
+                content: (
+                  <div className="p-5 space-y-5">
+                    <p className="nv-mono flex items-center justify-between gap-2">
+                      Bewertungsbogen <HelpLink id="bewertungsbogen" label="Wie?" />
+                    </p>
+
             <RatingPanel
               applicationId={app.id}
               mine={cleanScores(myRating?.scores)}
@@ -418,10 +446,50 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
                 .filter((r) => r.userId !== me.id || Object.keys(cleanScores(r.scores)).length)
                 .map((r) => ({ name: r.user.globalName || r.user.username, avg: summarizeRatings([r]).overall }))}
             />
-          </div>
+                    <div className="nv-divider" />
+                    <p className="nv-mono flex items-center justify-between gap-2">
+                      Abstimmung <HelpLink id="abstimmung" label="Wofür?" />
+                    </p>
 
-          <div className="nv-card p-5">
-            <p className="nv-mono mb-3">Discord-Profil</p>
+            <VotePanel
+              applicationId={app.id}
+              mine={myVote}
+              votes={app.votes.map((v) => ({ value: v.value, name: v.user.globalName || v.user.username }))}
+            />
+                  </div>
+                ),
+              },
+              {
+                key: "kommentare",
+                label: "Kommentare",
+                badge: app.comments.length,
+                content: (
+                  <div className="p-5">
+
+            <ul className="space-y-3 mb-4">
+              {app.comments.length === 0 && <li className="text-sm text-muted">Noch keine Kommentare.</li>}
+              {app.comments.map((c) => (
+                <li key={c.id} className="text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-muted">
+                      {c.author?.globalName ?? c.author?.username ?? "Gelöscht"} · {formatRelative(c.createdAt)}
+                    </p>
+                    {(c.authorId === me.id || access.isAdmin) && <DeleteCommentButton commentId={c.id} />}
+                  </div>
+                  <p className="mt-0.5 whitespace-pre-wrap text-fg-2">{c.body}</p>
+                </li>
+              ))}
+            </ul>
+            <CommentBox applicationId={app.id} />
+                  </div>
+                ),
+              },
+              {
+                key: "profil",
+                label: "Profil",
+                content: (
+                  <div className="p-5">
+
             <dl className="space-y-2 text-sm">
               <Row label="Anzeigename" value={app.user.globalName ?? "–"} />
               <Row label="Benutzername" value={`@${app.user.username}`} />
@@ -439,10 +507,8 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
             <Link href={`/team/nutzer/${app.user.id}`} className="nv-btn nv-btn-ghost nv-btn-sm w-full mt-4">
               Notizen &amp; Sperren
             </Link>
-          </div>
-
           {otherApps.length > 0 && (
-            <div className="nv-card p-5">
+            <div className="mt-5 pt-4 border-t border-line">
               <p className="nv-mono mb-3">Weitere Bewerbungen</p>
               <ul className="space-y-2 text-sm">
                 {otherApps.map((o) => (
@@ -456,28 +522,15 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
               </ul>
             </div>
           )}
-
-          <div className="nv-card p-5">
-            <p className="nv-mono mb-3">Interne Kommentare</p>
-            <ul className="space-y-3 mb-4">
-              {app.comments.length === 0 && <li className="text-sm text-muted">Noch keine Kommentare.</li>}
-              {app.comments.map((c) => (
-                <li key={c.id} className="text-sm">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs text-muted">
-                      {c.author?.globalName ?? c.author?.username ?? "Gelöscht"} · {formatRelative(c.createdAt)}
-                    </p>
-                    {(c.authorId === me.id || access.isAdmin) && <DeleteCommentButton commentId={c.id} />}
                   </div>
-                  <p className="mt-0.5 whitespace-pre-wrap text-fg-2">{c.body}</p>
-                </li>
-              ))}
-            </ul>
-            <CommentBox applicationId={app.id} />
-          </div>
+                ),
+              },
+              {
+                key: "verlauf",
+                label: "Verlauf",
+                content: (
+                  <div className="p-5">
 
-          <div className="nv-card p-5">
-            <p className="nv-mono mb-3">Verlauf</p>
             <ol className="space-y-2 text-xs">
               {app.statusChanges.map((s) => (
                 <li key={s.id} className="flex justify-between gap-2">
@@ -490,7 +543,14 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
                 </li>
               ))}
             </ol>
-          </div>
+                  </div>
+                ),
+              },
+            ]}
+          />
+
+          {/* Discord-Vorschau des Nachrichtenfelds (auf breiten Bildschirmen hier, sonst direkt unter dem Feld) */}
+          <div id="composer-preview-slot" />
         </aside>
       </div>
     </div>
