@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { canAmend, formatDays, queueText } from "@/lib/applications/queue";
 import { pickAssignee } from "@/lib/team/assign";
-import { buildIcs, isTokenShaped, newCalendarToken } from "@/lib/team/calendar";
+import { buildIcs, fold, isTokenShaped, newCalendarToken } from "@/lib/team/calendar";
 import { canSeePosition } from "@/lib/team/visibility";
 import { followUpReminderText } from "@/lib/applications/followup";
 import { topError } from "@/lib/team/alerts";
@@ -165,4 +165,16 @@ describe("Claim-Nachricht an den Bewerber", () => {
     expect(t).toContain("**Support** (NV-2026-0001)");
     expect(claimNoticeText("Anna", "Support", null, "Lea", true)).toContain("ab sofort kümmert sich **Lea**");
   });
+});
+
+describe("ICS-Zeilenfaltung (RFC 5545)", () => {
+  it("höchstens 75 Bytes pro Zeile, Umlaute/Emoji bleiben ganz", () => {
+    const line = "DESCRIPTION:" + "Ä😀ö".repeat(40);
+    const parts = fold(line).split("\r\n");
+    expect(parts.length).toBeGreaterThan(1);
+    for (const p of parts) expect(new TextEncoder().encode(p).length).toBeLessThanOrEqual(75);
+    expect(parts.slice(1).every((p) => p.startsWith(" "))).toBe(true);
+    expect(parts.map((p, i) => (i ? p.slice(1) : p)).join("")).toBe(line);
+  });
+  it("kurze Zeilen bleiben unverändert", () => expect(fold("SUMMARY:Gespräch")).toBe("SUMMARY:Gespräch"));
 });

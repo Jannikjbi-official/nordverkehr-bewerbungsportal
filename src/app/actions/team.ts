@@ -688,7 +688,8 @@ export async function markNoShowAction(applicationId: string): Promise<ActionRes
 }
 
 /** Zuständigkeit pro Stelle: Zugriff auf die Bewerbung? (Admins immer) */
-async function guardApp(user: { id: string; roleIds?: string[] }, access: { isAdmin: boolean } | null | undefined, applicationId: string): Promise<{ ok: false; error: string } | null> {
+async function guardApp(user: { id: string; roleIds?: string[] }, access: { isAdmin: boolean } | null | undefined, applicationId: unknown): Promise<{ ok: false; error: string } | null> {
+  if (!id.safeParse(applicationId).success) return { ok: false, error: "Ungültig." };
   const { canAccessApplication, viewerOf } = await import("@/lib/team/visibility");
-  return (await canAccessApplication(viewerOf(user, access), applicationId)) ? null : { ok: false, error: "Für diese Stelle bist du nicht zuständig." };
+  return (await canAccessApplication(viewerOf(user, access), applicationId as string)) ? null : { ok: false, error: "Für diese Stelle bist du nicht zuständig." };
 }

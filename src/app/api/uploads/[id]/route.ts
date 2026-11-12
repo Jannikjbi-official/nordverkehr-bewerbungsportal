@@ -21,6 +21,11 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/uploads/[id]">)
   if (upload.ownerId !== user.id) {
     const access = await getAccess(user);
     if (!access.isTeam) return new Response("Kein Zugriff", { status: 403 });
+    // Zuständigkeit pro Stelle
+    if (upload.applicationId) {
+      const { canAccessApplication, viewerOf } = await import("@/lib/team/visibility");
+      if (!(await canAccessApplication(viewerOf(user, access), upload.applicationId))) return new Response("Kein Zugriff", { status: 403 });
+    }
   }
   {
     const data = upload.data;

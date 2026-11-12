@@ -337,7 +337,10 @@ export async function amendAnswersAction(input: z.input<typeof amendSchema>): Pr
   if (!app || !canAmend(app)) return { ok: false, error: "Das Team bearbeitet deine Bewerbung schon – ergänzen kannst du jetzt nur noch per Nachricht." };
 
   const editable = app.answers.filter((a) => (AMENDABLE_TYPES as readonly string[]).includes(a.type));
-  const questions = await db.question.findMany({ where: { id: { in: editable.map((a) => a.questionId).filter((x): x is string => !!x) } } });
+  const questions = await db.question.findMany({
+    where: { id: { in: editable.map((a) => a.questionId).filter((x): x is string => !!x) } },
+    include: { section: { select: { positionId: true } } },
+  });
   const { validateAnswer, DEFAULT_MAX_LENGTH } = await import("@/lib/applications/form");
   const changes: { id: string; value: string }[] = [];
   const fieldErrors: Record<string, string> = {};
@@ -398,6 +401,19 @@ export async function amendAnswersAction(input: z.input<typeof amendSchema>): Pr
     });
     if (!res.count) return false;
     for (const c of changes) await tx.answer.update({ where: { id: c.id }, data: { value: c.value } });
+    // Allgemeine Antworten auch im Profil nachziehen – sonst füllt die nächste Bewerbung den alten Text vor
+    const profileChanges: Record<string, string> = {};
+    for (const c of changes) {
+      const q = questions.find((x) => x.id === app.answers.find((a) => a.id === c.id)?.questionId);
+      if (q?.key && q.section.positionId === null && c.value) profileChanges[q.key] = c.value;
+    }
+    if (Object.keys(profileChanges).length) {
+      const profile = await tx.applicantProfile.findUnique({ where: { userId: user.id }, select: { answers: true } });
+      if (profile) {
+        const merged = { ...((profile.answers ?? {}) as Record<string, unknown>), ...profileChanges };
+        await tx.applicantProfile.update({ where: { userId: user.id }, data: { answers: merged as Prisma.InputJsonValue } });
+      }
+    }
     return true;
   });
   if (!ok) return { ok: false, error: "Das Team hat deine Bewerbung gerade übernommen – ergänzen kannst du jetzt nur noch per Nachricht." };

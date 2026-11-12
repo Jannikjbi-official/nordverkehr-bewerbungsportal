@@ -46,7 +46,9 @@ export async function checkAlerts(db: PrismaClient, check: Heartbeat[], now = ne
   const day = todayBerlin(now);
   const alerts: { key: string; text: string }[] = [];
 
-  const failed = await db.outboxJob.findMany({ where: { status: "FAILED", updatedAt: { gte: new Date(now.getTime() - 24 * HOUR) } }, select: { lastError: true }, take: 200 });
+  const failedAll = await db.outboxJob.findMany({ where: { status: "FAILED", updatedAt: { gte: new Date(now.getTime() - 24 * HOUR) } }, select: { lastError: true, result: true }, take: 500 });
+  // Bewerber mit geschlossenen DMs sind keine Störung
+  const failed = failedAll.filter((f) => (f.result as { dmClosed?: string } | null)?.dmClosed !== "true");
   if (failed.length >= s["alerts.failedThreshold"]) {
     alerts.push({
       key: `alert:failed:${day}`,

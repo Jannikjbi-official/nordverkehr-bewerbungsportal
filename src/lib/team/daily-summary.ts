@@ -100,13 +100,13 @@ export async function collectDailySummary(db: PrismaClient, opts: { now?: Date; 
   const closeBefore = now.getTime() - (opts.closeDays ?? 7) * DAY;
 
   for (const a of active) {
+    if (a.status === "INTERVIEW" && a.interviewAt && a.interviewAt >= new Date(now.getTime() - 3_600_000) && a.interviewAt < endOfDay) {
+      interviews.push(item(a, a.interviewAt));
+    }
     // Rückfrage mit Frist abgelaufen → Vorschlag „schließen“ (statt „liegengeblieben“)
     if (a.awaitingReplySince && a.awaitingReplySince.getTime() <= closeBefore) {
       noReply.push(item(a, a.awaitingReplySince));
       continue;
-    }
-    if (a.status === "INTERVIEW" && a.interviewAt && a.interviewAt >= new Date(now.getTime() - 3_600_000) && a.interviewAt < endOfDay) {
-      interviews.push(item(a, a.interviewAt));
     }
     const last = a.messages[0];
     if (last?.direction === "APPLICANT_TO_TEAM") {

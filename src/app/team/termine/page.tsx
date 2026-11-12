@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { hiddenPositionIds, viewerOf } from "@/lib/team/visibility";
 import Link from "next/link";
 import { Suspense } from "react";
 import { CalendarBlank } from "@phosphor-icons/react/ssr";
@@ -36,10 +37,11 @@ const time = (d: Date) => new Intl.DateTimeFormat("de-DE", { hour: "2-digit", mi
 const dayKey = (d: Date) => new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Berlin" }).format(d);
 
 async function SlotList() {
-  await requireTeam();
+  const { user, access } = await requireTeam();
+  const hidden = new Set(await hiddenPositionIds(viewerOf(user, access)));
   const slots = await db.interviewSlot.findMany({
     where: { startsAt: { gte: daysAgo(1) } },
-    include: { application: { select: { id: true, publicId: true, status: true, user: { select: { globalName: true, username: true } }, position: { select: { title: true } } } } },
+    include: { application: { select: { id: true, publicId: true, status: true, user: { select: { globalName: true, username: true } }, position: { select: { id: true, title: true } } } } },
     orderBy: { startsAt: "asc" },
     take: 200,
   });
@@ -70,7 +72,9 @@ async function SlotList() {
                   <span className={`font-mono tabular-nums ${past ? "text-faint" : ""}`}>
                     {time(s.startsAt)}–{time(new Date(s.startsAt.getTime() + s.durationMin * 60_000))}
                   </span>
-                  {s.application ? (
+                  {s.application && hidden.has(s.application.position.id) ? (
+                    <span className="nv-pill">gebucht (andere Stelle)</span>
+                  ) : s.application ? (
                     <Link href={`/team/bewerbungen/${s.application.id}`} className="nv-link">
                       {s.application.user.globalName || s.application.user.username} · {s.application.position.title} · {s.application.publicId}
                     </Link>

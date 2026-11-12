@@ -100,8 +100,14 @@ export async function applyGuildState(applicationId: string, inGuild: boolean): 
     return "back";
   }
 
-  if (!WATCHED.includes(app.status) || app.guildLeftNotifiedAt) return null;
+  if (!WATCHED.includes(app.status)) return null;
   const now = new Date();
+  if (app.guildLeftNotifiedAt) {
+    // Schon als „weg“ gemeldet – wurde die Person inzwischen gebannt? (einmal markieren)
+    if (app.guildBannedAt) return null;
+    const later = await lookupBan(app.user.discordId);
+    return later ? markBanned(app, later.reason, now) : null;
+  }
   // Gebannt? Dann keine „tritt wieder bei“-Nachricht, sondern ein Hinweis fürs Team
   const ban = await lookupBan(app.user.discordId);
   if (ban) return markBanned(app, ban.reason, now);

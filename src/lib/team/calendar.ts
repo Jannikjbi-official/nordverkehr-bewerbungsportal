@@ -21,8 +21,26 @@ export interface CalendarEvent {
 const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
 /** Text nach RFC 5545 entschärfen (Komma, Semikolon, Backslash, Zeilenumbruch) */
 const esc = (s: string) => s.replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
-/** Zeilen über 75 Zeichen falten */
-const fold = (line: string) => line.match(/.{1,74}/g)!.join("\r\n ");
+/** Zeilen nach RFC 5545 falten: höchstens 75 Bytes pro Zeile (Fortsetzung beginnt mit Leerzeichen), Zeichen bleiben ganz */
+export function fold(line: string) {
+  const enc = new TextEncoder();
+  const out: string[] = [];
+  let cur = "";
+  let bytes = 0;
+  for (const ch of line) {
+    const n = enc.encode(ch).length;
+    const max = out.length ? 74 : 75; // Fortsetzungszeilen: 1 Byte für das Leerzeichen
+    if (bytes + n > max) {
+      out.push(cur);
+      cur = "";
+      bytes = 0;
+    }
+    cur += ch;
+    bytes += n;
+  }
+  out.push(cur);
+  return out.join("\r\n ");
+}
 
 export function buildIcs(events: CalendarEvent[], now = new Date()) {
   const lines = [

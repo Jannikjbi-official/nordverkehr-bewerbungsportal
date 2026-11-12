@@ -35,6 +35,13 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
   const [s, setS] = useState<Settings>(settings);
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  // Liegt die Changelog-Uhrzeit in der Nachtruhe (und Changelog wird nachts zurückgehalten)?
+  const clDuringNight = (() => {
+    if (!s["night.enabled"] || !s["night.held"].includes("changelog")) return false;
+    const min = (t: string) => Number(t.split(":")[0]) * 60 + Number(t.split(":")[1]);
+    const [st, en, at] = [min(s["night.start"]), min(s["night.end"]), min(s["changelog.publishTime"])];
+    return st < en ? at >= st && at < en : st !== en && (at >= st || at < en);
+  })();
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) => setS((x) => ({ ...x, [k]: v }));
   // JSON-Vergleich: Listen (z. B. night.held) sind bei jeder Änderung neue Objekte
   const changed = (Object.keys(s) as (keyof Settings)[]).filter((k) => JSON.stringify(s[k]) !== JSON.stringify(settings[k]));
@@ -161,7 +168,12 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
             </div>
             <p className="nv-help sm:mt-7">
               Deutsche Zeit. 00:00 = um Mitternacht, wenn der Tag vorbei ist. Andere Uhrzeit (z. B. 20:00) = am selben Tag um diese Uhrzeit. Dann erscheint der Eintrag im
-              Team-Bereich und geht in den Changelog-Kanal (innerhalb der Stunde). Sofort geht es über „Jetzt veröffentlichen“ in der Admin-Übersicht.
+              Team-Bereich und geht beim nächsten Zustell-Lauf in den Changelog-Kanal (Läufe um 0 Uhr und stündlich 5–13 Uhr). Sofort geht es über „Jetzt veröffentlichen“ in der Admin-Übersicht.
+              {clDuringNight && (
+                <span className="block mt-1 text-amber-500">
+                  Hinweis: {s["changelog.publishTime"]} liegt in der Nachtruhe – der Discord-Post kommt erst um {s["night.end"]} Uhr (im Portal sofort).
+                </span>
+              )}
             </p>
           </div>
           {toggle(

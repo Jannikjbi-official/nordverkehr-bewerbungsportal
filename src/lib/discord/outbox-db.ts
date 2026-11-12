@@ -51,7 +51,8 @@ export const prismaOutboxStore: OutboxStore = {
     await db.$transaction(async (tx) => {
       await tx.outboxJob.update({
         where: { id: job.id },
-        data: { status: "FAILED", attempts: { increment: 1 }, lastError: error, lockedAt: null },
+        // dmClosed merken: geschlossene DMs sind erwartbar und zählen nicht als Störung (Alarm)
+        data: { status: "FAILED", attempts: { increment: 1 }, lastError: error, lockedAt: null, result: { dmClosed: dmClosed ? "true" : "false" } },
       });
       if (job.messageId) {
         await tx.message.update({ where: { id: job.messageId }, data: { deliveryStatus: status, deliveryError: error } });
