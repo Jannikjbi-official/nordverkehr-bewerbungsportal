@@ -322,6 +322,9 @@ model Application {
   /// KI-Einordnung (beschreibende Kategorien, kein Ranking)
   aiTags               String[]        @default([])
   aiTaggedAt           DateTime?
+  /// KI-Punkte für den Bewertungsbogen: { scores, reasons, fazit } oder { blocked } – nur Einschätzung
+  aiRating             Json?
+  aiRatedAt            DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -113,6 +113,9 @@ export async function submitApplicationAction(
       // KI-Einordnung (Tags) – optional, blockiert nichts
       const { tagApplication } = await import("@/lib/ai/tagging");
       await tagApplication(res.applicationId).catch((e) => console.error("[ai-tags]", e));
+      // KI-Punkte für den Bewertungsbogen (nur Einschätzung)
+      const { scoreApplication } = await import("@/lib/ai/scoring");
+      await scoreApplication(res.applicationId).catch((e) => console.error("[ai-score]", e));
     });
     revalidatePath("/dashboard");
     return { ok: true, data: { applicationId: res.applicationId, publicId: res.publicId } };

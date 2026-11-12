@@ -416,6 +416,25 @@ export async function retagAction(applicationId: string): Promise<ActionResult<{
   }
 }
 
+/** KI-Punkte (neu) berechnen. */
+export async function rescoreAction(applicationId: string): Promise<ActionResult> {
+  const { user } = await requireTeam();
+  if (!id.safeParse(applicationId).success) return { ok: false, error: "Ungültig." };
+  const { getSettings } = await import("@/lib/settings");
+  const { assertAiAllowed, AiError } = await import("@/lib/ai/service");
+  const { scoreApplication } = await import("@/lib/ai/scoring");
+  try {
+    await assertAiAllowed(user.id, await getSettings());
+    const r = await scoreApplication(applicationId, { actorId: user.id, force: true });
+    if (!r) return { ok: false, error: "KI-Punkte gehen nur bei neuen Bewerbungen (Einwilligung) und wenn die KI an ist und Budget hat." };
+    revalidatePath(`/team/bewerbungen/${applicationId}`);
+    return { ok: true };
+  } catch (err) {
+    if (err instanceof AiError) return { ok: false, error: err.message };
+    return fail(err);
+  }
+}
+
 /** Rückzug während der Bearbeitung bestätigen (raus aus dem Dashboard, Bewerber wird informiert). */
 export async function acknowledgeWithdrawalAction(applicationId: string): Promise<ActionResult> {
   const { user } = await requireTeam();

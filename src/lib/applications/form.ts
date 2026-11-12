@@ -182,7 +182,11 @@ export const confirmationsSchema = z.object({
   privacy: z.literal(true, { error: "Bitte bestätigen." }),
 });
 
-export const CONSENT_VERSION = "2026-11-v1";
+/** v2: KI-Punkte im Bewertungsbogen (Datenschutzerklärung entsprechend ergänzt) */
+export const CONSENT_VERSION = "2026-11-v2";
+/** Ab dieser Einwilligung dürfen KI-Punkte vergeben werden */
+export const AI_SCORE_CONSENT = "2026-11-v2";
+export const allowsAiScore = (consentVersion: string | null | undefined) => !!consentVersion && consentVersion >= AI_SCORE_CONSENT;
 
 export function formatAnswerForDisplay(type: QuestionType, value: AnswerValue): string {
   if (value === null || value === undefined) return "–";

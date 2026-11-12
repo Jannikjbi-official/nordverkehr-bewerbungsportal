@@ -224,6 +224,11 @@ export function SettingsForm({ settings, env, spend, spendMicro }: Props) {
             {num("ai.maxInputChars", "Max. Zeichen Bewerbungsinhalt pro Anfrage", "Längere Bewerbungen werden für die KI gekürzt.")}
           </div>
           {toggle("ai.autoTagEnabled", "Neue Bewerbungen automatisch einordnen (Kategorien, kein Ranking)")}
+          {toggle(
+            "ai.autoScoreEnabled",
+            "KI-Punkte im Bewertungsbogen automatisch vergeben",
+            "Nach dem Absenden bewertet die KI die Kriterien des Bewertungsbogens mit Begründung – getrennt vom Team-Schnitt, nur für Bewerbungen ab dem 12.11.2026.",
+          )}
           <div>
             <p className="text-sm">
               Verbrauch diesen Monat: <strong>{spend}</strong> ({pct} % des Budgets)

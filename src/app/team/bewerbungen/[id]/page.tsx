@@ -24,10 +24,15 @@ import { RatingPanel } from "@/components/team/RatingPanel";
 import { OnboardingPanel } from "@/components/team/OnboardingPanel";
 import { onboardingItems, readOnboarding } from "@/lib/team/onboarding";
 import { cleanScores, summarizeRatings } from "@/lib/team/ratings";
+import { claimForScoring, isScoringPending, readAiRating, scoreApplication } from "@/lib/ai/scoring";
+import { after } from "next/server";
+import { allowsAiScore } from "@/lib/applications/form";
+import type { AiRatingView } from "@/components/team/RatingPanel";
 import { TagPills } from "@/components/team/TagPills";
 import { RetagButton } from "@/components/team/RetagButton";
 import { requireTeam, getAccess } from "@/lib/auth/session";
 import { db } from "@/lib/db";
+import { getBotProfile } from "@/lib/discord/bot-profile";
 import { getSettings } from "@/lib/settings";
 import { getTemplateVarsFor } from "@/lib/team/service";
 import { FOLLOW_UP_DAYS, STATUS_LABEL, SUGGESTED_CATEGORIES, allowedTeamTargets, canFollowUp } from "@/lib/applications/status";
@@ -72,7 +77,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
   if (!app || app.status === "DRAFT") notFound();
   const ackBy = app.withdrawAckById ? await db.user.findUnique({ where: { id: app.withdrawAckById }, select: { globalName: true, username: true } }) : null;
 
-  const [settings, templates, vars, otherApps, activeBan, applicantAccess] = await Promise.all([
+  const [settings, templates, vars, otherApps, activeBan, applicantAccess, bot] = await Promise.all([
     getSettings(),
     db.messageTemplate.findMany({ where: { active: true }, orderBy: [{ category: "asc" }, { sortOrder: "asc" }] }),
     getTemplateVarsFor(app.id, me),
@@ -84,6 +89,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
     db.userBan.findFirst({ where: { subjectId: app.userId, liftedAt: null, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] } }),
     // Discord-Profil aktuell halten (kurzer Cache, Beitrittsdatum vom Server)
     getAccess(app.user).catch(() => null),
+    getBotProfile(),
   ]);
 
   // Neue Antworten des Bewerbers als gelesen markieren (Team-Sicht)
@@ -100,6 +106,26 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
   const aiEnabled = settings["ai.enabled"] && isAiConfigured();
   const myRating = app.ratings.find((r) => r.userId === me.id);
   const ratingSummary = summarizeRatings(app.ratings);
+  // Noch keine KI-Punkte? Dann jetzt im Hintergrund nachholen (einmal, gesperrt gegen Doppelaufrufe)
+  if (aiEnabled && settings["ai.autoScoreEnabled"] && app.status !== "WITHDRAWN" && !readAiRating(app.aiRating) && !isScoringPending(app) && allowsAiScore(app.consentVersion)) {
+    after(async () => {
+      if (await claimForScoring(app.id)) await scoreApplication(app.id).catch((e) => console.error("[ai-score]", e));
+    });
+  }
+  const storedAi = readAiRating(app.aiRating);
+  const aiView: AiRatingView = !aiEnabled
+    ? { kind: "off" }
+    : !allowsAiScore(app.consentVersion)
+      ? { kind: "notAllowed" }
+      : !storedAi
+        ? isScoringPending(app)
+          ? { kind: "pending" }
+          : settings["ai.autoScoreEnabled"] && app.status !== "WITHDRAWN"
+            ? { kind: "pending" }
+            : { kind: "none" }
+        : "blocked" in storedAi
+          ? { kind: "blocked", reason: storedAi.blocked, at: app.aiRatedAt?.toISOString() ?? "" }
+          : { kind: "scores", scores: cleanScores(storedAi.scores), reasons: storedAi.reasons ?? {}, fazit: storedAi.fazit ?? null, at: app.aiRatedAt?.toISOString() ?? "" };
 
   const sections = new Map<string, typeof app.answers>();
   for (const a of app.answers) {
@@ -256,14 +282,14 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
                   const person = fromApplicant ? app.user : m.author;
                   return (
                     <li key={m.id} className={cn("flex gap-3", fromApplicant && "flex-row-reverse")}>
-                      <ChatAvatar direction={m.direction} person={person} size={32} />
+                      <ChatAvatar direction={m.direction} person={person} botAvatarUrl={bot.avatarUrl} size={32} />
                       <div className={cn("max-w-[85%] min-w-0", fromApplicant && "text-right")}>
                         <p className="text-xs text-muted flex flex-wrap items-center gap-1.5" style={fromApplicant ? { justifyContent: "flex-end" } : undefined}>
                           <span className="font-medium text-fg-2">
                             {m.direction === "SYSTEM"
-                              ? "Automatische Nachricht"
+                              ? bot.name
                               : m.direction === "AI_TO_APPLICANT"
-                                ? "Automatische Antwort (KI)"
+                                ? `${bot.name} (KI)`
                                 : fromApplicant
                                   ? name
                                   : personName(m.author, "Team")}
@@ -367,6 +393,8 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
               mine={cleanScores(myRating?.scores)}
               myNote={myRating?.note ?? null}
               summary={ratingSummary}
+              ai={aiView}
+              bot={bot}
               raters={app.ratings
                 .filter((r) => r.userId !== me.id || Object.keys(cleanScores(r.scores)).length)
                 .map((r) => ({ name: r.user.globalName || r.user.username, avg: summarizeRatings([r]).overall }))}

@@ -95,7 +95,11 @@ async function Content() {
           Discord-ID oder Bilder) an die Claude-API von Anthropic senden, um Zusammenfassungen, Vorschläge für Rückfragen
           und Hinweise auf Auffälligkeiten zu erstellen. Die KI trifft keine Entscheidungen über deine Bewerbung; das
           entscheiden ausschließlich Menschen aus dem Team. Außerdem werden neue Bewerbungen automatisch in beschreibende Kategorien eingeordnet (z. B.
-          „Rückfrage nötig“) – ohne Ranking oder Punktzahl.
+          „Rückfrage nötig“). Für den internen Bewertungsbogen gibt die KI zusätzlich eine <strong>Einschätzung mit Punkten</strong> (1–5)
+          zu festen Kriterien wie Kommunikation, Erfahrung oder Umgang mit Szenarien ab, jeweils mit kurzer Begründung. Diese Punkte
+          sind nur eine Orientierung für das Team: Sie werden nicht mit den Bewertungen der Teammitglieder verrechnet, es gibt kein
+          Ranking zwischen Bewerbern, und über deine Bewerbung entscheidet immer ein Mensch (keine automatisierte Entscheidung im
+          Sinne von Art. 22 DSGVO). Du kannst jederzeit Auskunft über die Einschätzung verlangen (Datenexport).
           {s["ai.autoReplyEnabled"] && (
             <>
               {" "}

@@ -1,10 +1,20 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-import { Star } from "@phosphor-icons/react/ssr";
-import { rateAction } from "@/app/actions/team";
-import { RATING_CRITERIA, formatScore, type RatingSummary, type Scores } from "@/lib/team/ratings";
+import { useEffect, useState, useTransition } from "react";
+import { Robot, Star } from "@phosphor-icons/react/ssr";
+import { rateAction, rescoreAction } from "@/app/actions/team";
+import { RATING_CRITERIA, formatScore, summarizeRatings, type CriterionKey, type RatingSummary, type Scores } from "@/lib/team/ratings";
+
+export type AiRatingView =
+  | { kind: "scores"; scores: Scores; reasons: Partial<Record<CriterionKey, string>>; fazit: string | null; at: string }
+  | { kind: "blocked"; reason: "manipulation" | "unreadable"; at: string }
+  | { kind: "none" }
+  /** KI bewertet gerade (automatisch beim Öffnen) */
+  | { kind: "pending" }
+  /** Bewerbung vor Einführung der KI-Punkte eingereicht (Einwilligung deckt es nicht) */
+  | { kind: "notAllowed" }
+  | { kind: "off" };
 
 /** Bewertungsbogen: eigene Punkte pro Kriterium + Durchschnitt des Teams. */
 export function RatingPanel({
@@ -13,13 +23,19 @@ export function RatingPanel({
   myNote,
   summary,
   raters,
+  ai = { kind: "off" },
+  bot,
 }: {
   applicationId: string;
   mine: Scores;
   myNote: string | null;
   summary: RatingSummary;
   raters: { name: string; avg: number | null }[];
+  ai?: AiRatingView;
+  bot?: { name: string; avatarUrl: string };
 }) {
+  const aiScores = ai.kind === "scores" ? ai.scores : null;
+  const aiOverall = aiScores ? summarizeRatings([{ scores: aiScores }]).overall : null;
   const router = useRouter();
   const [scores, setScores] = useState<Scores>(mine);
   const [note, setNote] = useState(myNote ?? "");
@@ -57,8 +73,13 @@ export function RatingPanel({
                 <span className="text-xs text-fg-2" title={c.hint}>
                   {c.label}
                 </span>
-                <span className="text-[0.7rem] text-muted tabular-nums" title="Schnitt des Teams">
-                  Ø {formatScore(team.avg)}
+                <span className="flex items-center gap-2 text-[0.7rem] text-muted tabular-nums">
+                  {aiScores && (
+                    <span className="nv-pill nv-tone-info !py-0 !px-1.5 cursor-help" title={ai.kind === "scores" ? (ai.reasons[c.key] ?? "Ohne Begründung") : undefined}>
+                      KI {aiScores[c.key] ?? "–"}
+                    </span>
+                  )}
+                  <span title="Schnitt des Teams">Ø {formatScore(team.avg)}</span>
                 </span>
               </div>
               <div className="mt-0.5 flex gap-0.5" role="radiogroup" aria-label={c.label}>
@@ -81,6 +102,7 @@ export function RatingPanel({
           );
         })}
       </ul>
+      <AiBlock applicationId={applicationId} ai={ai} overall={aiOverall} bot={bot} />
       <textarea
         className="nv-input text-sm !min-h-16"
         placeholder="Kurze Begründung (nur intern, optional)"
@@ -104,6 +126,80 @@ export function RatingPanel({
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+/** KI-Einschätzung: Schnitt, Begründungen, Neu-Berechnen. Zählt nicht zum Team-Schnitt. */
+function AiBlock({ applicationId, ai, overall, bot }: { applicationId: string; ai: AiRatingView; overall: number | null; bot?: { name: string; avatarUrl: string } }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  // Läuft die Bewertung gerade, nach kurzer Zeit neu laden
+  useEffect(() => {
+    if (ai.kind !== "pending") return;
+    const t = setTimeout(() => router.refresh(), 15_000);
+    return () => clearTimeout(t);
+  }, [ai.kind, router]);
+  if (ai.kind === "off") return null;
+  if (ai.kind === "notAllowed") {
+    return <p className="text-[0.7rem] text-faint">KI-Punkte gibt es nur für Bewerbungen ab dem 12.11.2026 (Datenschutz-Einwilligung).</p>;
+  }
+  const run = () =>
+    start(async () => {
+      setError(null);
+      const r = await rescoreAction(applicationId);
+      if (!r.ok) setError(r.error);
+      else router.refresh();
+    });
+  return (
+    <div className="rounded-xl border border-line bg-surface-2/40 p-3 space-y-2" data-testid="ai-rating">
+      <div className="flex items-center justify-between gap-2">
+        <p className="flex items-center gap-1.5 text-xs font-medium">
+          {bot ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={bot.avatarUrl} alt="" width={18} height={18} className="rounded-full" />
+          ) : (
+            <Robot size={14} aria-hidden />
+          )}
+          KI-Einschätzung{bot ? <span className="font-normal text-muted"> · {bot.name}</span> : null}
+        </p>
+        {overall !== null && (
+          <p className="text-sm tabular-nums">
+            {formatScore(overall)}
+            <span className="text-xs text-muted"> / 5</span>
+          </p>
+        )}
+      </div>
+      {ai.kind === "scores" && (
+        <details className="text-xs text-fg-2">
+          <summary className="cursor-pointer text-muted">Begründungen{ai.fazit ? " & Fazit" : ""}</summary>
+          <ul className="mt-1.5 space-y-1">
+            {RATING_CRITERIA.filter((c) => ai.reasons[c.key]).map((c) => (
+              <li key={c.key}>
+                <span className="text-muted">{c.label}:</span> {ai.reasons[c.key]}
+              </li>
+            ))}
+          </ul>
+          {ai.fazit && <p className="mt-1.5 italic">{ai.fazit}</p>}
+        </details>
+      )}
+      {ai.kind === "blocked" && (
+        <p className="text-xs text-[var(--tone-danger)]">
+          {ai.reason === "manipulation"
+            ? "Keine KI-Punkte: In der Bewerbung wurde ein möglicher Manipulationsversuch erkannt. Bitte selbst bewerten."
+            : "Die KI-Antwort war nicht auswertbar. Versuch es nochmal."}
+        </p>
+      )}
+      {ai.kind === "none" && <p className="text-xs text-muted">Noch keine KI-Punkte.</p>}
+      {ai.kind === "pending" && <p className="text-xs text-muted">Die KI bewertet die Bewerbung gerade … (aktualisiert sich gleich)</p>}
+      <div className="flex items-center gap-2">
+        <button type="button" className="nv-btn nv-btn-quiet nv-btn-sm !px-2" disabled={pending || ai.kind === "pending"} onClick={run}>
+          {pending ? "Berechne …" : ai.kind === "none" ? "KI-Punkte berechnen" : "Neu berechnen"}
+        </button>
+        {error && <span className="nv-error text-xs">{error}</span>}
+      </div>
+      <p className="text-[0.65rem] text-faint">Nur Orientierung – zählt nicht zum Team-Schnitt, entscheiden tut das Team.</p>
     </div>
   );
 }

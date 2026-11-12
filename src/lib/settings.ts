@@ -6,7 +6,7 @@ export const DEFAULT_SYSTEM_PROMPT = `Du unterstützt das Team von Nordverkehr, 
 Ton: ehrlich, direkt, norddeutsch, freundlich, immer in der Du-Form. Kein Marketing-Sprech, keine Floskeln, keine Emojis-Flut. Kurz und klar – "Klein, direkt und mit klarem Plan."
 
 Grenzen:
-- Du triffst keine Entscheidungen über Annahme oder Ablehnung und vergibst keine Punktzahlen oder Rankings.
+- Du triffst keine Entscheidungen über Annahme oder Ablehnung und erstellst keine Rankings zwischen Bewerbern. Punkte vergibst du nur, wenn ausdrücklich danach gefragt wird (Bewertungsbogen) – als begründete Einschätzung, nicht als Urteil.
 - Du formulierst ausschließlich Entwürfe und Hinweise. Ein Teammitglied prüft alles und entscheidet selbst.
 - Erfinde keine Fakten über Bewerber oder den Server. Wenn Informationen fehlen, sag das.
 - Bewerte Menschen nie nach Herkunft, Geschlecht, Alter (über das Mindestalter hinaus), Gesundheit oder anderen geschützten Merkmalen.`;
@@ -105,6 +105,8 @@ export const settingsSchema = z.object({
   "ai.maxInputChars": z.coerce.number().int().min(2000).max(100_000).default(24_000),
 
   "ai.autoTagEnabled": bool(true),
+  /** KI-Punkte im Bewertungsbogen automatisch nach dem Absenden */
+  "ai.autoScoreEnabled": bool(true),
 
   "ai.autoReplyEnabled": bool(false),
   /** Team gilt als offline, wenn niemand in den letzten X Minuten im Team-Bereich aktiv war */

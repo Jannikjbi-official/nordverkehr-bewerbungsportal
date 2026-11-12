@@ -10,7 +10,8 @@ import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { STATUS_LABEL } from "@/lib/applications/status";
 import { formatAnswerForDisplay, type AnswerValue } from "@/lib/applications/form";
-import { RATING_CRITERIA, formatScore, summarizeRatings } from "@/lib/team/ratings";
+import { RATING_CRITERIA, cleanScores, formatScore, summarizeRatings } from "@/lib/team/ratings";
+import { readAiRating } from "@/lib/ai/scoring";
 
 export const metadata: Metadata = { title: "Bewerbung drucken" };
 
@@ -50,6 +51,9 @@ async function PrintView({ params, searchParams }: PageProps<"/team/bewerbungen/
   for (const a of app.answers) sections.set(a.sectionTitle, [...(sections.get(a.sectionTitle) ?? []), a]);
   const name = app.user.globalName || app.user.username;
   const rating = summarizeRatings(app.ratings);
+  const aiStored = readAiRating(app.aiRating);
+  const ai = aiStored && !("blocked" in aiStored) ? aiStored : null;
+  const aiScores = ai ? cleanScores(ai.scores) : null;
   const who = (u: { globalName: string | null; username: string } | null) => (u ? u.globalName || u.username : "–");
 
   return (
@@ -112,6 +116,7 @@ async function PrintView({ params, searchParams }: PageProps<"/team/bewerbungen/
                     <tr key={c.key} className="border-b border-line">
                       <td className="py-1">{c.label}</td>
                       <td className="py-1 text-right tabular-nums">{formatScore(rating.perCriterion[c.key].avg)}</td>
+                      {aiScores && <td className="py-1 text-right tabular-nums text-muted">KI {aiScores[c.key] ?? "–"}</td>}
                     </tr>
                   ))}
                 </tbody>

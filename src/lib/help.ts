@@ -114,7 +114,7 @@ export const HELP: HelpSection[] = [
       {
         id: "bewertungsbogen",
         term: "Bewertungsbogen",
-        text: "Jedes Teammitglied vergibt pro Kriterium 1–5 Sterne (Kommunikation, Erfahrung, Szenarien, Motivation, Verfügbarkeit, Teamfit). Ein Kriterium darf offen bleiben, ein zweiter Klick auf denselben Stern nimmt ihn zurück. Oben steht der **Schnitt des Teams**, unten der Schnitt jedes Einzelnen. Die Punkte sind eine Orientierung – entschieden wird im Gespräch und in der Abstimmung.",
+        text: "Jedes Teammitglied vergibt pro Kriterium 1–5 Sterne (Kommunikation, Erfahrung, Szenarien, Motivation, Verfügbarkeit, Teamfit). Ein Kriterium darf offen bleiben, ein zweiter Klick auf denselben Stern nimmt ihn zurück. Oben steht der **Schnitt des Teams**, unten der Schnitt jedes Einzelnen. Ist die KI aktiv, steht neben jedem Kriterium außerdem ein blaues **„KI 4“** – Maus drüber zeigt die Begründung, unter „KI-Einschätzung“ stehen alle Gründe und ein kurzes Fazit. Die KI-Punkte zählen **nicht** zum Team-Schnitt und gibt es nur für Bewerbungen ab dem 12.11.2026 (Einwilligung). Findet der Schutzfilter einen Manipulationsversuch, vergibt die KI keine Punkte. Alle Punkte sind eine Orientierung – entschieden wird im Gespräch und in der Abstimmung.",
       },
       {
         id: "termine",

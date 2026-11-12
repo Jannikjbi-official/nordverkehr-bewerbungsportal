@@ -11,9 +11,13 @@ export interface ChatPerson {
   isTeam?: boolean;
 }
 
-/** Profilbild im Nachrichtenverlauf: Discord-Avatar, Roboter für System/KI. */
-export function ChatAvatar({ direction, person, size = 36 }: { direction: MessageDirection; person: ChatPerson | null; size?: number }) {
+/** Profilbild im Nachrichtenverlauf: Discord-Avatar, für System/KI das Profilbild des Bots. */
+export function ChatAvatar({ direction, person, size = 36, botAvatarUrl }: { direction: MessageDirection; person: ChatPerson | null; size?: number; botAvatarUrl?: string | null }) {
   if (direction === "SYSTEM" || direction === "AI_TO_APPLICANT") {
+    if (botAvatarUrl) {
+      // eslint-disable-next-line @next/next/no-img-element
+      return <img src={botAvatarUrl} alt="" width={size} height={size} loading="lazy" className="rounded-full bg-surface-2 shrink-0" style={{ width: size, height: size }} />;
+    }
     return (
       <div className="shrink-0 rounded-full grid place-items-center bg-red-soft text-red-text" style={{ width: size, height: size }} aria-hidden>
         <Robot size={size / 2} />

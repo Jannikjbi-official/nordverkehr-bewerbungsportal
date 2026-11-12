@@ -11,6 +11,9 @@ export async function GET(req: Request) {
   await applyPositionSchedule(db).catch((e) => console.error("[positions]", e));
   const { sendInterviewReminders } = await import("@/lib/team/slots");
   await sendInterviewReminders(db).catch((e) => console.error("[reminder]", e));
+  // Fehlende KI-Punkte nachholen (wenige pro Lauf, Zeitlimit)
+  const { scoreMissing } = await import("@/lib/ai/scoring");
+  await scoreMissing(2).catch((e) => console.error("[ai-score]", e));
   const r = await postDailySummary(db);
   return Response.json(r.posted ? { posted: true, jobs: r.jobIds.length, escalated: r.escalated } : { posted: false, reason: r.reason });
 }

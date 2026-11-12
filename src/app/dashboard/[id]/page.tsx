@@ -19,6 +19,7 @@ import { SlotPicker } from "@/components/dashboard/SlotPicker";
 import { FeedbackForm } from "@/components/dashboard/FeedbackForm";
 import { canRebook, listFreeSlots } from "@/lib/team/slots";
 import { db } from "@/lib/db";
+import { getBotProfile } from "@/lib/discord/bot-profile";
 import { ACTIVE_STATUSES, FOLLOW_UP_DAYS, STATUS_HINT, STATUS_LABEL, TIMELINE, canFollowUp, isInProcessing } from "@/lib/applications/status";
 import { formatAnswerForDisplay, type AnswerValue } from "@/lib/applications/form";
 import type { ApplicationStatus } from "@prisma/client";
@@ -55,6 +56,7 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
   if (!app || app.status === "DRAFT") notFound();
 
   const isNew = sp.neu === "1";
+  const bot = await getBotProfile();
   const active = ACTIVE_STATUSES.includes(app.status);
   const followUp = canFollowUp(app);
   const dmIssue = app.confirmationDmStatus === "DM_CLOSED" || app.confirmationDmStatus === "FAILED";
@@ -152,14 +154,14 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
                 const person = mine ? user : author;
                 return (
                   <li key={m.id} className={cn("flex gap-3", mine && "flex-row-reverse")}>
-                    <ChatAvatar direction={m.direction} person={person} />
+                    <ChatAvatar direction={m.direction} person={person} botAvatarUrl={bot.avatarUrl} />
                     <div className={cn("max-w-[85%] min-w-0", mine && "text-right")}>
                       <p className="text-xs text-muted flex flex-wrap items-center gap-1.5" style={mine ? { justifyContent: "flex-end" } : undefined}>
                         <span className="font-medium text-fg-2">
                           {m.direction === "SYSTEM"
-                            ? "Automatische Nachricht"
+                            ? bot.name
                             : m.direction === "AI_TO_APPLICANT"
-                              ? "Automatische Antwort"
+                              ? `${bot.name} (KI)`
                               : mine
                                 ? "Du"
                                 : personName(author, "Nordverkehr-Team")}
