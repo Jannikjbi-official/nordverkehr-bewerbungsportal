@@ -26,6 +26,8 @@ import { applyGuildState, guildStateKnown } from "@/lib/applications/guild-watch
 import { publicEnv } from "@/lib/env";
 import { ACTIVE_STATUSES, FOLLOW_UP_DAYS, STATUS_HINT, STATUS_LABEL, TIMELINE, canFollowUp, isInProcessing } from "@/lib/applications/status";
 import { formatAnswerForDisplay, type AnswerValue } from "@/lib/applications/form";
+import { getSettings } from "@/lib/settings";
+import { isNight } from "@/lib/night";
 import type { ApplicationStatus } from "@prisma/client";
 
 export const metadata: Metadata = { title: "Bewerbung", robots: { index: false } };
@@ -70,6 +72,10 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
   }
   const active = ACTIVE_STATUSES.includes(app.status);
   const followUp = canFollowUp(app);
+  // Nachtruhe: Hinweis, dass das Team erst morgens antwortet
+  const settings = await getSettings();
+  const nightNotice = settings["night.portalNotice"] && isNight(settings) && (active || followUp);
+  const nightText = `Nachtruhe bis ${settings["night.end"]} Uhr – das Team schläft. Deine Nachricht kommt trotzdem an, ab ${settings["night.end"]} Uhr meldet sich jemand persönlich.${settings["night.aiReply"] ? " Bis dahin antwortet dir unser Bot automatisch." : ""}`;
   const dmIssue = app.confirmationDmStatus === "DM_CLOSED" || app.confirmationDmStatus === "FAILED";
   const unread = app.messages.some((m) => m.direction === "TEAM_TO_APPLICANT" && !m.readAt);
   // Selbstbuchung: im Gespräch ohne festen Termin (oder mit selbst gebuchtem)
@@ -214,6 +220,11 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
                   <p className="mb-3 text-xs text-muted">
                     Du hast die Bewerbung zurückgezogen. Falls das Team noch Fragen hat, kannst du hier bis zum{" "}
                     {formatDay(new Date(app.decidedAt!.getTime() + FOLLOW_UP_DAYS * 86_400_000))} antworten.
+                  </p>
+                )}
+                {nightNotice && (
+                  <p className="mb-3 text-xs text-muted" data-testid="night-notice">
+                    🌙 {nightText}
                   </p>
                 )}
                 <ReplyBox applicationId={app.id} />

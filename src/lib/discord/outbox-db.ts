@@ -78,12 +78,17 @@ export async function enqueue(
   opts: { messageId?: string; applicationId?: string; tx?: Prisma.TransactionClient } = {},
 ) {
   const client = opts.tx ?? db;
+  // Nachtruhe: DMs an Bewerber / Team-Posts erst zum Ende der Nachtruhe
+  const { getSettings } = await import("@/lib/settings");
+  const { nightHoldUntil } = await import("@/lib/night");
+  const holdUntil = nightHoldUntil(payload as { type: string; purpose?: string; ignoreNight?: boolean }, await getSettings());
   return client.outboxJob.create({
     data: {
       type: payload.type,
       payload: payload as unknown as Prisma.InputJsonValue,
       messageId: opts.messageId,
       applicationId: opts.applicationId,
+      ...(holdUntil ? { runAt: holdUntil } : {}),
     },
     select: { id: true },
   });
@@ -100,7 +105,8 @@ const JOB_SELECT = { id: true, type: true, payload: true, attempts: true, maxAtt
 async function claim(limit: number, ids?: string[]): Promise<OutboxJobLike[]> {
   const now = new Date();
   const candidates = await db.outboxJob.findMany({
-    where: ids?.length ? { id: { in: ids }, status: "PENDING" } : { status: "PENDING", runAt: { lte: now } },
+    // Auch bei gezielter Zustellung nur fällige Jobs (Nachtruhe, geplante Wiederholungen)
+    where: ids?.length ? { id: { in: ids }, status: "PENDING", runAt: { lte: now } } : { status: "PENDING", runAt: { lte: now } },
     orderBy: { runAt: "asc" },
     take: ids?.length ? ids.length : limit,
     select: JOB_SELECT,

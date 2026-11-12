@@ -165,6 +165,45 @@ export function SettingsForm({ settings, env, spend, spendMicro }: Props) {
         </div>
       </Card>
 
+      <Card title="Nachtruhe" desc="Wenn das Team schläft (deutsche Zeit). Nur Admins können das ändern.">
+        <div className="space-y-3">
+          {toggle("night.enabled", "Nachtruhe aktiv")}
+          <div className="grid gap-4 grid-cols-2 sm:max-w-sm">
+            <div>
+              <label htmlFor="night-start" className="nv-field-label">
+                Von
+              </label>
+              <input id="night-start" type="time" className="nv-input" value={s["night.start"]} onChange={(e) => set("night.start", e.target.value)} disabled={!s["night.enabled"]} />
+            </div>
+            <div>
+              <label htmlFor="night-end" className="nv-field-label">
+                Bis
+              </label>
+              <input id="night-end" type="time" className="nv-input" value={s["night.end"]} onChange={(e) => set("night.end", e.target.value)} disabled={!s["night.enabled"]} />
+            </div>
+          </div>
+          {s["night.enabled"] && (
+            <>
+              {toggle(
+                "night.aiReply",
+                "KI antwortet nachts auf Bewerber",
+                "Auch wenn die Auto-Antwort tagsüber aus ist oder jemand aus dem Team noch als online gilt. Ohne KI (aus/kein Budget) kommt eine feste Antwort.",
+              )}
+              {toggle(
+                "night.holdApplicantDms",
+                "Keine DMs an Bewerber nachts",
+                "Team-Nachrichten, Statusmeldungen und Rundmails gehen erst zum Ende der Nachtruhe raus. Ausgenommen: Bestätigung direkt nach dem Absenden, Auto-Antworten und Gesprächserinnerungen, wenn das Gespräch vor Ende der Nachtruhe ist.",
+              )}
+              {toggle("night.holdTeamPings", "Keine Posts in Team-Kanäle nachts", "Bot-Log, neue Bewerbungen, Team-Übersicht und Threads gehen gesammelt zum Ende der Nachtruhe raus.")}
+              {toggle("night.portalNotice", "Hinweis für Bewerber im Portal", `„Nachtruhe – das Team antwortet ab ${s["night.end"]} Uhr.“ über dem Antwortfeld im Bewerber-Dashboard.`)}
+              <p className="nv-help">
+                Zurückgehaltenes wird zum Ende der Nachtruhe automatisch zugestellt (Cron stündlich zwischen 5 und 13 Uhr, sonst beim nächsten Besuch im Team-Bereich). Ende am besten zwischen 5 und 13 Uhr wählen.
+              </p>
+            </>
+          )}
+        </div>
+      </Card>
+
       <Card title="Einarbeitung" desc="Checkliste und Probezeit für angenommene Bewerbungen.">
         <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
           <div>

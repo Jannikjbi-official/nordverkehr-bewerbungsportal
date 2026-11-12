@@ -261,6 +261,50 @@ try {
     check(del.applications === created.length && (await db.user.count({ where: { isTest: true } })) === 0, `Löschen entfernt alles (${del.applications}/${del.users})`);
   }
 
+  // ── Nachtruhe: DMs/Team-Posts warten, Bestätigung & Nacht-Antwort sofort
+  {
+    const { saveSettings } = await import("../src/lib/settings");
+    const { berlinMinutes } = await import("../src/lib/night");
+    const { enqueue, runOutbox } = await import("../src/lib/discord/outbox-db");
+    const { setDiscordApiForTests } = await import("../src/lib/discord/client");
+    const { maybeAutoReply } = await import("../src/lib/ai/autoreply");
+    const hhmm = (m: number) => `${String(Math.floor(((m + 1440) % 1440) / 60)).padStart(2, "0")}:${String((m + 1440) % 60).padStart(2, "0")}`;
+    const m = berlinMinutes(new Date());
+    await saveSettings({ "night.enabled": true, "night.start": hhmm(m - 60), "night.end": hhmm(m + 120), "night.aiReply": true, "night.holdApplicantDms": true, "night.holdTeamPings": true }, team.id);
+    const sent: string[] = [];
+    setDiscordApiForTests({
+      getMember: async () => null,
+      openDm: async (u: string) => `dm-${u}`,
+      postMessage: async (ch: string) => (sent.push(ch), "msg"),
+      editMessage: async () => {},
+      deleteMessage: async () => {},
+      addRole: async () => {},
+      startThread: async () => "t",
+      archiveThread: async () => {},
+    });
+    const held = await enqueue({ type: "DM", discordUserId: a1.discordId, purpose: "team_message", message: { content: "x" } });
+    const post = await enqueue({ type: "CHANNEL_MESSAGE", channelId: "123456789012345678", message: { content: "x" } });
+    const conf = await enqueue({ type: "DM", discordUserId: a2.discordId, purpose: "confirmation", message: { content: "x" } });
+    await runOutbox({ ids: [held.id, post.id, conf.id] });
+    const jobs = await db.outboxJob.findMany({ where: { id: { in: [held.id, post.id, conf.id] } } });
+    const st = (id: string) => jobs.find((j) => j.id === id)!;
+    check(st(held.id).status === "PENDING" && st(held.id).runAt > new Date(Date.now() + 60 * 60_000), "Nachts: Team-Nachricht wartet bis Ende der Nachtruhe");
+    check(st(post.id).status === "PENDING", "Nachts: Team-Kanal-Post wartet");
+    check(st(conf.id).status === "DONE", "Nachts: Bestätigung nach dem Absenden geht sofort raus");
+    // Bewerber schreibt nachts → Nacht-Antwort (KI aus → feste Antwort) sofort
+    const nUser = await mk("Nora", "100000000000000061");
+    const appN = await db.application.create({ data: { userId: nUser.id, positionId: pos.id, status: "SUBMITTED", publicId: "NV-F-N", submittedAt: new Date() } });
+    await db.user.update({ where: { id: team.id }, data: { lastTeamActiveAt: new Date() } }); // Team wirkt „online“
+    const q = await db.message.create({ data: { applicationId: appN.id, direction: "APPLICANT_TO_TEAM", body: "Wann meldet ihr euch?" } });
+    const r = await maybeAutoReply(q.id);
+    const reply = r.kind !== "skipped" ? await db.message.findUnique({ where: { id: r.messageId } }) : null;
+    check(r.kind === "static" && !!reply?.body.includes("Nachtruhe") && reply.deliveryStatus === "SENT", `Nachts antwortet der Bot sofort, auch wenn das Team online wirkt (${r.kind})`);
+    await saveSettings({ "night.enabled": false }, team.id);
+    const later = await db.message.create({ data: { applicationId: appN.id, direction: "APPLICANT_TO_TEAM", body: "Noch da?" } });
+    check((await maybeAutoReply(later.id)).kind === "skipped", "Tagsüber (Auto-Antwort aus) antwortet niemand automatisch");
+    setDiscordApiForTests(null);
+  }
+
   // ── Feedback (eins pro Bewerbung)
   await db.feedback.create({ data: { applicationId: app1.id, rating: 5 } });
   dup = false;

@@ -11,10 +11,17 @@ import { classifyDiscordError, type DiscordApi } from "@/lib/discord/client";
 import { isTestDiscordId } from "@/lib/discord/test-ids";
 
 /** "notify" = Rundmail (z. B. neue Stelle) – Fehler werden nicht einzeln geloggt */
-export type DmPurpose = "confirmation" | "team_message" | "status" | "reminder" | "notify";
+export type DmPurpose = "confirmation" | "team_message" | "status" | "reminder" | "notify" | "autoreply";
 
 export type OutboxPayload =
-  | { type: "DM"; discordUserId: string; message: RESTPostAPIChannelMessageJSONBody; purpose: DmPurpose }
+  | {
+      type: "DM";
+      discordUserId: string;
+      message: RESTPostAPIChannelMessageJSONBody;
+      purpose: DmPurpose;
+      /** Trotz Nachtruhe sofort zustellen (z. B. Gesprächserinnerung vor Ende der Nachtruhe) */
+      ignoreNight?: boolean;
+    }
   | {
       type: "CHANNEL_MESSAGE";
       channelId: string;

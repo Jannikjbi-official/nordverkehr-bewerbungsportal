@@ -24,9 +24,13 @@ import { effectiveMinAge } from "@/lib/applications/rules";
 import { buildApplicantMessage } from "@/lib/messages/embed";
 import { formatDateTime } from "@/lib/messages/placeholders";
 import { enqueue, runOutbox } from "@/lib/discord/outbox-db";
+import { isNight } from "@/lib/night";
 
 export const AUTO_REPLY_FOOTER = "_Automatische Antwort – gerade ist niemand aus dem Team online. Ein Teammitglied liest deine Nachricht und meldet sich persönlich._";
 export const STATIC_REPLY = "Deine Nachricht ist angekommen. Gerade ist niemand aus dem Team online – wir melden uns, sobald jemand da ist.";
+/** Nachtruhe: Fußzeile und feste Antwort nennen, ab wann das Team wieder da ist */
+export const nightFooter = (end: string) => `_Automatische Antwort – nachts schläft das Team. Ab ${end} Uhr liest ein Teammitglied deine Nachricht und meldet sich persönlich._`;
+export const nightStaticReply = (end: string) => `Deine Nachricht ist angekommen. Gerade ist Nachtruhe – ab ${end} Uhr ist das Team wieder da und meldet sich bei dir.`;
 
 export type AutoReplyOutcome =
   | { kind: "skipped"; reason: string }
@@ -48,8 +52,13 @@ function allowedHosts() {
 
 export async function maybeAutoReply(applicantMessageId: string): Promise<AutoReplyOutcome> {
   const settings = await getSettings();
-  if (!settings["ai.autoReplyEnabled"]) return { kind: "skipped", reason: "deaktiviert" };
-  if (await isTeamOnline(settings["ai.autoReplyOfflineMinutes"])) return { kind: "skipped", reason: "Team online" };
+  // Nachtruhe: die KI springt ein – auch wenn die Auto-Antwort tagsüber aus ist oder jemand noch „online“ wirkt
+  const night = settings["night.aiReply"] && isNight(settings);
+  if (!night) {
+    if (!settings["ai.autoReplyEnabled"]) return { kind: "skipped", reason: "deaktiviert" };
+    if (await isTeamOnline(settings["ai.autoReplyOfflineMinutes"])) return { kind: "skipped", reason: "Team online" };
+  }
+  const nightEnd = night ? settings["night.end"] : null;
 
   const msg = await db.message.findUnique({
     where: { id: applicantMessageId },
@@ -69,7 +78,7 @@ export async function maybeAutoReply(applicantMessageId: string): Promise<AutoRe
   const daily = await rateLimit(`autoreply-day:${user.id}`, settings["ai.autoReplyPerUserPerDay"], 86_400);
   if (!daily.ok) return { kind: "skipped", reason: "Tageslimit" };
 
-  const fallback = (reason: string) => storeReply(app, user, STATIC_REPLY, "SYSTEM", reason);
+  const fallback = (reason: string) => storeReply(app, user, nightEnd ? nightStaticReply(nightEnd) : STATIC_REPLY, "SYSTEM", reason, nightEnd);
 
   if (!settings["ai.enabled"] || !isAiConfigured()) return fallback("KI aus");
   if (!(await budgetLeft(settings))) return fallback("Budget");
@@ -119,7 +128,7 @@ export async function maybeAutoReply(applicantMessageId: string): Promise<AutoRe
   if (out.length < 10 || leaksPrompt(out, AUTO_REPLY_RULES, settings["ai.systemPrompt"]) || detectInjection(out).suspicious) {
     return fallback("Ausgabe verworfen");
   }
-  return storeReply(app, user, out, "AI_TO_APPLICANT", "ai");
+  return storeReply(app, user, out, "AI_TO_APPLICANT", "ai", nightEnd);
 }
 
 async function storeReply(
@@ -128,9 +137,10 @@ async function storeReply(
   text: string,
   direction: "AI_TO_APPLICANT" | "SYSTEM",
   reason: string,
+  nightEnd: string | null = null,
 ): Promise<AutoReplyOutcome> {
   const name = user.globalName || user.username;
-  const body = `Moin ${name},\n\n${text}\n\n${AUTO_REPLY_FOOTER}`;
+  const body = `Moin ${name},\n\n${text}\n\n${nightEnd ? nightFooter(nightEnd) : AUTO_REPLY_FOOTER}`;
   const message = await db.message.create({
     data: { applicationId: app.id, direction, body, deliveryStatus: "PENDING" },
   });
@@ -138,7 +148,8 @@ async function storeReply(
     {
       type: "DM",
       discordUserId: user.discordId,
-      purpose: "status",
+      // eigener Zweck: Auto-Antworten gehen auch in der Nachtruhe sofort raus
+      purpose: "autoreply",
       message: buildApplicantMessage({
         title: "Automatische Antwort",
         body,

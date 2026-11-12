@@ -12,6 +12,8 @@ import { botLog, esc } from "@/lib/discord/botlog";
 import { publicEnv } from "@/lib/env";
 import { buildApplicantMessage, discordTime } from "@/lib/messages/embed";
 import { endOfBerlinDay } from "@/lib/team/daily-summary";
+import { getSettings } from "@/lib/settings";
+import { nightEndsAt } from "@/lib/night";
 
 /** Termine müssen mindestens so weit in der Zukunft liegen, um buchbar zu sein */
 export const BOOK_MIN_LEAD_HOURS = 2;
@@ -105,6 +107,7 @@ export async function clearPastInterview(db: PrismaClient | Prisma.TransactionCl
 
 /** Erinnerungs-DM an alle Bewerber, die heute (deutsche Zeit) ihr Gespräch haben. */
 export async function sendInterviewReminders(db: PrismaClient, now = new Date()) {
+  const settings = await getSettings();
   const apps = await db.application.findMany({
     where: { status: "INTERVIEW", interviewAt: { gte: now, lt: endOfBerlinDay(now) } },
     include: { user: { select: { discordId: true, globalName: true, username: true } }, position: { select: { title: true } } },
@@ -122,6 +125,8 @@ export async function sendInterviewReminders(db: PrismaClient, now = new Date())
         type: "DM",
         discordUserId: a.user.discordId,
         purpose: "reminder",
+        // Gespräch vor Ende der Nachtruhe → Erinnerung trotzdem sofort
+        ignoreNight: a.interviewAt < nightEndsAt(settings, now),
         message: buildApplicantMessage({
           title: "Heute ist dein Gespräch",
           body: `Moin ${a.user.globalName || a.user.username}, kurze Erinnerung: Dein Gespräch für **${a.position.title}** ist **heute um ${discordTime(a.interviewAt, "t")} Uhr** auf TeamSpeak.${a.interviewNote ? `\n\n${a.interviewNote}` : ""}\n\nKommst du nicht? Sag bitte im Portal Bescheid.`,

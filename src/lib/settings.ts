@@ -90,6 +90,18 @@ export const settingsSchema = z.object({
     .string()
     .max(2000)
     .default(["Regelwerk & Team-Regeln gelesen", "Discord-Rolle vergeben", "TeamSpeak-Rechte gesetzt", "In Team-Kanäle eingeladen", "Einweisung gemacht", "Ansprechpartner zugeteilt"].join("\n")),
+  /** Nachtruhe (deutsche Zeit): Team schläft – KI antwortet, DMs/Team-Posts warten bis zum Ende */
+  "night.enabled": bool(true),
+  "night.start": z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Uhrzeit als HH:MM").default("22:00"),
+  "night.end": z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Uhrzeit als HH:MM").default("10:00"),
+  /** Nachts antwortet die KI auf Bewerber-Nachrichten (auch wenn die Auto-Antwort sonst aus ist) */
+  "night.aiReply": bool(true),
+  /** DMs an Bewerber (Team-Nachrichten, Status, Rundmails) nachts zurückhalten */
+  "night.holdApplicantDms": bool(true),
+  /** Posts in Team-Kanäle (Bot-Log, neue Bewerbungen, Teamchat) nachts zurückhalten */
+  "night.holdTeamPings": bool(true),
+  /** Hinweis für Bewerber im Portal */
+  "night.portalNotice": bool(true),
   /** Standard-Vorlage fürs Gesprächsprotokoll (eine Frage pro Zeile) – pro Stelle überschreibbar */
   "interview.defaultQuestions": z
     .string()
