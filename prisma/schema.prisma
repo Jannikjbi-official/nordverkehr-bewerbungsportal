@@ -309,6 +309,8 @@ model Application {
   interviewNote        String?
   /// Für diesen Termin wurde die Erinnerungs-DM schon verschickt
   interviewRemindedFor DateTime?
+  /// Bewerber hat den Discord verlassen – Bot hat im Portal Bescheid gegeben (zurückgesetzt, wenn wieder da)
+  guildLeftNotifiedAt  DateTime?
   /// Einarbeitung nach der Annahme: { [Punkt]: { at, by } }
   onboarding           Json      @default("{}")
   probationUntil       DateTime?

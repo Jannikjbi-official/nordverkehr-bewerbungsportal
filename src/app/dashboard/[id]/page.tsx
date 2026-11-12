@@ -20,6 +20,9 @@ import { FeedbackForm } from "@/components/dashboard/FeedbackForm";
 import { canRebook, listFreeSlots } from "@/lib/team/slots";
 import { db } from "@/lib/db";
 import { getBotProfile } from "@/lib/discord/bot-profile";
+import { getAccess } from "@/lib/auth/user-access";
+import { applyGuildState, guildStateKnown } from "@/lib/applications/guild-watch";
+import { publicEnv } from "@/lib/env";
 import { ACTIVE_STATUSES, FOLLOW_UP_DAYS, STATUS_HINT, STATUS_LABEL, TIMELINE, canFollowUp, isInProcessing } from "@/lib/applications/status";
 import { formatAnswerForDisplay, type AnswerValue } from "@/lib/applications/form";
 import type { ApplicationStatus } from "@prisma/client";
@@ -57,6 +60,13 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
 
   const isNew = sp.neu === "1";
   const bot = await getBotProfile();
+  // Läuft die Bewerbung und die Person ist nicht (mehr) auf dem Discord? Dann Hinweis (+ Bot-Nachricht)
+  const watched = ["SUBMITTED", "IN_REVIEW", "INTERVIEW"].includes(app.status);
+  const guildAccess = watched ? await getAccess(user).catch(() => null) : null;
+  const notInGuild = watched && guildStateKnown(guildAccess) && !guildAccess!.inGuild;
+  if (watched && guildStateKnown(guildAccess) && (notInGuild ? !app.guildLeftNotifiedAt : !!app.guildLeftNotifiedAt)) {
+    await applyGuildState(app.id, guildAccess!.inGuild).catch((e) => console.error("[guild-watch]", e));
+  }
   const active = ACTIVE_STATUSES.includes(app.status);
   const followUp = canFollowUp(app);
   const dmIssue = app.confirmationDmStatus === "DM_CLOSED" || app.confirmationDmStatus === "FAILED";
@@ -94,6 +104,15 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
             </div>
           </div>
         </div>
+      )}
+
+      {notInGuild && (
+        <Notice tone="danger" icon={DiscordLogo} title="Du bist nicht mehr auf unserem Discord.">
+          Für deine Bewerbung musst du auf dem Nordverkehr-Discord sein – dort laufen Gespräch, Rückfragen und Nachrichten.{" "}
+          <a href={publicEnv.discordInvite} target="_blank" rel="noopener noreferrer" className="nv-link font-medium">
+            Jetzt wieder beitreten
+          </a>
+        </Notice>
       )}
 
       {dmIssue && (

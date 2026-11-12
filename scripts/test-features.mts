@@ -16,6 +16,7 @@ const { bookSlot, sendInterviewReminders, SlotError } = await import("../src/lib
 const { changeStatus } = await import("../src/lib/team/service");
 const { applyPositionSchedule, closeIfFull } = await import("../src/lib/positions/schedule");
 const { collectDailySummary } = await import("../src/lib/team/daily-summary");
+const { applyGuildState } = await import("../src/lib/applications/guild-watch");
 let fails = 0;
 const check = (ok: boolean, m: string) => { console.log(ok ? "✓" : "✗", m); if (!ok) fails++; };
 const H = 3_600_000;
@@ -85,6 +86,21 @@ try {
   await db.application.update({ where: { id: app3.id }, data: { probationUntil: new Date(Date.now() + 24 * H) } });
   const sum = await collectDailySummary(db, { staleDays: 3, escalateDays: 7 });
   check(sum.probation.some((p) => p.publicId === "NV-F-3"), "Probezeit-Ende steht in der Übersicht");
+
+  // ── Discord verlassen → automatische Bot-Nachricht, einmal pro Austritt
+  const a4 = await mk("Cleo", "100000000000000024");
+  const app4 = await db.application.create({ data: { userId: a4.id, positionId: pos.id, status: "IN_REVIEW", publicId: "NV-F-4", submittedAt: new Date() } });
+  const sys = () => db.message.count({ where: { applicationId: app4.id, direction: "SYSTEM" } });
+  check((await applyGuildState(app4.id, false)) === "notified" && (await sys()) === 1, "Austritt → Bot-Nachricht im Portal");
+  check((await applyGuildState(app4.id, false)) === null && (await sys()) === 1, "Kein zweites Mal beim selben Austritt");
+  check((await collectDailySummary(db, { staleDays: 3, escalateDays: 7 })).leftGuild.some((x) => x.publicId === "NV-F-4"), "Steht in der Team-Übersicht");
+  check((await applyGuildState(app4.id, true)) === "back" && !(await db.application.findUnique({ where: { id: app4.id } }))!.guildLeftNotifiedAt, "Rückkehr setzt zurück");
+  check((await applyGuildState(app4.id, false)) === "notified" && (await sys()) === 2, "Erneuter Austritt → neue Nachricht");
+  const msg = await db.message.findFirst({ where: { applicationId: app4.id, direction: "SYSTEM" } });
+  check(!!msg && msg.deliveryStatus === "NOT_SENT" && msg.body.includes("discord.gg"), "Nachricht mit Einladung, ohne DM-Versuch");
+  await changeStatus({ applicationId: app4.id, to: "REJECTED", actorId: team.id });
+  await db.application.update({ where: { id: app4.id }, data: { guildLeftNotifiedAt: null } });
+  check((await applyGuildState(app4.id, false)) === null, "Abgeschlossene Bewerbung bekommt keine Nachricht");
 
   // ── Feedback (eins pro Bewerbung)
   await db.feedback.create({ data: { applicationId: app1.id, rating: 5 } });

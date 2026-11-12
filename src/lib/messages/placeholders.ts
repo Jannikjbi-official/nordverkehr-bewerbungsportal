@@ -15,6 +15,7 @@ export const PLACEHOLDERS = [
   { key: "sperrfrist_tage", label: "Sperrfrist der Stelle (z. B. „45 Tage“)" },
   { key: "bearbeitungszeit", label: "Ungefähre Bearbeitungszeit" },
   { key: "dashboard_link", label: "Link zum Status" },
+  { key: "discord_link", label: "Einladung zum Nordverkehr-Discord" },
 ] as const;
 
 export type PlaceholderKey = (typeof PLACEHOLDERS)[number]["key"];
@@ -79,6 +80,7 @@ export interface VarsInput {
   cooldownDays?: number | null;
   processingTime?: string | null;
   dashboardUrl?: string | null;
+  discordInvite?: string | null;
 }
 
 export function buildTemplateVars(input: VarsInput): TemplateVars {
@@ -95,5 +97,6 @@ export function buildTemplateVars(input: VarsInput): TemplateVars {
     sperrfrist_tage: input.cooldownDays ? `${input.cooldownDays} ${input.cooldownDays === 1 ? "Tag" : "Tage"}` : undefined,
     bearbeitungszeit: input.processingTime ?? undefined,
     dashboard_link: input.dashboardUrl ?? undefined,
+    discord_link: input.discordInvite ?? undefined,
   };
 }

@@ -9,6 +9,7 @@ import {
   CheckCircle,
   CloudCheck,
   CloudSlash,
+  DiscordLogo,
   PaperPlaneTilt,
   PencilSimple,
   Spinner,
@@ -23,7 +24,7 @@ import {
   type ConfirmationKey,
   type FormSectionDef,
 } from "@/lib/applications/form";
-import { saveDraft, submitApplicationAction } from "@/app/actions/application";
+import { checkGuildAction, saveDraft, submitApplicationAction } from "@/app/actions/application";
 import { QuestionField } from "@/components/apply/QuestionField";
 import type { UploadedFile } from "@/components/apply/FileUpload";
 
@@ -35,6 +36,9 @@ interface Props {
   /** fromProfile: allgemeine Antworten stammen vollständig aus der letzten Bewerbung */
   initial: { draftId: string | null; data: AnswerMap; step: number; age: number | null; fromProfile?: boolean };
   initialUploads: Record<string, UploadedFile>;
+  /** Ist die Person auf dem Discord? Ohne Mitgliedschaft kein Absenden. */
+  inGuild?: boolean;
+  discordInvite?: string;
 }
 
 type Page =
@@ -55,8 +59,20 @@ function buildPages(sections: FormSectionDef[], collapsed: boolean): Page[] {
 
 type SaveState = { kind: "idle" } | { kind: "saving" } | { kind: "saved"; at: Date } | { kind: "error"; message: string };
 
-export function ApplicationForm({ position, sections, minAge, displayName, initial, initialUploads }: Props) {
+export function ApplicationForm({ position, sections, minAge, displayName, initial, initialUploads, inGuild = true, discordInvite }: Props) {
   const router = useRouter();
+  const [onDiscord, setOnDiscord] = useState(inGuild);
+  const [guildChecking, startGuildCheck] = useTransition();
+  const [guildMsg, setGuildMsg] = useState<string | null>(null);
+  const recheckGuild = () =>
+    startGuildCheck(async () => {
+      setGuildMsg(null);
+      const r = await checkGuildAction();
+      if (!r.ok) return setGuildMsg(r.error);
+      setOnDiscord(r.data.inGuild);
+      if (!r.data.inGuild) setGuildMsg("Wir finden dich noch nicht auf dem Server. Beitreten kann ein paar Sekunden dauern – versuch es gleich nochmal.");
+      else setSubmitError(null);
+    });
   const [collapsed, setCollapsed] = useState(!!initial.fromProfile);
   const steps = useMemo(() => buildPages(sections, collapsed), [sections, collapsed]);
   const last = steps.length - 1;
@@ -226,6 +242,10 @@ export function ApplicationForm({ position, sections, minAge, displayName, initi
         router.push(`/dashboard/${res.data.applicationId}?neu=1`);
       } else {
         setSubmitError(res.error);
+        if (res.fieldErrors?.discord) {
+          setOnDiscord(false);
+          return;
+        }
         if (res.fieldErrors) {
           setErrors(res.fieldErrors);
           // Zum ersten fehlerhaften Schritt springen
@@ -294,6 +314,17 @@ export function ApplicationForm({ position, sections, minAge, displayName, initi
 
       {/* Inhalt */}
       <div className="min-w-0">
+        {!onDiscord && step !== last && (
+          <div className="mb-4 rounded-xl border nv-tone-warn px-4 py-3 text-sm flex flex-wrap items-center gap-x-3 gap-y-2" role="status">
+            <DiscordLogo size={18} className="shrink-0" aria-hidden />
+            <span className="flex-1 min-w-[12rem]">Zum Absenden musst du auf unserem Discord-Server sein. Ausfüllen kannst du schon – dein Entwurf wird gespeichert.</span>
+            {discordInvite && (
+              <a href={discordInvite} target="_blank" rel="noopener noreferrer" className="nv-btn nv-btn-ghost nv-btn-sm">
+                Discord beitreten
+              </a>
+            )}
+          </div>
+        )}
         <form
           noValidate
           onSubmit={(e) => {
@@ -515,7 +546,26 @@ export function ApplicationForm({ position, sections, minAge, displayName, initi
                     ))}
                   </ReviewBlock>
                 ))}
-                {submitError && (
+                {!onDiscord && (
+                  <div className="rounded-xl border nv-tone-warn px-4 py-4 text-sm space-y-3" role="alert" data-testid="guild-required">
+                    <p className="flex gap-2 font-medium">
+                      <DiscordLogo size={18} className="shrink-0 mt-0.5" aria-hidden /> Du bist nicht auf unserem Discord-Server.
+                    </p>
+                    <p>Absenden geht nur, wenn du auf dem Nordverkehr-Discord bist – dort laufen Gespräch, Rückfragen und DMs. Dein Entwurf bleibt gespeichert.</p>
+                    <div className="flex flex-wrap gap-2">
+                      {discordInvite && (
+                        <a href={discordInvite} target="_blank" rel="noopener noreferrer" className="nv-btn nv-btn-primary nv-btn-sm">
+                          <DiscordLogo size={15} aria-hidden /> Discord beitreten
+                        </a>
+                      )}
+                      <button type="button" className="nv-btn nv-btn-ghost nv-btn-sm" disabled={guildChecking} onClick={recheckGuild}>
+                        {guildChecking ? "Prüfe …" : "Ich bin beigetreten – erneut prüfen"}
+                      </button>
+                    </div>
+                    {guildMsg && <p className="text-xs">{guildMsg}</p>}
+                  </div>
+                )}
+                {submitError && onDiscord && (
                   <div className="rounded-xl border nv-tone-danger px-4 py-3 text-sm flex gap-2" role="alert">
                     <WarningCircle size={18} className="shrink-0 mt-0.5" aria-hidden />
                     {submitError}
@@ -541,7 +591,7 @@ export function ApplicationForm({ position, sections, minAge, displayName, initi
                 Weiter <ArrowRight size={16} aria-hidden />
               </button>
             ) : (
-              <button type="submit" className="nv-btn nv-btn-primary" disabled={submitting}>
+              <button type="submit" className="nv-btn nv-btn-primary" disabled={submitting || !onDiscord} title={onDiscord ? undefined : "Erst dem Discord beitreten"}>
                 {submitting ? (
                   <>
                     <Spinner size={16} className="animate-spin" aria-hidden /> Wird gesendet …

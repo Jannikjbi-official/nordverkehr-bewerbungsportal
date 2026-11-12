@@ -147,6 +147,7 @@ export async function getTemplateVarsFor(applicationId: string, teamMember: { gl
     cooldownDays,
     processingTime: settings["applications.processingTime"],
     dashboardUrl: `${publicEnv.appUrl}/dashboard/${app.id}`,
+    discordInvite: publicEnv.discordInvite,
   });
 }
 

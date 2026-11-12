@@ -24,6 +24,7 @@ const empty: DailySummary = {
   stale: [],
   withdrawals: [],
   probation: [],
+  leftGuild: [],
   escalations: [],
   staleDays: 3,
   escalateDays: 7,
@@ -36,6 +37,7 @@ describe("Team-Übersicht", () => {
     expect(isQuiet({ ...empty, newSince: 1 })).toBe(false);
     expect(isQuiet({ ...empty, waiting: [item(1)] })).toBe(false);
     expect(isQuiet({ ...empty, probation: [item(9)] })).toBe(false);
+    expect(isQuiet({ ...empty, leftGuild: [item(8)] })).toBe(false);
   });
 
   it("baut eine V2-Nachricht mit allen Listen, Links und Betreuer", () => {
@@ -50,6 +52,7 @@ describe("Team-Übersicht", () => {
       stale: [item(3, { claimer: "Max_*" })],
       withdrawals: [item(4)],
       probation: [item(5, { claimer: "Jannik" })],
+      leftGuild: [item(6)],
     };
     const m = buildDailySummaryMessage(s, URL);
     expect(m.flags).toBe(COMPONENTS_V2);
@@ -61,6 +64,7 @@ describe("Team-Übersicht", () => {
     expect(t).toContain("Seit 3+ Tagen nichts passiert");
     expect(t).toContain("Rückzug noch nicht bestätigt");
     expect(t).toContain("Probezeit endet bald");
+    expect(t).toContain("Nicht mehr auf dem Discord");
     expect(t).toContain(`[**NV-2026-002**](${URL}/team/bewerbungen/app2xxxxxxxx)`);
     expect(t).toContain("📌 Jannik");
     expect(t).toContain("🙋 ohne Betreuer");
@@ -70,7 +74,7 @@ describe("Team-Übersicht", () => {
 
   it("kürzt lange Listen und bleibt unter dem Discord-Limit", () => {
     const many = Array.from({ length: 30 }, (_, i) => item(i, { name: "X".repeat(60) }));
-    const m = buildDailySummaryMessage({ ...empty, open: 30, waiting: many, stale: many, interviews: many, withdrawals: many, probation: many }, URL);
+    const m = buildDailySummaryMessage({ ...empty, open: 30, waiting: many, stale: many, interviews: many, withdrawals: many, probation: many, leftGuild: many }, URL);
     const t = v2Text(m);
     expect(t).toMatch(/… und 2\d weitere/);
     expect(t).not.toMatch(/\]\(https:[^)]*…/); // kein abgeschnittener Link

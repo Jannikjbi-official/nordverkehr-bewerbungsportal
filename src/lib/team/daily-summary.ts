@@ -131,6 +131,7 @@ export async function collectDailySummary(db: PrismaClient, opts: { now?: Date; 
     stale,
     withdrawals: withdrawn.map((a) => item(a, a.decidedAt ?? a.updatedAt)),
     probation: probation.map((a) => item(a, a.probationUntil!)),
+    leftGuild: active.filter((a) => a.guildLeftNotifiedAt).map((a) => item(a, a.guildLeftNotifiedAt!)),
     escalations,
     staleDays: opts.staleDays,
     escalateDays: opts.escalateDays,

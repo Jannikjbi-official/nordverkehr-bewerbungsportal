@@ -75,6 +75,8 @@ export async function saveDraft(input: z.input<typeof saveDraftSchema>): Promise
   }
 }
 
+const NOT_IN_GUILD = "Du bist nicht auf unserem Discord-Server. Tritt erst bei – dann kannst du deine Bewerbung absenden. Dein Entwurf bleibt gespeichert.";
+
 const submitSchema = z.object({
   draftId: idSchema,
   data: draftDataSchema,
@@ -92,6 +94,14 @@ export async function submitApplicationAction(
 
   const rl = await rateLimit(`submit:${user.id}`, 5, 3600);
   if (!rl.ok) return { ok: false, error: "Zu viele Versuche. Probier es in einer Stunde nochmal." };
+
+  // Nur wer auf dem Nordverkehr-Discord ist, darf absenden (frisch geprüft).
+  // Ist Discord gerade nicht erreichbar, blockieren wir nicht.
+  const { getAccess } = await import("@/lib/auth/user-access");
+  const access = await getAccess(user, { force: true });
+  if (!access.inGuild && access.source !== "error" && access.source !== "unconfigured") {
+    return { ok: false, error: NOT_IN_GUILD, fieldErrors: { discord: "not_in_guild" } };
+  }
 
   try {
     const res = await submitApplication(user, {
@@ -171,6 +181,16 @@ export async function setNotifyPositionsAction(on: boolean): Promise<ActionResul
   revalidatePath("/konto");
   revalidatePath("/dashboard");
   return { ok: true };
+}
+
+/** Discord-Mitgliedschaft neu prüfen (Knopf „Ich bin beigetreten“ im Formular). */
+export async function checkGuildAction(): Promise<ActionResult<{ inGuild: boolean }>> {
+  const user = await requireUser();
+  const rl = await rateLimit(`guildcheck:${user.id}`, 20, 600);
+  if (!rl.ok) return { ok: false, error: "Zu viele Versuche. Warte kurz." };
+  const { getAccess } = await import("@/lib/auth/user-access");
+  const access = await getAccess(user, { force: true });
+  return { ok: true, data: { inGuild: access.inGuild || access.source === "error" || access.source === "unconfigured" } };
 }
 
 export async function deleteDraftAction(draftId: string): Promise<ActionResult> {

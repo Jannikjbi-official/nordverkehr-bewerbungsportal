@@ -26,6 +26,7 @@ import { onboardingItems, readOnboarding } from "@/lib/team/onboarding";
 import { cleanScores, summarizeRatings } from "@/lib/team/ratings";
 import { claimForScoring, isScoringPending, readAiRating, scoreApplication } from "@/lib/ai/scoring";
 import { after } from "next/server";
+import { applyGuildState, guildStateKnown } from "@/lib/applications/guild-watch";
 import { aiScoreAllowed } from "@/lib/applications/form";
 import type { AiRatingView } from "@/components/team/RatingPanel";
 import { TagPills } from "@/components/team/TagPills";
@@ -101,6 +102,13 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
   const suggested = SUGGESTED_CATEGORIES[statusHint] ?? SUGGESTED_CATEGORIES[app.status] ?? [];
   const flags = app.flags as unknown as ApplicationFlag[];
   const dmIssue = app.confirmationDmStatus === "DM_CLOSED" || app.confirmationDmStatus === "FAILED";
+  // Bewerber nicht (mehr) auf dem Discord? (nur bei sicherer Antwort von Discord)
+  const leftGuild = guildStateKnown(applicantAccess) && !applicantAccess!.inGuild && ["SUBMITTED", "IN_REVIEW", "INTERVIEW"].includes(app.status);
+  // Austritt/Rückkehr erkannt → automatische Bot-Nachricht bzw. zurücksetzen (nach der Antwort)
+  if (guildStateKnown(applicantAccess) && (leftGuild ? !app.guildLeftNotifiedAt : !!app.guildLeftNotifiedAt)) {
+    const inGuildNow = applicantAccess!.inGuild;
+    after(() => applyGuildState(app.id, inGuildNow).catch((e) => console.error("[guild-watch]", e)));
+  }
   const accountAgeDays = Math.floor((nowMs() - app.user.discordCreatedAt.getTime()) / 86_400_000);
   const myVote = app.votes.find((v) => v.userId === me.id)?.value ?? null;
   const aiEnabled = settings["ai.enabled"] && isAiConfigured();
@@ -194,6 +202,14 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
               <AckWithdrawalButton applicationId={app.id} />
             </div>
           )}
+        </Notice>
+      )}
+
+      {leftGuild && (
+        <Notice tone="danger" icon={DiscordLogo} title="Bewerber ist nicht (mehr) auf dem Discord">
+          DMs kommen nicht an, und für Gespräch und Rückfragen muss die Person auf dem Server sein. Der Bot hat ihr{" "}
+          {app.guildLeftNotifiedAt ? `am ${formatDayTime(app.guildLeftNotifiedAt)} Uhr` : "gerade"} automatisch eine Nachricht mit
+          Einladungslink ins Portal geschickt.
         </Notice>
       )}
 

@@ -418,6 +418,7 @@ const MIGRATIONS: { id: string; run: (db: PrismaClient, opts: Options) => Promis
   { id: "2026-11-absage-sperrfrist", run: (db, o) => (o.dryRun ? Promise.resolve(0) : rejectionTemplatesWithCooldown(db)) },
 ];
 
+
 export const COOLDOWN_SENTENCE = "Für {position} gilt nach einer Absage eine Sperrfrist von **{sperrfrist_tage}** – du kannst dich also ab dem **{sperrfrist}** wieder bewerben.";
 const COOLDOWN_REPLACE: [string, string][] = [
   ["Du kannst dich ab dem {sperrfrist} wieder bewerben.", COOLDOWN_SENTENCE],

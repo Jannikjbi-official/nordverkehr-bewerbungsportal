@@ -6,6 +6,7 @@ import { ClockCountdown, Info, Prohibit } from "@phosphor-icons/react/ssr";
 import { Container, Notice, formatDay } from "@/components/ui";
 import { ApplicationForm } from "@/components/apply/ApplicationForm";
 import { requireUser } from "@/lib/auth/session";
+import { publicEnv } from "@/lib/env";
 import { db } from "@/lib/db";
 import { getFormDefinition, getPublicPosition } from "@/lib/data/positions";
 import { getEligibility } from "@/lib/applications/service";
@@ -68,6 +69,10 @@ async function Apply({ params }: Pick<PageProps<"/bewerben/[slug]">, "params">) 
     );
   }
 
+  const { getAccess } = await import("@/lib/auth/user-access");
+  const access = await getAccess(user).catch(() => null);
+  const inGuild = !access || access.inGuild || access.source === "error" || access.source === "unconfigured";
+
   const [sections, draft, profile] = await Promise.all([
     getFormDefinition(position),
     eligibility.draftId ? db.application.findUnique({ where: { id: eligibility.draftId } }) : null,
@@ -103,6 +108,8 @@ async function Apply({ params }: Pick<PageProps<"/bewerben/[slug]">, "params">) 
         fromProfile: !!profile && generalComplete(sections, data),
       }}
       initialUploads={Object.fromEntries(uploads.map((u) => [u.id, u]))}
+      inGuild={inGuild}
+      discordInvite={publicEnv.discordInvite}
     />
   );
 }

@@ -33,6 +33,7 @@ const SAMPLE = {
   grund: "Deine Antworten waren uns an einigen Stellen zu knapp.",
   sperrfrist: "11. Dezember 2026",
   sperrfrist_tage: "30 Tage",
+  discord_link: "https://discord.gg/KrfKASTHDp",
   bearbeitungszeit: "in der Regel 3–7 Tage",
   dashboard_link: "https://bewerbung.nordverkehr.xyz/dashboard",
 };

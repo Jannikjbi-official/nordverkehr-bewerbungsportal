@@ -9,6 +9,9 @@ export async function GET(req: Request) {
   if (!isAuthorizedCron(req)) return new Response("Unauthorized", { status: 401 });
   const { applyPositionSchedule } = await import("@/lib/positions/schedule");
   await applyPositionSchedule(db).catch((e) => console.error("[positions]", e));
+  // Bewerber noch auf dem Discord? (automatische Bot-Nachricht bei Austritt)
+  const { scanApplicantsInGuild } = await import("@/lib/applications/guild-watch");
+  await scanApplicantsInGuild().catch((e) => console.error("[guild-watch]", e));
   const { sendInterviewReminders } = await import("@/lib/team/slots");
   await sendInterviewReminders(db).catch((e) => console.error("[reminder]", e));
   // Fehlende KI-Punkte nachholen (wenige pro Lauf, Zeitlimit)

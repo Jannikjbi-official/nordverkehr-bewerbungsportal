@@ -187,6 +187,11 @@ export const HELP: HelpSection[] = [
         text: "**Bewerbungs-Kanal:** ein Post pro neuer Bewerbung. **Bot-Log:** Status, Claims, Nachrichten, Antworten von Bewerbern, Zustellfehler. **Changelog:** einmal am Tag um 0 Uhr alle Änderungen des Vortags als neue Version (gleichzeitig unter „Changelog“ im Team-Bereich). **Teamchat:** jeden Morgen die Team-Übersicht. **Leitungs-Chat:** Hinweis, wenn Bewerbungen zu lange liegen. Admins ändern die Kanäle in den Einstellungen und können dort mit „Discord-Zustellung prüfen“ eine Testnachricht schicken.",
       },
       {
+        id: "discord-pflicht",
+        term: "Discord-Pflicht",
+        text: "Absenden geht nur, wenn die Person auf dem Nordverkehr-Discord ist – das Formular zeigt sonst einen Hinweis mit Einladungslink (ausfüllen und speichern geht trotzdem). Verlässt jemand den Server, während die Bewerbung läuft, schreibt der Bot ihm **automatisch** eine Nachricht ins Portal (per DM geht nicht mehr) – einmal pro Austritt. Das Team sieht oben in der Bewerbung einen roten Hinweis, im Bot-Log eine Zeile und morgens in der Team-Übersicht die Liste „Nicht mehr auf dem Discord“. Kommt die Person zurück, verschwindet der Hinweis von selbst. Geprüft wird beim Öffnen der Bewerbung und jeden Morgen.",
+      },
+      {
         id: "discord-knoepfe",
         term: "Übernehmen in Discord",
         text: "An jeder neuen Bewerbung im Bewerbungs-Kanal hängt (wenn eingeschaltet) der Knopf **📌 Übernehmen**. Wer die Team-Rolle hat und schon einmal im Portal eingeloggt war, claimt die Bewerbung damit direkt – die Antwort sieht nur er selbst. Betreut schon jemand die Bewerbung, sagt der Bot wer; übernehmen geht dann nur im Portal. Einmalig einrichten: Einstellungen → „Knopf ‚Übernehmen‘ einrichten“.",

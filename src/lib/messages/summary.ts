@@ -30,6 +30,8 @@ export interface DailySummary {
   stale: SummaryItem[];
   /** Während der Bearbeitung zurückgezogen, Rückzug noch nicht bestätigt */
   withdrawals: SummaryItem[];
+  /** Laufende Bewerbung, Person nicht mehr auf dem Discord (at = erkannt) */
+  leftGuild: SummaryItem[];
   /** Angenommen, Probezeit endet in den nächsten Tagen (at = Ende) */
   probation: SummaryItem[];
   /** Davon so lange liegengeblieben, dass die Leitung Bescheid bekommt */
@@ -40,12 +42,12 @@ export interface DailySummary {
 
 const MAX_ITEMS = 8;
 /** Zeichen pro Liste (4 Listen + Kopf bleiben so unter Discords 4000) */
-const SECTION_BUDGET = 700;
+const SECTION_BUDGET = 600;
 const NL = "\n";
 
 /** Nichts, worum sich jemand kümmern müsste? Dann wird nichts gepostet. */
 export function isQuiet(s: DailySummary) {
-  return !s.newSince && !s.unclaimed && !s.interviews.length && !s.waiting.length && !s.stale.length && !s.withdrawals.length && !s.probation.length;
+  return !s.newSince && !s.unclaimed && !s.interviews.length && !s.waiting.length && !s.stale.length && !s.withdrawals.length && !s.probation.length && !s.leftGuild.length;
 }
 
 const clean = (v: string) => v.replace(/([\\*_~`|>#@[\]])/g, "\\$1");
@@ -88,6 +90,7 @@ export function buildDailySummaryMessage(s: DailySummary, appUrl: string): RESTP
     list("💬 Wartet auf Antwort", s.waiting, appUrl, (it) => `schrieb ${discordTime(it.at, "R")}`),
     list(`⏳ Seit ${s.staleDays}+ Tagen nichts passiert`, s.stale, appUrl, (it) => `zuletzt ${discordTime(it.at, "R")}`),
     list("↩️ Rückzug noch nicht bestätigt", s.withdrawals, appUrl, (it) => `zurückgezogen ${discordTime(it.at, "R")}`),
+    list("🚪 Nicht mehr auf dem Discord", s.leftGuild, appUrl, (it) => `Bot hat ${discordTime(it.at, "R")} Bescheid gegeben`),
     list("🎓 Probezeit endet bald", s.probation, appUrl, (it) => `endet ${discordTime(it.at, "R")}`),
   ].filter((x): x is string => !!x);
 
