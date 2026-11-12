@@ -210,6 +210,16 @@ describe("Gesprächsprotokoll", () => {
     expect(p.items[1].extra).toBe(true);
     expect(p.conclusion[0].by).toBe("Gelöscht");
     expect(p.orphans.map((n) => n.question)).toEqual(["Alt"]);
+    expect(p.orphanChecks).toEqual([]);
+    const renamed = buildProtocol(["A neu"], [], [{ question: "A", checkedAt: new Date("2026-11-12T10:00:00Z"), checkedBy: u }], []);
+    expect(renamed.orphanChecks.map((c) => c.question)).toEqual(["A"]);
     expect(p.started).toBe(true);
+  });
+});
+
+describe("Nachprüfung (#20, #22)", () => {
+  it("runOutboxAll hört bei abgelaufener Deadline auf, ohne Discord anzufassen", async () => {
+    const { runOutboxAll } = await import("@/lib/discord/outbox-db");
+    expect(await runOutboxAll(["a", "b", "c"], { deadline: Date.now() - 1 })).toBe(0);
   });
 });

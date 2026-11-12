@@ -499,11 +499,16 @@ export async function toggleInterviewCheckAction(applicationId: string, question
   const { user } = await requireTeam();
   if (!(await protocolApp(applicationId)) || !protocolQuestion.min(1).safeParse(question).success) return { ok: false, error: "Ungültig." };
   if (done) {
-    await db.interviewCheck.upsert({
-      where: { applicationId_question: { applicationId, question } },
-      create: { applicationId, question, checkedById: user.id },
-      update: {},
-    });
+    try {
+      await db.interviewCheck.upsert({
+        where: { applicationId_question: { applicationId, question } },
+        create: { applicationId, question, checkedById: user.id },
+        update: {},
+      });
+    } catch (e) {
+      // Gleichzeitig von jemand anderem abgehakt (Unique-Key) → Haken ist gesetzt, alles gut
+      if ((e as { code?: string }).code !== "P2002") throw e;
+    }
   } else {
     await db.interviewCheck.deleteMany({ where: { applicationId, question } });
   }

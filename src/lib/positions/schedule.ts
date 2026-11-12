@@ -116,8 +116,9 @@ export async function notifyPositionOpened(db: PrismaClient, position: { id: str
     const job = await enqueue({ type: "DM", discordUserId: u.discordId, purpose: "notify", message });
     ids.push(job.id);
   }
-  // Alle DMs gleich zustellen (in Paketen) – nicht erst beim nächtlichen Cron
-  await runOutboxAll(ids).catch(() => {});
+  // DMs gleich zustellen (in Paketen) – höchstens ~15 s lang, der Rest geht mit der
+  // nächsten Zustellung raus (der Cron läuft danach weiter und darf nicht ins Zeitlimit laufen)
+  await runOutboxAll(ids, { deadline: Date.now() + 15_000 }).catch(() => {});
   return ids.length;
 }
 

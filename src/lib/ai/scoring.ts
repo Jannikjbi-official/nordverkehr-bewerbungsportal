@@ -82,7 +82,15 @@ export async function claimAndScore(applicationId: string, opts: { actorId?: str
 
 /** Bewerten, nachdem `claimForScoring` erfolgreich war. */
 export async function scoreClaimed(applicationId: string, claimedAt: Date, opts: { actorId?: string | null } = {}) {
-  const res = await scoreApplication(applicationId, opts).catch((e) => (console.error("[ai-score]", e), null));
+  let res: StoredAiRating | null;
+  try {
+    res = await scoreApplication(applicationId, opts);
+  } catch (e) {
+    // KI-Fehler: Sperre bleibt (1 h) – sonst startet jede Ansicht sofort den nächsten Aufruf
+    console.error("[ai-score]", e);
+    return null;
+  }
+  // Gar nicht bewertet (KI aus, Budget leer …) → Sperre lösen, damit nichts „hängt“
   if (!res) await releaseScoringClaim(applicationId, claimedAt).catch(() => {});
   return res;
 }

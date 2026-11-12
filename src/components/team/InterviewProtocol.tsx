@@ -60,10 +60,15 @@ export function InterviewProtocol({ applicationId, protocol, meId, isAdmin }: { 
         <p className="text-xs text-muted">Tipp: Den Bewertungsbogen im Reiter „Bewertung“ direkt nach dem Gespräch ausfüllen.</p>
       </section>
 
-      {protocol.orphans.length > 0 && (
+      {(protocol.orphans.length > 0 || protocol.orphanChecks.length > 0) && (
         <section className="space-y-2">
           <h3 className="nv-mono">Weitere Notizen (Frage nicht mehr in der Vorlage)</h3>
           <ul className="space-y-2 text-sm">
+            {protocol.orphanChecks.map((c) => (
+              <li key={`check-${c.question}`} className="text-xs text-muted">
+                ✓ „{c.question}“ – besprochen · {c.by} · {fmt(c.at)}
+              </li>
+            ))}
             {protocol.orphans.map((n) => (
               <li key={n.id}>
                 <p className="text-xs text-muted">„{n.question}“</p>

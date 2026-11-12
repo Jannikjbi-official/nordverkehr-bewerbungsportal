@@ -167,6 +167,24 @@ async function PrintView({ params, searchParams }: PageProps<"/team/bewerbungen/
                       </li>
                     ))}
                 </ol>
+                {(protocol.orphans.length > 0 || protocol.orphanChecks.length > 0) && (
+                  <div className="mt-3 nv-print-avoid">
+                    <p className="font-medium">Weitere Notizen</p>
+                    {protocol.orphanChecks.map((c) => (
+                      <p key={`c-${c.question}`}>
+                        „{c.question}“ ✓ <span className="text-muted">({c.by})</span>
+                      </p>
+                    ))}
+                    {protocol.orphans.map((n) => (
+                      <p key={n.id} className="whitespace-pre-wrap">
+                        <span className="text-muted">
+                          „{n.question}“ – {n.by} · {formatDay(new Date(n.at))}:
+                        </span>{" "}
+                        {n.body}
+                      </p>
+                    ))}
+                  </div>
+                )}
                 {protocol.conclusion.length > 0 && (
                   <div className="mt-3 nv-print-avoid">
                     <p className="font-medium">Gesamtfazit</p>

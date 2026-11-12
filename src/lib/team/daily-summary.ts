@@ -141,7 +141,7 @@ export async function collectDailySummary(db: PrismaClient, opts: { now?: Date; 
 
 export type SummaryResult =
   | { posted: true; jobIds: string[]; summary: DailySummary; escalated: boolean }
-  | { posted: false; reason: string };
+  | { posted: false; reason: string; summary?: DailySummary };
 
 /**
  * Übersicht posten. `force` (Admin-Knopf) postet auch, wenn heute schon gepostet
@@ -162,7 +162,7 @@ export async function postDailySummary(db: PrismaClient, opts: { now?: Date; for
   const summary = await collectDailySummary(db, { now, staleDays: s["team.staleDays"], escalateDays: s["team.escalateDays"] });
   if (!opts.force && isQuiet(summary)) {
     await db.setting.create({ data: { key, value: { at: now.toISOString(), quiet: true } } }).catch(() => null);
-    return { posted: false, reason: "Nichts zu tun – heute kein Post." };
+    return { posted: false, reason: "Nichts zu tun – heute kein Post.", summary };
   }
 
   const lead = s["discord.leadChannelId"];
@@ -188,11 +188,12 @@ export async function postDailySummary(db: PrismaClient, opts: { now?: Date; for
  * ansteht. Keine DM ohne offene Punkte; abschaltbar global (Einstellungen) und pro
  * Person (Konto). Pro Person und Tag höchstens eine DM (Setting `digest:<Tag>:<User>`).
  */
-export async function sendPersonalDigests(db: PrismaClient, opts: { now?: Date } = {}) {
+export async function sendPersonalDigests(db: PrismaClient, opts: { now?: Date; summary?: DailySummary; deadline?: number } = {}) {
   const s = await getSettings();
   if (!s["team.personalDigestEnabled"]) return 0;
   const now = opts.now ?? new Date();
-  const summary = await collectDailySummary(db, { now, staleDays: s["team.staleDays"], escalateDays: s["team.escalateDays"] });
+  // Schon gesammelte Übersicht wiederverwenden (Morgen-Cron) – sonst selbst sammeln
+  const summary = opts.summary ?? (await collectDailySummary(db, { now, staleDays: s["team.staleDays"], escalateDays: s["team.escalateDays"] }));
   const groups = groupByClaimer(summary);
   if (!groups.size) return 0;
   const users = await db.user.findMany({
@@ -216,6 +217,6 @@ export async function sendPersonalDigests(db: PrismaClient, opts: { now?: Date }
   }
   // Alte Markierungen aufräumen (älter als eine Woche)
   await db.setting.deleteMany({ where: { key: { startsWith: "digest:", lt: `digest:${todayBerlin(new Date(now.getTime() - 7 * DAY))}` } } }).catch(() => {});
-  if (ids.length) await runOutboxAll(ids).catch((e) => console.error("[digest]", e));
+  if (ids.length) await runOutboxAll(ids, { deadline: opts.deadline }).catch((e) => console.error("[digest]", e));
   return ids.length;
 }

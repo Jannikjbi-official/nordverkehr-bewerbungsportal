@@ -27,7 +27,8 @@ export const prismaOutboxStore: OutboxStore = {
       }
       // Thread zur Bewerbung angelegt → merken (Kommentare & Abschluss landen dort)
       if (job.applicationId && result.threadId) {
-        await tx.application.update({ where: { id: job.applicationId }, data: { discordThreadId: result.threadId } });
+        // updateMany: ist die Bewerbung inzwischen gelöscht, darf der Job nicht scheitern (sonst doppelter Post)
+        await tx.application.updateMany({ where: { id: job.applicationId }, data: { discordThreadId: result.threadId } });
       }
     });
   },
@@ -143,10 +144,16 @@ export async function runOutbox(opts: { ids?: string[]; limit?: number } = {}) {
 
 const CONCURRENCY = 5;
 
-/** Bestimmte Jobs vollständig zustellen – in Paketen, statt nur die ersten 20. */
-export async function runOutboxAll(ids: string[], chunk = 20) {
+/**
+ * Bestimmte Jobs vollständig zustellen – in Paketen, statt nur die ersten 20.
+ * Mit `deadline` (ms-Zeitstempel) wird rechtzeitig aufgehört; der Rest bleibt in der
+ * Warteschlange und geht beim nächsten Durchlauf raus (Crons dürfen nicht am Zeitlimit scheitern).
+ */
+export async function runOutboxAll(ids: string[], opts: { chunk?: number; deadline?: number } = {}) {
+  const chunk = opts.chunk ?? 20;
   let done = 0;
   for (let i = 0; i < ids.length; i += chunk) {
+    if (opts.deadline && Date.now() >= opts.deadline) break;
     const part = ids.slice(i, i + chunk);
     done += await runOutbox({ ids: part, limit: part.length });
   }

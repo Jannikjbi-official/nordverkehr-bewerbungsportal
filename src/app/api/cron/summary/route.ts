@@ -19,11 +19,11 @@ export async function GET(req: Request) {
   await sendInterviewReminders(db).catch((e) => console.error("[reminder]", e));
   const r = await postDailySummary(db).catch((e) => {
     console.error("[summary]", e);
-    return { posted: false as const, reason: "error" };
+    return { posted: false as const, reason: "error", summary: undefined };
   });
   // Persönliche Morgen-DM an Betreuer und Erinnerung an liegengebliebene Entwürfe
   const { sendPersonalDigests } = await import("@/lib/team/daily-summary");
-  await sendPersonalDigests(db).catch((e) => console.error("[digest]", e));
+  await sendPersonalDigests(db, { summary: r.summary, deadline: budget.end - 20_000 }).catch((e) => console.error("[digest]", e));
   const { sendDraftReminders } = await import("@/lib/applications/draft-reminder");
   await sendDraftReminders(db).catch((e) => console.error("[draft-reminder]", e));
   // Bewerber noch auf dem Discord? (automatische Bot-Nachricht bei Austritt) – mit Zeitbudget

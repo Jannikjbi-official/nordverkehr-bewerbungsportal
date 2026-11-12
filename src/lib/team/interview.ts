@@ -50,6 +50,8 @@ export interface Protocol {
   conclusion: ProtocolNote[];
   /** Notizen zu Fragen, die es in der Vorlage nicht mehr gibt */
   orphans: (ProtocolNote & { question: string })[];
+  /** Haken an Fragen, die es in der Vorlage nicht mehr gibt (z. B. umbenannt) */
+  orphanChecks: { question: string; by: string; at: string }[];
   started: boolean;
 }
 
@@ -78,6 +80,7 @@ export function buildProtocol(
     }),
     conclusion: sorted.filter((n) => n.question === CONCLUSION).map(toNote),
     orphans: sorted.filter((n) => n.question !== CONCLUSION && !known.has(n.question)).map((n) => ({ ...toNote(n), question: n.question })),
+    orphanChecks: checks.filter((c) => !known.has(c.question)).map((c) => ({ question: c.question, by: nameOf(c.checkedBy), at: c.checkedAt.toISOString() })),
     started: notes.length > 0 || checks.length > 0,
   };
 }

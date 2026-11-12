@@ -34,6 +34,8 @@ export async function sendDraftReminders(db: PrismaClient, opts: { now?: Date; l
       updatedAt: { lt: new Date(now.getTime() - days * DAY) },
       OR: [{ draftRemindedAt: null }, { draftRemindedAt: { isSet: false } }],
       position: { status: "OPEN" },
+      // Gesperrte gleich in der Abfrage ausschließen – sonst blockieren ihre Entwürfe das Fenster (take)
+      user: { bansAbout: { none: { liftedAt: null, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] } } },
     },
     include: {
       user: { select: { id: true, discordId: true, globalName: true, username: true } },
@@ -44,23 +46,17 @@ export async function sendDraftReminders(db: PrismaClient, opts: { now?: Date; l
   });
   if (!drafts.length) return 0;
 
-  // Gesperrte Nutzer überspringen (aktive Sperre: nicht aufgehoben, nicht abgelaufen)
-  const bans = await db.userBan.findMany({
-    where: { subjectId: { in: [...new Set(drafts.map((d) => d.userId))] }, liftedAt: null, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
-    select: { subjectId: true },
-  });
-  const banned = new Set(bans.map((b) => b.subjectId));
 
   const ids: string[] = [];
   for (const d of drafts) {
-    if (banned.has(d.userId)) continue;
     // Reservieren: auch bei doppeltem Cron höchstens eine Erinnerung pro Entwurf
     const claimed = await db.application.updateMany({
       where: { id: d.id, status: "DRAFT", OR: [{ draftRemindedAt: null }, { draftRemindedAt: { isSet: false } }] },
       data: { draftRemindedAt: now },
     });
     if (!claimed.count) continue;
-    const left = s["retention.draftDays"] - Math.floor((now.getTime() - d.updatedAt.getTime()) / DAY);
+    // draftRemindedAt setzt updatedAt neu → die Löschfrist läuft ab jetzt wieder voll
+    const left = s["retention.draftDays"];
     const job = await enqueue(
       {
         type: "DM",
@@ -77,6 +73,6 @@ export async function sendDraftReminders(db: PrismaClient, opts: { now?: Date; l
     );
     ids.push(job.id);
   }
-  if (ids.length) await runOutboxAll(ids).catch((e) => console.error("[draft-reminder]", e));
+  if (ids.length) await runOutboxAll(ids, { deadline: Date.now() + 15_000 }).catch((e) => console.error("[draft-reminder]", e));
   return ids.length;
 }
