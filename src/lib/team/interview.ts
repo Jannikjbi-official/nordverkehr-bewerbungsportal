@@ -84,3 +84,34 @@ export function buildProtocol(
     started: notes.length > 0 || checks.length > 0,
   };
 }
+
+/**
+ * Nachfrage-Vorschläge für das Gespräch aus der Bewerbung selbst:
+ * falsch beantwortete Quizfragen und auffällig knappe Text-/Szenario-Antworten.
+ * Bereits im Protokoll stehende Fragen werden nicht nochmal vorgeschlagen.
+ */
+export function suggestFollowUps(
+  answers: { label: string; type: string; value: unknown; correct?: boolean | null; minLength?: number | null }[],
+  existing: string[],
+  max = 6,
+): string[] {
+  const have = new Set(existing.map((q) => q.trim().toLowerCase()));
+  const out: string[] = [];
+  const add = (q: string) => {
+    const t = q.slice(0, MAX_QUESTION_LENGTH);
+    if (!have.has(t.toLowerCase()) && out.length < max) {
+      have.add(t.toLowerCase());
+      out.push(t);
+    }
+  };
+  for (const a of answers) {
+    if (a.type === "QUIZ" && a.correct === false) add(`Quiz falsch: „${a.label}“ – Regel im Gespräch erklären lassen`);
+  }
+  for (const a of answers) {
+    if (a.type !== "LONG_TEXT" && a.type !== "SCENARIO") continue;
+    const len = typeof a.value === "string" ? a.value.trim().length : 0;
+    const expected = Math.max(a.minLength ?? 0, a.type === "SCENARIO" ? 150 : 100);
+    if (len < expected * 1.3) add(`Knapp beantwortet: „${a.label}“ – genauer ausführen lassen`);
+  }
+  return out;
+}

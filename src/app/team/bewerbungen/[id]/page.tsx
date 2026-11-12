@@ -3,7 +3,7 @@ import { LiveRefresh } from "@/components/LiveRefresh";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ArrowLeft, ArrowSquareOut, CalendarCheck, DiscordLogo, Printer, WarningCircle, Flask } from "@phosphor-icons/react/ssr";
+import { ArrowLeft, ArrowSquareOut, CalendarCheck, Columns, DiscordLogo, Printer, WarningCircle, Flask } from "@phosphor-icons/react/ssr";
 import { Avatar, DeliveryBadge, Notice, StatusBadge, cn, formatDay, formatDayTime, formatRelative } from "@/components/ui";
 import { DiscordMarkdown } from "@/components/DiscordMarkdown";
 import { ChatAvatar, ChatRoleBadge, personName } from "@/components/ChatParticipant";
@@ -25,7 +25,7 @@ import { Tabs } from "@/components/Tabs";
 import { QuizPill } from "@/components/team/QuizPill";
 import { NoShowButton } from "@/components/team/NoShowButton";
 import { InterviewProtocol } from "@/components/team/InterviewProtocol";
-import { buildProtocol, protocolQuestions } from "@/lib/team/interview";
+import { buildProtocol, protocolQuestions, suggestFollowUps } from "@/lib/team/interview";
 import { testScenarioLabel } from "@/lib/setup/test-applications";
 import { isHeldNow } from "@/lib/night";
 import { canSeePosition, viewerOf } from "@/lib/team/visibility";
@@ -170,8 +170,27 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
     app.interviewChecks,
     app.interviewNotes,
   );
+  // Vergleich: andere laufende Bewerbungen derselben Stelle
+  const peers = await db.application.findMany({
+    where: { positionId: app.positionId, id: { not: app.id }, status: { in: ["SUBMITTED", "IN_REVIEW", "INTERVIEW"] } },
+    orderBy: { submittedAt: "asc" },
+    take: 8,
+    select: { id: true, publicId: true, user: { select: { globalName: true, username: true } } },
+  });
   // Reiter „Gespräch“: ab Einladung zum Gespräch oder sobald schon etwas notiert ist
   const showProtocol = protocol.started || ["INTERVIEW", "ACCEPTED", "REJECTED"].includes(app.status);
+  // Nachfragen aus der Bewerbung (knappe Antworten, Quizfehler) – nur solange das Gespräch noch ansteht
+  const followUps =
+    showProtocol && app.status === "INTERVIEW"
+      ? await (async () => {
+          const qIds = app.answers.map((a) => a.questionId).filter((x): x is string => !!x);
+          const mins = new Map((await db.question.findMany({ where: { id: { in: qIds } }, select: { id: true, minLength: true } })).map((q) => [q.id, q.minLength]));
+          return suggestFollowUps(
+            app.answers.map((a) => ({ label: a.label, type: a.type, value: a.value, correct: a.correct, minLength: a.questionId ? mins.get(a.questionId) : null })),
+            protocol.items.map((i) => i.question),
+          );
+        })()
+      : [];
 
   const sections = new Map<string, typeof app.answers>();
   for (const a of app.answers) {
@@ -209,6 +228,22 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
           )}
         </div>
         <div className="flex items-center gap-2 self-start sm:self-center">
+          {peers.length > 0 && (
+            <details className="relative">
+              <summary className="nv-btn nv-btn-ghost nv-btn-sm list-none cursor-pointer" title="Mit einer anderen Bewerbung derselben Stelle vergleichen">
+                <Columns size={14} aria-hidden /> Vergleichen
+              </summary>
+              <ul className="absolute right-0 z-30 mt-1.5 w-64 rounded-xl border border-line bg-surface p-1.5 shadow-[var(--nv-shadow)] text-sm">
+                {peers.map((p) => (
+                  <li key={p.id}>
+                    <Link href={`/team/bewerbungen/vergleich?ids=${app.id},${p.id}`} className="block rounded-lg px-3 py-1.5 hover:bg-surface-2">
+                      {p.user.globalName || p.user.username} <span className="text-xs text-muted">· {p.publicId}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
           <Link href={`/team/bewerbungen/${app.id}/druck`} className="nv-btn nv-btn-ghost nv-btn-sm" title="Druckansicht / als PDF speichern">
             <Printer size={14} aria-hidden /> PDF
           </Link>
@@ -377,7 +412,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
                       key: "gespraech",
                       label: "Gespräch",
                       badge: protocol.items.filter((i) => i.checked).length || undefined,
-                      content: <InterviewProtocol applicationId={app.id} protocol={protocol} meId={me.id} isAdmin={!!access?.isAdmin} />,
+                      content: <InterviewProtocol applicationId={app.id} protocol={protocol} meId={me.id} isAdmin={!!access?.isAdmin} suggestions={followUps} />,
                     },
                   ]
                 : []),

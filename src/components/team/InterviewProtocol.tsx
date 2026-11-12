@@ -26,7 +26,20 @@ function useRun() {
 }
 
 /** Gesprächsprotokoll: Fragen abhaken, Notizen pro Frage, Gesamtfazit. Nur für das Team. */
-export function InterviewProtocol({ applicationId, protocol, meId, isAdmin }: { applicationId: string; protocol: Protocol; meId: string; isAdmin: boolean }) {
+export function InterviewProtocol({
+  applicationId,
+  protocol,
+  meId,
+  isAdmin,
+  suggestions = [],
+}: {
+  applicationId: string;
+  protocol: Protocol;
+  meId: string;
+  isAdmin: boolean;
+  /** Nachfragen aus der Bewerbung (knappe Antworten, Quizfehler) */
+  suggestions?: string[];
+}) {
   const done = protocol.items.filter((i) => i.checked).length;
   return (
     <div className="p-5 space-y-5">
@@ -48,6 +61,8 @@ export function InterviewProtocol({ applicationId, protocol, meId, isAdmin }: { 
           </li>
         ))}
       </ol>
+
+      {suggestions.length > 0 && <Suggestions applicationId={applicationId} suggestions={suggestions} />}
 
       <AddQuestions applicationId={applicationId} />
 
@@ -230,5 +245,37 @@ function AddQuestions({ applicationId }: { applicationId: string }) {
       </div>
       {error && <p className="nv-error text-xs">{error}</p>}
     </form>
+  );
+}
+
+/** Vorschläge aus der Bewerbung: einzeln oder alle ins Protokoll übernehmen. */
+function Suggestions({ applicationId, suggestions }: { applicationId: string; suggestions: string[] }) {
+  const { pending, error, run } = useRun();
+  const add = (qs: string[]) => run(() => addInterviewQuestionsAction(applicationId, qs.join("\n")));
+  return (
+    <section className="rounded-xl border border-dashed border-line-strong p-3 space-y-2" aria-labelledby="ivs">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 id="ivs" className="font-semibold text-sm">
+          Nachfragen aus der Bewerbung
+        </h3>
+        {suggestions.length > 1 && (
+          <button type="button" className="nv-btn nv-btn-ghost nv-btn-sm" disabled={pending} onClick={() => add(suggestions)}>
+            <Plus size={14} aria-hidden /> Alle übernehmen
+          </button>
+        )}
+      </div>
+      <ul className="space-y-1.5">
+        {suggestions.map((q) => (
+          <li key={q} className="flex items-start justify-between gap-2 text-sm">
+            <span className="text-fg-2">{q}</span>
+            <button type="button" className="nv-btn nv-btn-quiet nv-btn-sm shrink-0" disabled={pending} onClick={() => add([q])} aria-label={`„${q}“ übernehmen`}>
+              <Plus size={14} aria-hidden />
+            </button>
+          </li>
+        ))}
+      </ul>
+      <p className="text-xs text-muted">Automatisch aus knappen Antworten und falschen Quizfragen – übernommene Fragen erscheinen oben zum Abhaken.</p>
+      {error && <p className="nv-error text-xs">{error}</p>}
+    </section>
   );
 }

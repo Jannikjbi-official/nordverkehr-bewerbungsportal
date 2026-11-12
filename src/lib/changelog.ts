@@ -102,6 +102,8 @@ export const CHANGELOG: ChangelogEntry[] = [
       { kind: "besser", text: "**Discord-Vorschau hell/dunkel** – sieh, wie die DM bei Bewerbern mit hellem Discord aussieht." },
       { kind: "neu", text: "**Team-Aktivität** (Admins) – unter Statistiken: pro Teammitglied Übernahmen, Nachrichten, Entscheidungen und wie schnell die erste Antwort kam." },
       { kind: "neu", text: "**Bewerbungsdaten sichern** (Admins) – alle Bewerbungen mit Antworten, Nachrichten und Bewertungen als Datei." },
+      { kind: "neu", text: "**Vergleichen** – zwei oder drei Bewerbungen derselben Stelle nebeneinander, Antwort für Antwort, mit Sternen, Abstimmung und Quiz." },
+      { kind: "besser", text: "**Gesprächsleitfaden** – schlägt Nachfragen zu knappen Antworten und falschen Quizfragen vor, mit einem Klick ins Protokoll." },
       { kind: "neu", text: "**Bewertungsbogen** – pro Kriterium 1–5 Sterne (Kommunikation, Erfahrung, Szenarien, Motivation, Verfügbarkeit, Teamfit), mit Schnitt des Teams." },
       { kind: "neu", text: "**Discord-Pflicht** – absenden nur mit Mitgliedschaft auf dem Discord. Verlässt jemand den Server während der Bewerbung, schreibt ihm der Bot automatisch im Portal, das Team sieht es in der Bewerbung und in der Team-Übersicht." },
       { kind: "besser", text: "**Live-Aktualisierung** – neue Nachrichten, Status, Kommentare und Bewertungen erscheinen von selbst, ohne die Seite neu zu laden." },

@@ -133,3 +133,20 @@ describe("Team-Aktivität", () => {
     expect(rows[1]).toMatchObject({ name: "Ben", messages: 1, ratings: 1, firstReplyHours: null });
   });
 });
+
+import { suggestFollowUps } from "@/lib/team/interview";
+
+describe("Gesprächsleitfaden: Nachfragen", () => {
+  it("Quizfehler und knappe Antworten, ohne Dubletten", () => {
+    const s = suggestFollowUps(
+      [
+        { label: "Was tun bei RDM?", type: "QUIZ", value: "x", correct: false },
+        { label: "Richtig", type: "QUIZ", value: "y", correct: true },
+        { label: "Über dich", type: "LONG_TEXT", value: "kurz", minLength: 50 },
+        { label: "Ausführlich", type: "LONG_TEXT", value: "a".repeat(400), minLength: 50 },
+      ],
+      ["Knapp beantwortet: „Über dich“ – genauer ausführen lassen"],
+    );
+    expect(s).toEqual(["Quiz falsch: „Was tun bei RDM?“ – Regel im Gespräch erklären lassen"]);
+  });
+});
