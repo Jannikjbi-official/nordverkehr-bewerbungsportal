@@ -6,6 +6,7 @@ export const maxDuration = 60;
 
 /**
  * Jeden Morgen um 8 Uhr deutscher Zeit: Team-Übersicht in den Teamchat.
+ * Danach persönliche DMs an Betreuer und Entwurfs-Erinnerungen an Bewerber.
  * Wichtiges zuerst (Stellen, Erinnerungen, Übersicht), Langläufer danach mit Zeitbudget.
  */
 export async function GET(req: Request) {
@@ -20,6 +21,11 @@ export async function GET(req: Request) {
     console.error("[summary]", e);
     return { posted: false as const, reason: "error" };
   });
+  // Persönliche Morgen-DM an Betreuer und Erinnerung an liegengebliebene Entwürfe
+  const { sendPersonalDigests } = await import("@/lib/team/daily-summary");
+  await sendPersonalDigests(db).catch((e) => console.error("[digest]", e));
+  const { sendDraftReminders } = await import("@/lib/applications/draft-reminder");
+  await sendDraftReminders(db).catch((e) => console.error("[draft-reminder]", e));
   // Bewerber noch auf dem Discord? (automatische Bot-Nachricht bei Austritt) – mit Zeitbudget
   const { scanApplicantsInGuild } = await import("@/lib/applications/guild-watch");
   await scanApplicantsInGuild({ fresh: true, deadline: budget.end - 15_000 }).catch((e) => console.error("[guild-watch]", e));

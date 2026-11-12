@@ -14,7 +14,15 @@ export type DmPurpose = "confirmation" | "team_message" | "status" | "reminder" 
 
 export type OutboxPayload =
   | { type: "DM"; discordUserId: string; message: RESTPostAPIChannelMessageJSONBody; purpose: DmPurpose }
-  | { type: "CHANNEL_MESSAGE"; channelId: string; message: RESTPostAPIChannelMessageJSONBody }
+  | {
+      type: "CHANNEL_MESSAGE";
+      channelId: string;
+      message: RESTPostAPIChannelMessageJSONBody;
+      /** Nach dem Posten einen Thread an der Nachricht starten (Name) */
+      startThread?: string;
+      /** Kanal ist ein Thread: nach dem Posten archivieren */
+      archiveThread?: boolean;
+    }
   | { type: "ADD_ROLE"; guildId: string; discordUserId: string; roleId: string; reason?: string };
 
 export interface OutboxJobLike {
@@ -59,7 +67,17 @@ export async function executeJob(
       }
       case "CHANNEL_MESSAGE": {
         const messageId = await api.postMessage(payload.channelId, payload.message);
-        return { kind: "done", result: { messageId } };
+        const result: Record<string, string> = { messageId };
+        // Thread/Archiv sind Beiwerk: scheitern sie (fehlende Rechte), gilt die Nachricht trotzdem als zugestellt
+        if (payload.startThread) {
+          try {
+            result.threadId = await api.startThread(payload.channelId, messageId, payload.startThread);
+          } catch (err) {
+            result.threadError = classifyDiscordError(err).message;
+          }
+        }
+        if (payload.archiveThread) await api.archiveThread(payload.channelId).catch(() => {});
+        return { kind: "done", result };
       }
       case "ADD_ROLE": {
         await api.addRole(payload.guildId, payload.discordUserId, payload.roleId, payload.reason);

@@ -7,6 +7,7 @@ import { requireTeam } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { formatUsd, monthStart } from "@/lib/ai/config";
 import { daysAgo } from "@/lib/time";
+import { REJECTION_CATEGORIES, aggregateRejections } from "@/lib/applications/rejection";
 
 export const metadata: Metadata = { title: "Statistiken" };
 
@@ -46,7 +47,7 @@ async function Stats({ searchParams }: Pick<PageProps<"/team/statistiken">, "sea
   const [apps, positions, aiMonth, feedback] = await Promise.all([
     db.application.findMany({
       where: { status: { not: "DRAFT" }, ...(since ? { submittedAt: { gte: since } } : {}) },
-      select: { status: true, positionId: true, submittedAt: true, decidedAt: true, firstReviewedAt: true },
+      select: { id: true, status: true, positionId: true, submittedAt: true, decidedAt: true, firstReviewedAt: true, rejectionCategory: true },
     }),
     db.position.findMany({ orderBy: { sortOrder: "asc" }, select: { id: true, title: true } }),
     db.aiUsage.aggregate({ _sum: { costMicroUsd: true, inputTokens: true, outputTokens: true }, _count: true, where: { createdAt: { gte: monthStart() } } }),
@@ -57,6 +58,24 @@ async function Stats({ searchParams }: Pick<PageProps<"/team/statistiken">, "sea
       take: 200,
     }),
   ]);
+  // Absagegründe: feste Kategorien + meistgenutzte Absage-Bausteine (gleicher Zeitraum)
+  const rejections = aggregateRejections(apps);
+  const rejectedIds = apps.filter((a) => a.status === "REJECTED").map((a) => a.id);
+  const [rejectionTemplates, rejectionMsgs] = rejectedIds.length
+    ? await Promise.all([
+        db.messageTemplate.findMany({ where: { category: "ABLEHNUNG" }, select: { id: true, title: true } }),
+        db.message.findMany({ where: { applicationId: { in: rejectedIds }, direction: "TEAM_TO_APPLICANT", NOT: { templateIds: { isEmpty: true } } }, select: { applicationId: true, templateIds: true } }),
+      ])
+    : [[], []];
+  const tplTitle = new Map(rejectionTemplates.map((t) => [t.id, t.title]));
+  // Pro Bewerbung jeden Baustein nur einmal zählen
+  const tplUse = new Map<string, Set<string>>();
+  for (const m of rejectionMsgs) for (const t of m.templateIds) if (tplTitle.has(t)) tplUse.set(t, (tplUse.get(t) ?? new Set()).add(m.applicationId));
+  const topTemplates = [...tplUse.entries()].map(([id, set]) => ({ title: tplTitle.get(id)!, count: set.size })).sort((a, b) => b.count - a.count).slice(0, 8);
+  const posTitle = new Map(positions.map((p) => [p.id, p.title]));
+  const usedCats = REJECTION_CATEGORIES.filter((c) => rejections.byCategory.some((x) => x.key === c.key));
+  const maxCat = Math.max(1, ...rejections.byCategory.map((c) => c.count));
+
   const fbAvg = feedback.length ? Math.round((feedback.reduce((n, f) => n + f.rating, 0) / feedback.length) * 10) / 10 : null;
   const fbDist = [5, 4, 3, 2, 1].map((n) => ({ n, count: feedback.filter((f) => f.rating === n).length }));
 
@@ -195,6 +214,77 @@ async function Stats({ searchParams }: Pick<PageProps<"/team/statistiken">, "sea
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section className="nv-card p-5" aria-labelledby="rej">
+        <h2 id="rej" className="font-semibold">Häufigste Absagegründe</h2>
+        <p className="text-sm text-muted mt-1">
+          Woran Bewerbungen scheitern – hilft, Stellenbeschreibungen und Anforderungen nachzuschärfen. Die Kategorie wählt ihr beim Ablehnen.
+        </p>
+        {rejections.total === 0 ? (
+          <p className="mt-3 text-sm text-muted">Im gewählten Zeitraum gibt es keine Absagen.</p>
+        ) : (
+          <>
+            {rejections.byCategory.length ? (
+              <ul className="mt-5 space-y-3">
+                {rejections.byCategory.map((c) => (
+                  <li key={c.key} className="grid grid-cols-[150px_1fr_40px] sm:grid-cols-[220px_1fr_40px] items-center gap-3 text-sm">
+                    <span className="truncate text-fg-2">{c.label}</span>
+                    <span className="h-3 rounded-r-[4px] bg-red/80" style={{ width: `${(c.count / maxCat) * 100}%`, minWidth: 4 }} title={`${c.count} Absagen`} />
+                    <span className="tabular-nums text-right">{c.count}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-3 text-sm text-muted">Für die Absagen in diesem Zeitraum wurde noch keine Kategorie gewählt.</p>
+            )}
+            {rejections.uncategorized > 0 && <p className="mt-3 text-xs text-muted">{rejections.uncategorized} von {rejections.total} Absagen ohne Kategorie.</p>}
+            {usedCats.length > 0 && (
+              <div className="nv-scroll-x mt-6">
+                <table className="nv-table w-full text-sm min-w-[520px]">
+                  <caption className="sr-only">Absagegründe pro Stelle</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Stelle</th>
+                      <th scope="col">Absagen</th>
+                      {usedCats.map((c) => (
+                        <th key={c.key} scope="col" className="whitespace-nowrap">
+                          {c.label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rejections.byPosition.map((p) => (
+                      <tr key={p.positionId}>
+                        <td>{posTitle.get(p.positionId) ?? "–"}</td>
+                        <td className="tabular-nums">{p.total}</td>
+                        {usedCats.map((c) => (
+                          <td key={c.key} className="tabular-nums">
+                            {p.counts[c.key] ?? "–"}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {topTemplates.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-sm font-medium">Meistgenutzte Absage-Bausteine</h3>
+                <ul className="mt-2 space-y-1 text-sm">
+                  {topTemplates.map((t) => (
+                    <li key={t.title} className="flex justify-between gap-3 border-b border-line pb-1">
+                      <span className="text-fg-2 truncate">{t.title}</span>
+                      <span className="tabular-nums">{t.count}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </>
+        )}
       </section>
 
       <section className="nv-card p-5" aria-labelledby="fb">

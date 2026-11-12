@@ -49,6 +49,8 @@ export const settingsSchema = z.object({
   "applications.processingTime": z.string().min(2).max(80).default("in der Regel 3–7 Tage"),
   "applications.minFillSeconds": z.coerce.number().int().min(0).max(3600).default(90),
   "applications.minDiscordAccountDays": z.coerce.number().int().min(0).max(3650).default(30),
+  /** Einmalige DM an Bewerber, deren Entwurf seit X Tagen liegt (0 = aus) */
+  "applications.draftReminderDays": z.coerce.number().int().min(0).max(60).default(3),
 
   /** Neue Bewerbungen im Bewerbungs-Kanal posten */
   "discord.logChannelEnabled": bool(true),
@@ -65,11 +67,17 @@ export const settingsSchema = z.object({
   "discord.changelogEnabled": bool(true),
   "discord.changelogChannelId": channel("1570181667627475146"),
   "discord.autoRoleOnAccept": bool(false),
+  /** Zu jeder neuen Bewerbung einen Thread im Bewerbungs-Kanal starten (Bot braucht „Öffentliche Threads erstellen“) */
+  "discord.threadPerApplication": bool(false),
+  /** Interne Kommentare aus dem Portal in den Thread spiegeln */
+  "discord.threadMirrorComments": bool(true),
   /** Knopf „Übernehmen“ an neuen Bewerbungen im Discord (braucht die Interaktions-URL bei Discord) */
   "discord.claimButton": bool(false),
   /** Tägliche Team-Übersicht (morgens) im Teamchat */
   "discord.dailySummaryEnabled": bool(true),
   "discord.summaryChannelId": channel("1569736476797837312"),
+  /** Persönliche Morgen-DM an Betreuer mit ihren offenen Punkten (pro Person abschaltbar) */
+  "team.personalDigestEnabled": bool(true),
   /** Leitungs-Chat: Hinweis, wenn Bewerbungen zu lange liegen (leer = aus) */
   "discord.leadChannelId": channel("1569736564433494167"),
   /** Ab wie vielen Tagen ohne Team-Aktivität eine Bewerbung als „liegengeblieben“ gilt */

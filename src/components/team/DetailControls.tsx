@@ -13,7 +13,9 @@ import {
   voteAction,
 } from "@/app/actions/team";
 import { STATUS_LABEL } from "@/lib/applications/status";
+import { REJECTION_CATEGORIES, type RejectionCategory } from "@/lib/applications/rejection";
 import { StatusDot, StatusSelect } from "@/components/team/StatusSelect";
+import { Select } from "@/components/Select";
 import type { ApplicationStatus } from "@prisma/client";
 
 function useAction() {
@@ -38,6 +40,7 @@ export function StatusControl({ applicationId, current, targets }: { application
   const { pending, error, run } = useAction();
   const [to, setTo] = useState<ApplicationStatus | "">("");
   const [reason, setReason] = useState("");
+  const [category, setCategory] = useState<RejectionCategory | "">("");
   if (!targets.length) return null;
   return (
     <form
@@ -52,10 +55,11 @@ export function StatusControl({ applicationId, current, targets }: { application
             tone: to === "REJECTED" ? "danger" : "default",
           }))) return;
         run(
-          () => changeStatusAction({ applicationId, to: to as "SUBMITTED", reason: reason || undefined }),
+          () => changeStatusAction({ applicationId, to: to as "SUBMITTED", reason: reason || undefined, category: to === "REJECTED" && category ? category : undefined }),
           () => {
             setTo("");
             setReason("");
+            setCategory("");
             // Passende Bausteine im Editor vorschlagen
             const url = new URL(window.location.href);
             url.searchParams.set("status", to);
@@ -84,6 +88,16 @@ export function StatusControl({ applicationId, current, targets }: { application
           {pending ? "…" : "Setzen"}
         </button>
       </div>
+      {to === "REJECTED" && (
+        <Select
+          ariaLabel="Absagegrund (Kategorie)"
+          placeholder="Absagegrund für die Statistik …"
+          size="sm"
+          options={REJECTION_CATEGORIES.map((c) => ({ value: c.key, label: c.label }))}
+          value={category}
+          onChange={(v) => setCategory(v)}
+        />
+      )}
       {to === "REJECTED" && (
         <textarea
           className="nv-input !min-h-16 text-sm"

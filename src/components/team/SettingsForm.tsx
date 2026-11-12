@@ -116,6 +116,7 @@ export function SettingsForm({ settings, env, spend, spendMicro }: Props) {
           </div>
           {num("applications.minFillSeconds", "Mindest-Ausfüllzeit (Sekunden)", "Spam-Schutz: schnellere Absendungen werden abgewiesen.")}
           {num("applications.minDiscordAccountDays", "Hinweis bei jungen Discord-Accounts (Tage)", "Nur Hinweis für das Team, keine Sperre.")}
+          {num("applications.draftReminderDays", "Erinnerung an liegengebliebene Entwürfe (Tage)", "Einmalige DM mit Link zum Weitermachen, wenn ein Entwurf so lange nicht angefasst wurde. 0 = aus.")}
         </div>
       </Card>
 
@@ -140,6 +141,11 @@ export function SettingsForm({ settings, env, spend, spendMicro }: Props) {
             "Tägliche Team-Übersicht im Teamchat",
             "Jeden Morgen gegen 8 Uhr: Gespräche heute, unbeantwortete Nachrichten, liegengebliebene Bewerbungen, offene Rückzüge. Ist nichts zu tun, kommt kein Post.",
           )}
+          {toggle(
+            "team.personalDigestEnabled",
+            "Persönliche Morgen-DM an Betreuer",
+            "Wer Bewerbungen geclaimt hat, bekommt morgens eine kurze DM mit seinen offenen Punkten (nur wenn etwas ansteht). Jeder kann sie unter „Konto“ abschalten.",
+          )}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {num("team.staleDays", "„Liegengeblieben“ ab (Tagen)", "So lange ohne Statuswechsel, Nachricht oder Kommentar vom Team.")}
             {num("team.escalateDays", "Leitung informieren ab (Tagen)", "Dann kommt zusätzlich ein Hinweis in den Leitungs-Chat (leere Kanal-ID = aus).")}
@@ -149,6 +155,12 @@ export function SettingsForm({ settings, env, spend, spendMicro }: Props) {
             "Knopf „Übernehmen“ an neuen Bewerbungen",
             "Teammitglieder claimen direkt in Discord. Einmalig oben unter „Discord-Zustellung prüfen“ mit „Knopf ‚Übernehmen‘ einrichten“ freischalten.",
           )}
+          {toggle(
+            "discord.threadPerApplication",
+            "Thread pro Bewerbung im Bewerbungs-Kanal",
+            "Der Bot startet an jeder neuen Bewerbung einen Thread („NV-2026-0001 · Support“) zum Diskutieren und archiviert ihn beim Abschluss. Braucht im Kanal „Öffentliche Threads erstellen“.",
+          )}
+          {s["discord.threadPerApplication"] && toggle("discord.threadMirrorComments", "Interne Kommentare in den Thread spiegeln", "Kommentare aus dem Portal erscheinen zusätzlich im Thread (nur Portal → Discord).")}
           {toggle("discord.autoRoleOnAccept", "Bei Annahme automatisch die Rolle der Position vergeben", "Rolle pro Position unter „Positionen & Fragen“ eintragen. Der Bot braucht „Rollen verwalten“ und muss über der Rolle stehen.")}
         </div>
       </Card>

@@ -19,6 +19,7 @@ import { buildTemplateVars, renderTemplate } from "@/lib/messages/placeholders";
 import { enqueue } from "@/lib/discord/outbox-db";
 import { botLog, channelIds, esc } from "@/lib/discord/botlog";
 import { claimCustomId } from "@/lib/discord/interactions";
+import { threadName } from "@/lib/discord/threads";
 import { avatarUrl } from "@/lib/discord/snowflake";
 import type { Prisma } from "@prisma/client";
 
@@ -252,6 +253,7 @@ export async function submitApplication(
             flags: flags.map((f) => f.message),
             claimCustomId: settings["discord.claimButton"] ? claimCustomId(draft.id) : null,
           }),
+          ...(settings["discord.threadPerApplication"] ? { startThread: threadName(publicId, draft.position.title) } : {}),
         },
         { tx, applicationId: draft.id },
       );

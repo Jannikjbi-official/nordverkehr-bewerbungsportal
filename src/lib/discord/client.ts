@@ -97,6 +97,10 @@ export interface DiscordApi {
   deleteMessage(channelId: string, messageId: string): Promise<void>;
 
   addRole(guildId: string, userId: string, roleId: string, reason?: string): Promise<void>;
+  /** Thread an einer Nachricht starten. Gibt die Thread-ID zurück. */
+  startThread(channelId: string, messageId: string, name: string, autoArchiveMinutes?: 60 | 1440 | 4320 | 10080): Promise<string>;
+  /** Thread archivieren (bleibt lesbar, eine neue Nachricht holt ihn zurück). */
+  archiveThread(threadId: string): Promise<void>;
 }
 
 /** DM-Kanal-ID pro Nutzer (ändert sich bei Discord nicht) – spart einen Aufruf pro DM */
@@ -157,6 +161,23 @@ export function createDiscordApi(token: string, opts: { timeoutMs?: number } = {
         await rest.put(Routes.guildMemberRole(guildId, userId, roleId), { reason });
       } catch (err) {
         throw classifyDiscordError(err);
+      }
+    },
+    async startThread(channelId, messageId, name, autoArchiveMinutes = 10080) {
+      try {
+        const ch = (await rest.post(Routes.threads(channelId, messageId), { body: { name: name.slice(0, 100), auto_archive_duration: autoArchiveMinutes } })) as APIChannel;
+        return ch.id;
+      } catch (err) {
+        throw classifyDiscordError(err);
+      }
+    },
+    async archiveThread(threadId) {
+      try {
+        await rest.patch(Routes.channel(threadId), { body: { archived: true } });
+      } catch (err) {
+        const e = classifyDiscordError(err);
+        if (e.kind === "not_found") return; // Thread wurde gelöscht
+        throw e;
       }
     },
   };

@@ -5,6 +5,8 @@
  *
  * Knöpfe (custom_id):
  *  - nv:claim:<applicationId>  → Bewerbung übernehmen (nur Team-Rolle)
+ * Slash-Befehle:
+ *  - /bewerbung                → eigener Bewerbungsstand (nur für die Person sichtbar)
  *
  * Antworten sind „ephemeral“ (nur für die klickende Person sichtbar).
  */
@@ -51,3 +53,45 @@ export function parseCustomId(customId: string): { kind: "claim"; applicationId:
 
 /** Interaktions-Antwort: nur für die klickende Person sichtbar. */
 export const ephemeral = (content: string) => ({ type: 4, data: { content, flags: 64, allowed_mentions: { parse: [] } } });
+
+/** Slash-Befehl /bewerbung (Guild-Befehl, per Admin-Knopf registriert). */
+export const STATUS_COMMAND = {
+  name: "bewerbung",
+  type: 1,
+  description: "Zeigt dir den Stand deiner Bewerbung bei Nordverkehr (nur für dich sichtbar)",
+  dm_permission: false,
+} as const;
+
+export interface StatusReplyApp {
+  id: string;
+  publicId: string | null;
+  status: string;
+  statusLabel: string;
+  position: string;
+  submittedAt: Date | null;
+  interviewAt: Date | null;
+}
+
+const ts = (d: Date, style: "f" | "R" | "D" = "f") => `<t:${Math.floor(d.getTime() / 1000)}:${style}>`;
+const md = (s: string) => s.replace(/([\\*_~`|>#@[\]])/g, "\\$1");
+
+/**
+ * Antworttext für /bewerbung. Nur Daten der fragenden Person (Abgleich über die
+ * Discord-ID aus der signierten Interaktion) – nie die anderer Bewerber.
+ */
+export function statusCommandReply(apps: StatusReplyApp[], appUrl: string): string {
+  if (!apps.length) {
+    return `Du hast gerade keine Bewerbung bei uns. Offene Stellen findest du hier: ${appUrl}`;
+  }
+  const lines = apps.slice(0, 5).map((a) => {
+    const head = `**${md(a.position)}**${a.publicId ? ` · \`${a.publicId}\`` : ""} – ${a.statusLabel}`;
+    const extra: string[] = [];
+    if (a.status === "DRAFT") extra.push(`noch nicht abgeschickt – weitermachen: ${appUrl}/dashboard`);
+    else if (a.submittedAt) extra.push(`eingereicht ${ts(a.submittedAt, "D")}`);
+    if (a.status === "INTERVIEW" && a.interviewAt) extra.push(`Gespräch ${ts(a.interviewAt)}`);
+    if (a.status !== "DRAFT") extra.push(`${appUrl}/dashboard/${a.id}`);
+    return `- ${head}${extra.length ? `\n  -# ${extra.join(" · ")}` : ""}`;
+  });
+  const more = apps.length > 5 ? `\n-# … und ${apps.length - 5} weitere im Portal: ${appUrl}/dashboard` : "";
+  return `${apps.length === 1 ? "Deine Bewerbung" : "Deine Bewerbungen"}:\n${lines.join("\n")}${more}`;
+}

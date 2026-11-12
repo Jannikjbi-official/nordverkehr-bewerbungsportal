@@ -9,6 +9,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { deliverNow } from "@/lib/discord/outbox-db";
 import { acknowledgeWithdrawal, changeStatus, sendTeamMessage, setClaim } from "@/lib/team/service";
 import { UserFacingError } from "@/lib/applications/service";
+import { REJECTION_KEYS } from "@/lib/applications/rejection";
 import type { ActionResult } from "@/app/actions/application";
 
 const id = z.string().min(10).max(40);
@@ -33,6 +34,7 @@ const statusSchema = z.object({
   to: STATUS,
   note: z.string().trim().max(500).optional(),
   reason: z.string().trim().max(1000).optional(),
+  category: z.enum(REJECTION_KEYS).optional(),
 });
 
 export async function changeStatusAction(input: z.input<typeof statusSchema>): Promise<ActionResult> {
@@ -206,6 +208,16 @@ export async function addCommentAction(input: z.input<typeof commentSchema>): Pr
   if (!p.success) return { ok: false, error: "Kommentar ist leer oder zu lang." };
   await db.comment.create({ data: { applicationId: p.data.applicationId, authorId: user.id, body: p.data.body } });
   await audit("application.comment", { actorId: user.id, targetType: "application", targetId: p.data.applicationId });
+  // In den Discord-Thread der Bewerbung spiegeln (falls eingerichtet)
+  const app = await db.application.findUnique({ where: { id: p.data.applicationId }, select: { id: true, discordThreadId: true } });
+  if (app?.discordThreadId) {
+    const { postToThread } = await import("@/lib/discord/threads");
+    const { esc } = await import("@/lib/discord/botlog");
+    const { publicEnv } = await import("@/lib/env");
+    const body = p.data.body.length > 1500 ? `${p.data.body.slice(0, 1500)} …` : p.data.body;
+    const job = await postToThread(app, `💬 **${esc(user.globalName || user.username)}** (Portal): ${esc(body)}`, { kind: "comment", url: `${publicEnv.appUrl}/team/bewerbungen/${app.id}` });
+    if (job) await kick([job]);
+  }
   revalidatePath(`/team/bewerbungen/${p.data.applicationId}`);
   return { ok: true };
 }

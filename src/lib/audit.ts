@@ -22,6 +22,7 @@ export type AuditAction =
   | "slot.delete"
   | "position.auto"
   | "user.notify"
+  | "user.digest"
   | "application.comment"
   | "application.message"
   | "application.delete"
@@ -92,6 +93,7 @@ export const AUDIT_LABELS: Record<string, string> = {
   "slot.delete": "Gesprächstermin gelöscht",
   "position.auto": "Position automatisch geöffnet/geschlossen",
   "user.notify": "Stellen-Benachrichtigung",
+  "user.digest": "Morgen-DM an/aus",
   "application.comment": "Kommentar",
   "application.message": "Nachricht gesendet",
   "application.delete": "Bewerbung gelöscht",

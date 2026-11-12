@@ -10,6 +10,8 @@ import { buildTemplateVars, renderTemplate, type TemplateVars } from "@/lib/mess
 import type { ApplicationStatus } from "@prisma/client";
 import { UserFacingError } from "@/lib/applications/service";
 import { botLog, esc } from "@/lib/discord/botlog";
+import { postToThread } from "@/lib/discord/threads";
+import { isRejectionCategory } from "@/lib/applications/rejection";
 import { avatarUrl } from "@/lib/discord/snowflake";
 import { STATUS_LABEL } from "@/lib/applications/status";
 import { clearPastInterview, releaseFutureSlot } from "@/lib/team/slots";
@@ -26,6 +28,8 @@ export async function changeStatus(opts: {
   actorId: string;
   note?: string | null;
   reason?: string | null;
+  /** Kategorie des Absagegrunds (nur bei „Abgelehnt“) */
+  category?: string | null;
   /** Termin wurde gerade vom Team gesetzt – nicht als „alter Termin“ wegräumen */
   keepInterview?: boolean;
 }) {
@@ -48,6 +52,7 @@ export async function changeStatus(opts: {
         decidedAt: FINAL.includes(opts.to) ? now : null,
         decidedById: FINAL.includes(opts.to) ? opts.actorId : null,
         rejectionReason: opts.to === "REJECTED" ? (opts.reason ?? app.rejectionReason) : null,
+        rejectionCategory: opts.to === "REJECTED" ? (isRejectionCategory(opts.category) ? opts.category : app.rejectionCategory) : null,
         // Angenommen → Probezeit startet (Einarbeitung siehe lib/team/onboarding.ts)
         ...(opts.to === "ACCEPTED" && settings["onboarding.probationDays"] > 0
           ? { probationUntil: new Date(now.getTime() + settings["onboarding.probationDays"] * 86_400_000) }
@@ -67,6 +72,15 @@ export async function changeStatus(opts: {
       { tx, applicationId: app.id, url: `${publicEnv.appUrl}/team/bewerbungen/${app.id}` },
     );
     if (logJob) jobIds.push(logJob);
+    // Abgeschlossen → letzter Hinweis im Discord-Thread, dann archivieren
+    if (FINAL.includes(opts.to)) {
+      const t = await postToThread(app, `${opts.to === "ACCEPTED" ? "✅" : "❌"} **${STATUS_LABEL[opts.to]}** – von ${esc(actor ? actorName(actor) : "Team")}. Thread wird archiviert.`, {
+        tx,
+        archive: true,
+        kind: "final",
+      });
+      if (t) jobIds.push(t);
+    }
     await tx.auditLog.create({
       data: {
         actorId: opts.actorId,

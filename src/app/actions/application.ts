@@ -186,6 +186,15 @@ export async function setNotifyPositionsAction(on: boolean): Promise<ActionResul
   return { ok: true };
 }
 
+/** Persönliche Morgen-DM (nur Team) an/aus. */
+export async function setDigestOptOutAction(optOut: boolean): Promise<ActionResult> {
+  const user = await requireUser();
+  await db.user.update({ where: { id: user.id }, data: { digestOptOut: optOut === true } });
+  await audit("user.digest", { actorId: user.id, targetType: "user", targetId: user.id, meta: { optOut: optOut === true } });
+  revalidatePath("/konto");
+  return { ok: true };
+}
+
 /** Discord-Mitgliedschaft neu prüfen (Knopf „Ich bin beigetreten“ im Formular). */
 export async function checkGuildAction(): Promise<ActionResult<{ inGuild: boolean }>> {
   const user = await requireUser();
@@ -231,6 +240,9 @@ export async function withdrawApplicationAction(applicationId: string, reason?: 
   ]);
   const { releaseFutureSlot } = await import("@/lib/team/slots");
   await releaseFutureSlot(db, app.id);
+  const { postToThread } = await import("@/lib/discord/threads");
+  const threadJob = await postToThread(app, "↩️ **Zurückgezogen** vom Bewerber. Thread wird archiviert.", { archive: true, kind: "final" });
+  if (threadJob) await deliverNow([threadJob]);
   await audit("application.withdraw", { actorId: user.id, targetType: "application", targetId: app.id, meta: { inReview } });
   const job = await botLog(
     inReview

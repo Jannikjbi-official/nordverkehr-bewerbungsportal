@@ -12,6 +12,8 @@ export interface SummaryItem {
   position: string;
   /** Wer die Bewerbung betreut (null = niemand) */
   claimer: string | null;
+  /** User-ID des Betreuers (für die persönliche Morgen-DM) */
+  claimerId?: string | null;
   /** Zeitpunkt je nach Liste: Gespräch, letzte Nachricht, letzte Aktivität, Rückzug */
   at: Date;
 }
@@ -125,6 +127,69 @@ export function buildEscalationMessage(s: DailySummary, appUrl: string): RESTPos
     text(`-# 🚨 HINWEIS FÜR DIE LEITUNG · ${formatLongDate(s.date).toUpperCase()}`),
     text(body),
     text("-# Bitte jemanden zuteilen oder die Bewerbung abschließen – die Bewerber warten."),
+    linkButtons([{ label: "Team-Dashboard", url: /^https:\/\//.test(appUrl) ? `${appUrl}/team` : null }]),
+  ]);
+}
+
+/** Offene Punkte eines Betreuers (Ausschnitt der Team-Übersicht). */
+export interface PersonalDigest {
+  interviews: SummaryItem[];
+  waiting: SummaryItem[];
+  stale: SummaryItem[];
+  withdrawals: SummaryItem[];
+  leftGuild: SummaryItem[];
+}
+
+const DIGEST_KEYS = ["interviews", "waiting", "stale", "withdrawals", "leftGuild"] as const;
+
+/** Team-Übersicht nach Betreuer aufteilen. Nur Betreuer mit mindestens einem Punkt. */
+export function groupByClaimer(s: DailySummary): Map<string, PersonalDigest> {
+  const out = new Map<string, PersonalDigest>();
+  for (const key of DIGEST_KEYS) {
+    for (const it of s[key]) {
+      if (!it.claimerId) continue;
+      const d = out.get(it.claimerId) ?? { interviews: [], waiting: [], stale: [], withdrawals: [], leftGuild: [] };
+      d[key].push(it);
+      out.set(it.claimerId, d);
+    }
+  }
+  return out;
+}
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** Kurze Zusammenfassung: „2 Bewerber warten auf deine Antwort, 1 Gespräch heute“. */
+export function digestHeadline(d: PersonalDigest) {
+  const parts: string[] = [];
+  if (d.waiting.length) parts.push(`${plural(d.waiting.length, "Bewerber wartet", "Bewerber warten")} auf deine Antwort`);
+  if (d.interviews.length) parts.push(`${plural(d.interviews.length, "Gespräch", "Gespräche")} heute`);
+  if (d.stale.length) parts.push(`${plural(d.stale.length, "Bewerbung liegt", "Bewerbungen liegen")} schon länger`);
+  if (d.withdrawals.length) parts.push(`${plural(d.withdrawals.length, "Rückzug", "Rückzüge")} zu bestätigen`);
+  if (d.leftGuild.length) parts.push(`${plural(d.leftGuild.length, "Bewerber ist", "Bewerber sind")} nicht mehr auf dem Discord`);
+  return parts.join(", ");
+}
+
+function personalLine(it: SummaryItem, appUrl: string, detail: string) {
+  return truncate(`- [**${it.publicId}**](${appUrl}/team/bewerbungen/${it.id}) ${clean(it.name)} (${clean(it.position)}) · ${detail}`, 300);
+}
+
+/** Persönliche Morgen-DM an einen Betreuer. */
+export function buildPersonalDigestMessage(name: string, d: PersonalDigest, staleDays: number, appUrl: string): RESTPostAPIChannelMessageJSONBody {
+  const block = (title: string, items: SummaryItem[], detail: (it: SummaryItem) => string) =>
+    items.length ? `### ${title}${NL}${items.slice(0, MAX_ITEMS).map((it) => personalLine(it, appUrl, detail(it))).join(NL)}${items.length > MAX_ITEMS ? `${NL}-# … und ${items.length - MAX_ITEMS} weitere` : ""}` : null;
+  const sections = [
+    block("📅 Gespräche heute", d.interviews, (it) => `${discordTime(it.at, "t")} Uhr`),
+    block("💬 Wartet auf deine Antwort", d.waiting, (it) => `schrieb ${discordTime(it.at, "R")}`),
+    block(`⏳ Seit ${staleDays}+ Tagen nichts passiert`, d.stale, (it) => `zuletzt ${discordTime(it.at, "R")}`),
+    block("↩️ Rückzug bestätigen", d.withdrawals, (it) => `zurückgezogen ${discordTime(it.at, "R")}`),
+    block("🚪 Nicht mehr auf dem Discord", d.leftGuild, (it) => `seit ${discordTime(it.at, "R")}`),
+  ].filter((x): x is string => !!x);
+  return v2Message(BRAND_COLOR, [
+    text(`-# 📌 DEINE BEWERBUNGEN HEUTE${NL}## Moin ${clean(name)}!${NL}${digestHeadline(d)}.`),
+    separator(true, 1),
+    ...sections.flatMap((t, i) => (i ? [separator(false, 1), text(t)] : [text(t)])),
+    separator(true, 1),
+    text("-# Kommt nur, wenn bei deinen geclaimten Bewerbungen etwas ansteht. Abschalten: Portal → Konto."),
     linkButtons([{ label: "Team-Dashboard", url: /^https:\/\//.test(appUrl) ? `${appUrl}/team` : null }]),
   ]);
 }

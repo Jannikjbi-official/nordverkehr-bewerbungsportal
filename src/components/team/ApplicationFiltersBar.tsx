@@ -10,6 +10,7 @@ import type { ApplicationStatus } from "@prisma/client";
 
 interface Filters {
   q?: string;
+  text?: string;
   position?: string;
   status?: string[];
   from?: string;
@@ -27,11 +28,13 @@ export function ApplicationFiltersBar({ positions, current }: { positions: { slu
   const pathname = usePathname();
   const [pending, start] = useTransition();
   const [q, setQ] = useState(current.q ?? "");
+  const [text, setText] = useState(current.text ?? "");
 
   function apply(patch: Partial<Filters>) {
     const next = { ...current, ...patch };
     const qs = new URLSearchParams();
     if (next.q) qs.set("q", next.q);
+    if (next.text) qs.set("text", next.text);
     if (next.position) qs.set("position", next.position);
     next.status?.forEach((s) => qs.append("status", s));
     if (next.from) qs.set("from", next.from);
@@ -51,7 +54,15 @@ export function ApplicationFiltersBar({ positions, current }: { positions: { slu
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
 
-  const active = !!(current.q || current.position || current.status?.length || current.from || current.to || current.flag || current.tag);
+  // Antwortsuche: erst ab 2 Zeichen, etwas längere Verzögerung (durchsucht alle Antworten)
+  useEffect(() => {
+    if ((current.text ?? "") === text || (text.length === 1)) return;
+    const t = setTimeout(() => apply({ text: text || undefined }), 450);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text]);
+
+  const active = !!(current.q || current.text || current.position || current.status?.length || current.from || current.to || current.flag || current.tag);
 
   return (
     <div className={`nv-card p-4 space-y-3 transition-opacity ${pending ? "opacity-70" : ""}`}>
@@ -64,6 +75,18 @@ export function ApplicationFiltersBar({ positions, current }: { positions: { slu
             placeholder="Name, @discord oder NV-2026-…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
+          />
+        </label>
+        <label className="relative flex-1">
+          <span className="sr-only">In Antworten suchen</span>
+          <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" aria-hidden />
+          <input
+            className="nv-input !pl-9"
+            placeholder="In Antworten suchen, z. B. Moderation"
+            value={text}
+            maxLength={80}
+            onChange={(e) => setText(e.target.value)}
+            data-testid="answer-search"
           />
         </label>
         <Select
@@ -134,6 +157,7 @@ export function ApplicationFiltersBar({ positions, current }: { positions: { slu
             className="nv-btn nv-btn-quiet nv-btn-sm ml-auto"
             onClick={() => {
               setQ("");
+              setText("");
               start(() => router.replace(`${pathname}${current.view !== "tabelle" ? `?view=${current.view}` : ""}`));
             }}
           >

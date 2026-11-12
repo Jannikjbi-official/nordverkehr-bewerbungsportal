@@ -5,6 +5,8 @@ import { Avatar, Container, PageHero, formatDay } from "@/components/ui";
 import { DeleteAccount, SignOutEverywhere } from "@/components/dashboard/AccountActions";
 import { requireUser } from "@/lib/auth/session";
 import { NotifyToggle } from "@/components/NotifyToggle";
+import { DigestToggle } from "@/components/DigestToggle";
+import { getSettings } from "@/lib/settings";
 import { db } from "@/lib/db";
 
 export const metadata: Metadata = { title: "Konto & Daten", robots: { index: false } };
@@ -26,9 +28,11 @@ export default function AccountPage() {
 
 async function Account() {
   const user = await requireUser("/konto");
-  const [apps, messages] = await Promise.all([
+  const [apps, messages, me, settings] = await Promise.all([
     db.application.count({ where: { userId: user.id } }),
     db.message.count({ where: { application: { userId: user.id } } }),
+    db.user.findUnique({ where: { id: user.id }, select: { isTeam: true, digestOptOut: true } }),
+    getSettings(),
   ]);
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -65,6 +69,12 @@ async function Account() {
         <h2 className="font-semibold">Benachrichtigungen</h2>
         <p className="text-sm text-muted">Gerade keine passende Stelle offen? Wir sagen dir per Discord-DM Bescheid, sobald eine Stelle (wieder) öffnet.</p>
         <NotifyToggle on={!!user.notifyNewPositions} />
+        {me?.isTeam && (
+          <>
+            <div className="nv-divider" />
+            <DigestToggle on={!me.digestOptOut} globallyOff={!settings["team.personalDigestEnabled"]} />
+          </>
+        )}
       </section>
 
       <section className="nv-card p-6 space-y-4">

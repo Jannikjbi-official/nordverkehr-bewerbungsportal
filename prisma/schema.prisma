@@ -115,6 +115,8 @@ model User {
   lastTeamActiveAt   DateTime?
   /// Möchte per DM Bescheid bekommen, wenn eine Stelle (wieder) öffnet
   notifyNewPositions Boolean   @default(false)
+  /// Teammitglied möchte keine persönliche Morgen-DM mit seinen offenen Punkten
+  digestOptOut       Boolean   @default(false)
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
@@ -286,6 +288,8 @@ model Application {
   /// Entwurfsdaten (Autosave): { [questionId]: value }
   draftData      Json      @default("{}")
   draftStep      Int       @default(0)
+  /// Erinnerung an den liegengebliebenen Entwurf wurde verschickt (höchstens einmal)
+  draftRemindedAt DateTime?
   confirmations  Json?
   consentVersion String?
   consentAt      DateTime?
@@ -311,10 +315,14 @@ model Application {
   interviewRemindedFor DateTime?
   /// Bewerber hat den Discord verlassen – Bot hat im Portal Bescheid gegeben (zurückgesetzt, wenn wieder da)
   guildLeftNotifiedAt  DateTime?
+  /// Discord-Thread zur Bewerbung im Bewerbungs-Kanal (Team-Diskussion)
+  discordThreadId      String?
   /// Einarbeitung nach der Annahme: { [Punkt]: { at, by } }
   onboarding           Json      @default("{}")
   probationUntil       DateTime?
   rejectionReason      String?
+  /// Feste Kategorie des Absagegrunds (lib/applications/rejection.ts) – für die Statistik
+  rejectionCategory    String?
 
   confirmationDmStatus DeliveryStatus?
   /// Automatische Hinweise (kein Score!): [{ code, message }]

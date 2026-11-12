@@ -416,6 +416,12 @@ const MIGRATIONS: { id: string; run: (db: PrismaClient, opts: Options) => Promis
   { id: "2026-11-sperrfristen-pro-stelle", run: (db, o) => (o.dryRun ? Promise.resolve(0) : setPositionCooldowns(db)) },
   // Absage-Bausteine nennen die Sperrfrist der Stelle (Tage + Datum)
   { id: "2026-11-absage-sperrfrist", run: (db, o) => (o.dryRun ? Promise.resolve(0) : rejectionTemplatesWithCooldown(db)) },
+  // Neues Pflichtfeld mit Standardwert: Filter `digestOptOut: false` soll auch Altkonten treffen
+  {
+    id: "2026-11-digest-optout",
+    run: (db, o) =>
+      o.dryRun ? Promise.resolve(0) : db.$runCommandRaw({ update: "User", updates: [{ q: { digestOptOut: { $exists: false } }, u: { $set: { digestOptOut: false } }, multi: true }] }),
+  },
 ];
 
 

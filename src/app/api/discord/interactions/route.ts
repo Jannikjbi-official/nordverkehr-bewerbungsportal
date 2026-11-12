@@ -1,6 +1,7 @@
 import { after } from "next/server";
 import { db } from "@/lib/db";
-import { ephemeral, getDiscordPublicKey, parseCustomId, verifyDiscordSignature } from "@/lib/discord/interactions";
+import { STATUS_COMMAND, ephemeral, getDiscordPublicKey, parseCustomId, statusCommandReply, verifyDiscordSignature } from "@/lib/discord/interactions";
+import { STATUS_LABEL } from "@/lib/applications/status";
 import { evaluateRoles } from "@/lib/auth/access";
 import { runOutbox } from "@/lib/discord/outbox-db";
 import { publicEnv } from "@/lib/env";
@@ -9,11 +10,13 @@ export const maxDuration = 10;
 
 interface Interaction {
   type: number;
-  data?: { custom_id?: string };
+  data?: { custom_id?: string; name?: string };
   member?: { roles: string[]; user: { id: string; username: string; global_name?: string | null; avatar?: string | null } };
+  /** Bei Interaktionen außerhalb eines Servers (DM) */
+  user?: { id: string };
 }
 
-/** Discord-Interaktionen (Knöpfe). Signatur wird immer geprüft. */
+/** Discord-Interaktionen (Knöpfe, Slash-Befehle). Signatur wird immer geprüft. */
 export async function POST(req: Request) {
   const body = await req.text();
   const key = await getDiscordPublicKey();
@@ -22,6 +25,26 @@ export async function POST(req: Request) {
   }
   const i = JSON.parse(body) as Interaction;
   if (i.type === 1) return Response.json({ type: 1 }); // PING von Discord
+
+  // Slash-Befehl /bewerbung: eigener Stand, nur für die Person sichtbar
+  if (i.type === 2 && i.data?.name === STATUS_COMMAND.name) {
+    const discordId = i.member?.user.id ?? i.user?.id;
+    if (!discordId) return Response.json(ephemeral("Das hat nicht geklappt."));
+    const apps = await db.application.findMany({
+      where: { user: { discordId }, OR: [{ status: { in: ["DRAFT", "SUBMITTED", "IN_REVIEW", "INTERVIEW"] } }, { decidedAt: { gte: new Date(Date.now() - 30 * 86_400_000) } }] },
+      select: { id: true, publicId: true, status: true, submittedAt: true, interviewAt: true, position: { select: { title: true } } },
+      orderBy: { updatedAt: "desc" },
+      take: 10,
+    });
+    return Response.json(
+      ephemeral(
+        statusCommandReply(
+          apps.map((a) => ({ id: a.id, publicId: a.publicId, status: a.status, statusLabel: STATUS_LABEL[a.status], position: a.position.title, submittedAt: a.submittedAt, interviewAt: a.interviewAt })),
+          publicEnv.appUrl,
+        ),
+      ),
+    );
+  }
 
   if (i.type !== 3 || !i.data?.custom_id) return Response.json(ephemeral("Diese Aktion kenne ich nicht."));
   const action = parseCustomId(i.data.custom_id);

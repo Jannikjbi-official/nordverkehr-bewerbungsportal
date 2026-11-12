@@ -2,6 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { TAG_KEYS, type TagKey } from "@/lib/ai/tags";
+import { searchAnswers, type AnswerHit } from "@/lib/team/answer-search";
 import type { Prisma } from "@prisma/client";
 import type { ApplicationStatus } from "@prisma/client";
 
@@ -9,6 +10,8 @@ const STATUSES = ["SUBMITTED", "IN_REVIEW", "INTERVIEW", "ACCEPTED", "REJECTED",
 
 const filterSchema = z.object({
   q: z.string().trim().max(80).optional().catch(undefined),
+  /** Volltextsuche in den Antworten */
+  text: z.string().trim().min(2).max(80).optional().catch(undefined),
   position: z.string().regex(/^[a-z0-9-]{1,60}$/).optional().catch(undefined),
   status: z
     .union([z.enum(STATUSES), z.array(z.enum(STATUSES))])
@@ -34,6 +37,7 @@ export function filtersToQuery(f: Partial<ApplicationFilters>, patch: Partial<Ap
   const merged = { ...f, ...patch };
   const qs = new URLSearchParams();
   if (merged.q) qs.set("q", merged.q);
+  if (merged.text) qs.set("text", merged.text);
   if (merged.position) qs.set("position", merged.position);
   merged.status?.forEach((s) => qs.append("status", s));
   if (merged.from) qs.set("from", merged.from);
@@ -84,6 +88,12 @@ export const applicationListInclude = {
 
 export async function listApplications(f: ApplicationFilters, opts: { all?: boolean } = {}) {
   const where = buildWhere(f);
+  // Suche in den Antworten: nur Bewerbungen mit Treffer, Ausschnitte für die Liste
+  let hits: Map<string, AnswerHit[]> | null = null;
+  if (f.text) {
+    hits = await searchAnswers(db, f.text);
+    where.id = { in: [...hits.keys()] };
+  }
   const orderBy: Prisma.ApplicationOrderByWithRelationInput =
     f.sort === "alt" ? { submittedAt: "asc" } : f.sort === "aktiv" ? { updatedAt: "desc" } : { submittedAt: "desc" };
   const take = opts.all ? 400 : PAGE_SIZE;
@@ -97,7 +107,7 @@ export async function listApplications(f: ApplicationFilters, opts: { all?: bool
     }),
     db.application.count({ where }),
   ]);
-  return { rows, total };
+  return { rows, total, hits };
 }
 
 export type ApplicationRow = Awaited<ReturnType<typeof listApplications>>["rows"][number];

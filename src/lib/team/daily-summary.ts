@@ -10,9 +10,9 @@
 import type { PrismaClient } from "@prisma/client";
 import { ACTIVE_STATUSES, FOLLOW_UP_DAYS } from "@/lib/applications/status";
 import { todayBerlin } from "@/lib/changelog";
-import { enqueue, runOutbox } from "@/lib/discord/outbox-db";
+import { enqueue, runOutbox, runOutboxAll } from "@/lib/discord/outbox-db";
 import { publicEnv } from "@/lib/env";
-import { buildDailySummaryMessage, buildEscalationMessage, isQuiet, type DailySummary, type SummaryItem } from "@/lib/messages/summary";
+import { buildDailySummaryMessage, buildEscalationMessage, buildPersonalDigestMessage, groupByClaimer, isQuiet, type DailySummary, type SummaryItem } from "@/lib/messages/summary";
 import { getSettings } from "@/lib/settings";
 
 const DAY = 86_400_000;
@@ -87,6 +87,7 @@ export async function collectDailySummary(db: PrismaClient, opts: { now?: Date; 
     name: nameOf(a.user) ?? "Unbekannt",
     position: a.position.title,
     claimer: nameOf(a.claimedBy),
+    claimerId: a.claimedById,
     at,
   });
 
@@ -180,4 +181,41 @@ export async function postDailySummary(db: PrismaClient, opts: { now?: Date; for
 
   await runOutbox({ ids: jobIds }).catch((e) => console.error("[summary]", e));
   return { posted: true, jobIds, summary, escalated: !!escalation };
+}
+
+/**
+ * Persönliche Morgen-DM an jeden Betreuer, bei dessen geclaimten Bewerbungen etwas
+ * ansteht. Keine DM ohne offene Punkte; abschaltbar global (Einstellungen) und pro
+ * Person (Konto). Pro Person und Tag höchstens eine DM (Setting `digest:<Tag>:<User>`).
+ */
+export async function sendPersonalDigests(db: PrismaClient, opts: { now?: Date } = {}) {
+  const s = await getSettings();
+  if (!s["team.personalDigestEnabled"]) return 0;
+  const now = opts.now ?? new Date();
+  const summary = await collectDailySummary(db, { now, staleDays: s["team.staleDays"], escalateDays: s["team.escalateDays"] });
+  const groups = groupByClaimer(summary);
+  if (!groups.size) return 0;
+  const users = await db.user.findMany({
+    where: { id: { in: [...groups.keys()] }, isTeam: true, digestOptOut: false },
+    select: { id: true, discordId: true, globalName: true, username: true },
+  });
+  const date = todayBerlin(now);
+  const ids: string[] = [];
+  for (const u of users) {
+    const key = `digest:${date}:${u.id}`;
+    // Eindeutiger Key: läuft der Cron doppelt, bekommt trotzdem jeder nur eine DM
+    const created = await db.setting.create({ data: { key, value: { at: now.toISOString() } } }).then(() => true, () => false);
+    if (!created) continue;
+    const job = await enqueue({
+      type: "DM",
+      discordUserId: u.discordId,
+      purpose: "notify",
+      message: buildPersonalDigestMessage(u.globalName || u.username, groups.get(u.id)!, s["team.staleDays"], publicEnv.appUrl),
+    });
+    ids.push(job.id);
+  }
+  // Alte Markierungen aufräumen (älter als eine Woche)
+  await db.setting.deleteMany({ where: { key: { startsWith: "digest:", lt: `digest:${todayBerlin(new Date(now.getTime() - 7 * DAY))}` } } }).catch(() => {});
+  if (ids.length) await runOutboxAll(ids).catch((e) => console.error("[digest]", e));
+  return ids.length;
 }

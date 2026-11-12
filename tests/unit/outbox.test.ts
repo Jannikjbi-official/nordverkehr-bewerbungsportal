@@ -18,6 +18,8 @@ function fakeApi(over: Partial<DiscordApi> = {}): DiscordApi {
     deleteMessage: vi.fn(async () => {}),
     editMessage: vi.fn(async () => {}),
     addRole: vi.fn(async () => {}),
+    startThread: vi.fn(async () => "thread-1"),
+    archiveThread: vi.fn(async () => {}),
     ...over,
   };
 }
@@ -143,5 +145,26 @@ describe("backoffMs", () => {
   it("wächst und ist gedeckelt", () => {
     expect(backoffMs(0)).toBeLessThan(backoffMs(1));
     expect(backoffMs(10)).toBe(backoffMs(4));
+  });
+});
+
+describe("Thread pro Bewerbung", () => {
+  const job = (payload: unknown) => ({ id: "j1", type: "CHANNEL_MESSAGE" as const, payload, attempts: 0, maxAttempts: 5, messageId: null, applicationId: "a1" });
+  it("startet nach dem Post einen Thread und liefert die ID", async () => {
+    const api = fakeApi();
+    const r = await executeJob(job({ type: "CHANNEL_MESSAGE", channelId: "c1", message: { content: "x" }, startThread: "NV-1 · Support" }), api);
+    expect(r).toEqual({ kind: "done", result: { messageId: "msg-1", threadId: "thread-1" } });
+    expect(api.startThread).toHaveBeenCalledWith("c1", "msg-1", "NV-1 · Support");
+  });
+  it("fehlende Thread-Rechte lassen die Nachricht trotzdem als zugestellt gelten", async () => {
+    const api = fakeApi({ startThread: vi.fn(async () => { throw new DiscordRequestError("Keine Rechte", "forbidden"); }) });
+    const r = await executeJob(job({ type: "CHANNEL_MESSAGE", channelId: "c1", message: { content: "x" }, startThread: "NV-1" }), api);
+    expect(r.kind).toBe("done");
+    expect(r.kind === "done" && r.result.threadError).toBeTruthy();
+  });
+  it("archiviert den Thread nach dem Abschluss-Hinweis", async () => {
+    const api = fakeApi();
+    await executeJob(job({ type: "CHANNEL_MESSAGE", channelId: "t1", message: { content: "x" }, archiveThread: true }), api);
+    expect(api.archiveThread).toHaveBeenCalledWith("t1");
   });
 });

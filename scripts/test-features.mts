@@ -138,6 +138,62 @@ try {
   await db.application.update({ where: { id: app4.id }, data: { guildLeftNotifiedAt: null } });
   check((await applyGuildState(app4.id, false)) === null, "Abgeschlossene Bewerbung bekommt keine Nachricht");
 
+  // ── Erinnerung an liegengebliebene Entwürfe (einmal, nur offene Stelle, nicht gesperrt)
+  {
+    const { sendDraftReminders } = await import("../src/lib/applications/draft-reminder");
+    const pd = await db.position.create({ data: { typeId: type.id, slug: "drafts", title: "Drafts", tagline: "x", description: "x", status: "OPEN" } });
+    const pc = await db.position.create({ data: { typeId: type.id, slug: "drafts-zu", title: "Zu", tagline: "x", description: "x", status: "CLOSED" } });
+    const d1 = await mk("Dora", "100000000000000031");
+    const d2 = await mk("Emil", "100000000000000032");
+    const later = new Date(Date.now() + 5 * 24 * H); // „in 5 Tagen“ statt alte updatedAt-Werte zu fälschen
+    const draftOld = await db.application.create({ data: { userId: d1.id, positionId: pd.id, status: "DRAFT" } });
+    await db.application.create({ data: { userId: d1.id, positionId: pc.id, status: "DRAFT" } });
+    await db.application.create({ data: { userId: d2.id, positionId: pd.id, status: "DRAFT" } });
+    await db.userBan.create({ data: { subjectId: d2.id, reason: "Test" } });
+    const before = await db.outboxJob.count({ where: { type: "DM" } });
+    const n1 = await sendDraftReminders(db, { now: later });
+    const n2 = await sendDraftReminders(db, { now: later });
+    check(n1 === 1 && n2 === 0 && (await db.outboxJob.count({ where: { type: "DM" } })) - before === 1, `Entwurfs-Erinnerung genau einmal, nur offene Stelle & ungesperrt (${n1}/${n2})`);
+    check(!!(await db.application.findUnique({ where: { id: draftOld.id } }))!.draftRemindedAt, "draftRemindedAt gesetzt");
+    check((await sendDraftReminders(db)) === 0, "Frischer Entwurf: keine Erinnerung");
+  }
+
+  // ── Persönliche Morgen-DM an Betreuer
+  {
+    const { sendPersonalDigests } = await import("../src/lib/team/daily-summary");
+    const t2 = await mk("Kira", "100000000000000041", { isTeam: true });
+    const t3 = await mk("Lars", "100000000000000042", { isTeam: true, digestOptOut: true });
+    const p1 = await mk("Pia", "100000000000000043");
+    const ca = await db.application.create({ data: { userId: p1.id, positionId: pos.id, status: "IN_REVIEW", publicId: "NV-F-D1", submittedAt: new Date(), claimedById: t2.id } });
+    await db.message.create({ data: { applicationId: ca.id, direction: "APPLICANT_TO_TEAM", body: "Hallo?" } });
+    const p2u = await mk("Ole", "100000000000000044");
+    const cb = await db.application.create({ data: { userId: p2u.id, positionId: pos.id, status: "IN_REVIEW", publicId: "NV-F-D2", submittedAt: new Date(), claimedById: t3.id } });
+    await db.message.create({ data: { applicationId: cb.id, direction: "APPLICANT_TO_TEAM", body: "Hallo?" } });
+    const dmTo = async (discordId: string) => (await db.outboxJob.findMany({ where: { type: "DM" } })).filter((j) => (j.payload as { discordUserId?: string }).discordUserId === discordId).length;
+    const n1 = await sendPersonalDigests(db);
+    const n2 = await sendPersonalDigests(db);
+    check(n2 === 0 && (await dmTo(t2.discordId)) === 1, `Betreuer bekommt genau eine Morgen-DM (${n1}/${n2})`);
+    check((await dmTo(t3.discordId)) === 0, "Abgeschaltet → keine DM");
+    check((await dmTo(team.discordId)) === 0, "Ohne offene Punkte → keine DM");
+  }
+
+  // ── Suche über Antworten
+  {
+    const { searchAnswers } = await import("../src/lib/team/answer-search");
+    await db.answer.createMany({
+      data: [
+        { applicationId: app1.id, sectionTitle: "Über dich", label: "Erfahrung", type: "LONG_TEXT", value: "Zwei Jahre Moderation auf einem RP-Server" },
+        { applicationId: app1.id, sectionTitle: "Über dich", label: "Programme", type: "MULTI_SELECT", value: ["Discord", "TeamSpeak"] },
+        { applicationId: app2.id, sectionTitle: "Über dich", label: "Erfahrung", type: "LONG_TEXT", value: "Noch nie im Team gewesen (a.b)" },
+      ],
+    });
+    const t0 = Date.now();
+    const h1 = await searchAnswers(db, "moderation");
+    check(h1.size === 1 && h1.get(app1.id)?.[0].match === "Moderation" && Date.now() - t0 < 1000, "Antwortsuche findet Teilwort, ohne Groß/Klein, < 1 s");
+    check((await searchAnswers(db, "teamspeak")).has(app1.id), "Antwortsuche findet Auswahl-Antworten");
+    check((await searchAnswers(db, "a.b")).size === 1 && (await searchAnswers(db, ".*")).size === 0, "Regex-Zeichen sind entschärft");
+  }
+
   // ── Feedback (eins pro Bewerbung)
   await db.feedback.create({ data: { applicationId: app1.id, rating: 5 } });
   dup = false;

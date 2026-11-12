@@ -372,7 +372,41 @@ export async function setupInteractionsAction(): Promise<ActionResult<{ message:
   await saveSettings({ "discord.claimButton": true }, user.id);
   await audit("settings.update", { actorId: user.id, meta: { interactionsEndpoint: url } });
   revalidatePath("/team/einstellungen");
-  return { ok: true, data: { message: `Eingerichtet: ${url}. Neue Bewerbungen bekommen jetzt den Knopf „Übernehmen“.` } };
+  // Slash-Befehl /bewerbung gleich mit registrieren (läuft über dieselbe URL)
+  const cmd = await registerStatusCommand(token);
+  return {
+    ok: true,
+    data: { message: `Eingerichtet: ${url}. Neue Bewerbungen bekommen jetzt den Knopf „Übernehmen“. ${cmd.ok ? "Befehl /bewerbung ist registriert." : `Befehl /bewerbung: ${cmd.error}`}` },
+  };
+}
+
+/** /bewerbung als Guild-Befehl registrieren (sofort verfügbar, nur auf dem Nordverkehr-Server). */
+async function registerStatusCommand(token: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const guildId = process.env.DISCORD_GUILD_ID;
+  if (!guildId) return { ok: false, error: "DISCORD_GUILD_ID fehlt." };
+  const headers = { Authorization: `Bot ${token}`, "Content-Type": "application/json" };
+  const me = await fetch("https://discord.com/api/v10/applications/@me", { headers, cache: "no-store" });
+  if (!me.ok) return { ok: false, error: `Discord-App nicht lesbar (${me.status}).` };
+  const { id: appId } = (await me.json()) as { id: string };
+  const { STATUS_COMMAND } = await import("@/lib/discord/interactions");
+  // POST legt an bzw. überschreibt den Befehl mit gleichem Namen – andere Befehle bleiben
+  const res = await fetch(`https://discord.com/api/v10/applications/${appId}/guilds/${guildId}/commands`, { method: "POST", headers, body: JSON.stringify(STATUS_COMMAND) });
+  if (!res.ok) {
+    const err = (await res.json().catch(() => null)) as { message?: string } | null;
+    return { ok: false, error: `Discord hat abgelehnt (${res.status}): ${err?.message ?? "unbekannt"}. Hat der Bot den Scope „applications.commands“?` };
+  }
+  return { ok: true };
+}
+
+/** Nur den Befehl /bewerbung (neu) registrieren – die Interaktions-URL muss schon eingerichtet sein. */
+export async function registerCommandsAction(): Promise<ActionResult<{ message: string }>> {
+  const { user } = await requireAdmin();
+  const token = process.env.DISCORD_BOT_TOKEN;
+  if (!token) return { ok: false, error: "DISCORD_BOT_TOKEN fehlt." };
+  const r = await registerStatusCommand(token);
+  if (!r.ok) return { ok: false, error: r.error };
+  await audit("settings.update", { actorId: user.id, meta: { command: "bewerbung" } });
+  return { ok: true, data: { message: "Befehl /bewerbung ist registriert. Bewerber sehen damit ihren Stand direkt in Discord (vorher einmal „Knopf ‚Übernehmen‘ einrichten“)." } };
 }
 
 /** Alle laufenden Bewerbungen sofort prüfen: noch auf dem Discord? (Bot-Nachricht bei Austritt) */

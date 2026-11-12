@@ -25,7 +25,7 @@ export default function ApplicationsPage({ searchParams }: PageProps<"/team/bewe
 async function Content({ searchParams }: Pick<PageProps<"/team/bewerbungen">, "searchParams">) {
   await requireTeam();
   const f = parseFilters(await searchParams);
-  const [positions, { rows, total }] = await Promise.all([
+  const [positions, { rows, total, hits }] = await Promise.all([
     db.position.findMany({ orderBy: { sortOrder: "asc" }, select: { slug: true, title: true } }),
     listApplications(f, { all: f.view === "board" }),
   ]);
@@ -40,7 +40,9 @@ async function Content({ searchParams }: Pick<PageProps<"/team/bewerbungen">, "s
           <h1 className="nv-headline text-4xl mt-2">
             Alle <em>Bewerbungen.</em>
           </h1>
-          <p className="text-sm text-muted mt-1">{total} Treffer</p>
+          <p className="text-sm text-muted mt-1">
+            {total} Treffer{f.text ? <> mit „{f.text}“ in den Antworten</> : null}
+          </p>
         </div>
         <div className="flex gap-2">
           <div className="inline-flex rounded-lg border border-line p-0.5" role="group" aria-label="Ansicht">
@@ -123,6 +125,14 @@ async function Content({ searchParams }: Pick<PageProps<"/team/bewerbungen">, "s
                                   <TagPills tags={r.aiTags} />
                                 </span>
                               )}
+                              {hits?.get(r.id)?.map((h, i) => (
+                                <span key={i} className="mt-1 block text-xs text-fg-2 max-w-[28rem] whitespace-normal">
+                                  <span className="text-muted">{h.label}: </span>
+                                  {h.before}
+                                  <mark className="bg-red-soft text-fg rounded px-0.5">{h.match}</mark>
+                                  {h.after}
+                                </span>
+                              ))}
                             </span>
                           </Link>
                         </td>

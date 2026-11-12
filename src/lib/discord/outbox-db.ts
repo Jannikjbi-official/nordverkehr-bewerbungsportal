@@ -25,6 +25,10 @@ export const prismaOutboxStore: OutboxStore = {
       if (job.applicationId && purposeOf(job) === "confirmation") {
         await tx.application.update({ where: { id: job.applicationId }, data: { confirmationDmStatus: "SENT" } });
       }
+      // Thread zur Bewerbung angelegt → merken (Kommentare & Abschluss landen dort)
+      if (job.applicationId && result.threadId) {
+        await tx.application.update({ where: { id: job.applicationId }, data: { discordThreadId: result.threadId } });
+      }
     });
   },
   async reschedule(job, error, runAt) {

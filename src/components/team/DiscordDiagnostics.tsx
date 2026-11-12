@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import { useState, useTransition } from "react";
 import { ArrowClockwise, CheckCircle, PaperPlaneTilt, WarningCircle } from "@phosphor-icons/react/ssr";
-import { deleteChangelogPostsAction, discordTestAction, flushOutboxAction, postChangelogNowAction, postSummaryNowAction, scanGuildNowAction, setupInteractionsAction } from "@/app/actions/admin";
+import { deleteChangelogPostsAction, discordTestAction, flushOutboxAction, postChangelogNowAction, postSummaryNowAction, registerCommandsAction, scanGuildNowAction, setupInteractionsAction } from "@/app/actions/admin";
 
 export interface FailedJob {
   id: string;
@@ -92,6 +92,9 @@ export function DiscordDiagnostics({ failed, pending }: { failed: FailedJob[]; p
           }
         >
           Knopf „Übernehmen“ einrichten
+        </button>
+        <button type="button" className="nv-btn nv-btn-ghost nv-btn-sm" disabled={busy} onClick={() => run("Befehl /bewerbung", () => registerCommandsAction())}>
+          Befehl /bewerbung registrieren
         </button>
         <button type="button" className="nv-btn nv-btn-ghost nv-btn-sm" disabled={busy} onClick={() => run("Discord-Prüfung", () => scanGuildNowAction())} data-testid="guild-scan">
           Bewerber auf dem Discord prüfen
