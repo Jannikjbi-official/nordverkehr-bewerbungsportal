@@ -12,6 +12,7 @@ import { UserFacingError } from "@/lib/applications/service";
 import { botLog, esc } from "@/lib/discord/botlog";
 import { avatarUrl } from "@/lib/discord/snowflake";
 import { STATUS_LABEL } from "@/lib/applications/status";
+import { clearPastInterview, releaseFutureSlot } from "@/lib/team/slots";
 
 type Actor = { id: string; globalName: string | null; username: string; discordId: string; avatar: string | null; isAdmin: boolean };
 const actorName = (a: { globalName: string | null; username: string }) => a.globalName || a.username;
@@ -25,6 +26,8 @@ export async function changeStatus(opts: {
   actorId: string;
   note?: string | null;
   reason?: string | null;
+  /** Termin wurde gerade vom Team gesetzt – nicht als „alter Termin“ wegräumen */
+  keepInterview?: boolean;
 }) {
   const app = await db.application.findUnique({ where: { id: opts.applicationId }, include: { position: true, user: true } });
   if (!app) throw new UserFacingError("Bewerbung nicht gefunden.");
@@ -54,8 +57,10 @@ export async function changeStatus(opts: {
     await tx.statusChange.create({
       data: { applicationId: app.id, from: app.status, to: opts.to, actorId: opts.actorId, note: opts.note ?? null },
     });
-    // Nicht mehr im Gespräch → künftigen Selbstbucher-Termin wieder freigeben
-    if (opts.to !== "INTERVIEW") await tx.interviewSlot.updateMany({ where: { applicationId: app.id, startsAt: { gt: now } }, data: { applicationId: null, bookedAt: null } });
+    // Nicht mehr im Gespräch → künftigen Selbstbucher-Termin wieder freigeben (inkl. interviewAt);
+    // erneut im Gespräch → alten, vergangenen Termin vergessen, damit neu gebucht werden kann
+    if (opts.to !== "INTERVIEW") await releaseFutureSlot(tx, app.id, now);
+    else if (!opts.keepInterview) await clearPastInterview(tx, app.id, now);
     const actor = await tx.user.findUnique({ where: { id: opts.actorId }, select: { globalName: true, username: true } });
     const logJob = await botLog(
       `🔁 **${app.publicId}** (${app.position.title}): ${STATUS_LABEL[app.status]} → **${STATUS_LABEL[opts.to]}** – von ${esc(actor ? actorName(actor) : "Team")}`,

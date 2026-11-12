@@ -75,6 +75,11 @@ export async function savePositionAction(input: z.input<typeof positionSchema>):
   const { id: pid, ...rest } = p.data;
   const data = { ...rest, opensAt: rest.opensAt ?? null, closesAt: rest.closesAt ?? null, maxApplications: rest.maxApplications ?? null };
   if (data.opensAt && data.closesAt && data.opensAt >= data.closesAt) return { ok: false, error: "Das Enddatum muss nach dem Startdatum liegen." };
+  if (data.status === "OPEN" && data.closesAt && data.closesAt <= new Date()) {
+    return { ok: false, error: "Das Enddatum liegt in der Vergangenheit – die Stelle würde sofort wieder geschlossen. Datum leeren oder anpassen." };
+  }
+  // Offen + Startdatum ergibt keinen Sinn (würde nach einem späteren Schließen ungewollt wieder öffnen)
+  if (data.status === "OPEN") data.opensAt = null;
   const before = pid ? await db.position.findUnique({ where: { id: pid }, select: { status: true } }) : null;
   const clash = await db.position.findFirst({ where: { slug: data.slug, NOT: pid ? { id: pid } : undefined } });
   if (clash) return { ok: false, error: "Dieser Slug ist schon vergeben." };
@@ -98,9 +103,11 @@ export async function savePositionAction(input: z.input<typeof positionSchema>):
 export async function setPositionStatusAction(positionId: string, status: "OPEN" | "CLOSED" | "HIDDEN"): Promise<ActionResult> {
   const { user } = await requireAdmin();
   if (!["OPEN", "CLOSED", "HIDDEN"].includes(status)) return { ok: false, error: "Ungültig." };
-  const before = await db.position.findUnique({ where: { id: positionId }, select: { status: true } });
-  const saved = await db.position.update({ where: { id: positionId }, data: { status } });
-  if (status === "OPEN" && before && before.status !== "OPEN") notifyOpenedAfter(saved);
+  const before = await db.position.findUnique({ where: { id: positionId }, select: { status: true, opensAt: true, closesAt: true } });
+  if (!before) return { ok: false, error: "Stelle nicht gefunden." };
+  const { clearStaleSchedule } = await import("@/lib/positions/schedule");
+  const saved = await db.position.update({ where: { id: positionId }, data: { status, ...clearStaleSchedule(status, before, new Date()) } });
+  if (status === "OPEN" && before.status !== "OPEN") notifyOpenedAfter(saved);
   await audit("position.status", { actorId: user.id, targetType: "position", targetId: positionId, meta: { status } });
   revalidatePath("/team/positionen");
   revalidatePath("/");

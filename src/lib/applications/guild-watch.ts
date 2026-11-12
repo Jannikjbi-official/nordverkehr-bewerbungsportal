@@ -46,7 +46,12 @@ export async function applyGuildState(applicationId: string, inGuild: boolean): 
 
   if (inGuild) {
     if (!app.guildLeftNotifiedAt) return null;
-    await db.application.update({ where: { id: app.id }, data: { guildLeftNotifiedAt: null } });
+    // Bedingt zurücksetzen: erkennen mehrere Stellen die Rückkehr gleichzeitig, loggt nur eine
+    const reset = await db.application.updateMany({
+      where: { id: app.id, guildLeftNotifiedAt: { not: null } },
+      data: { guildLeftNotifiedAt: null },
+    });
+    if (reset.count !== 1) return null;
     const job = await botLog(`↩️ ${esc(app.user.globalName || app.user.username)} ist wieder auf dem Discord (**${app.publicId}**).`, { applicationId: app.id });
     if (job) await runOutbox({ ids: [job] }).catch(() => {});
     return "back";
@@ -91,7 +96,7 @@ export interface ScanResult {
  * Alle laufenden Bewerbungen prüfen. `fresh` fragt Discord direkt (statt Rollen-Cache).
  * Läuft parallel in kleinen Gruppen, Discord-Ratelimits regelt der REST-Client.
  */
-export async function scanApplicantsInGuild(opts: { limit?: number; fresh?: boolean } = {}): Promise<ScanResult> {
+export async function scanApplicantsInGuild(opts: { limit?: number; fresh?: boolean; deadline?: number } = {}): Promise<ScanResult> {
   const { getAccess } = await import("@/lib/auth/user-access");
   const apps = await db.application.findMany({
     where: { status: { in: WATCHED } },
@@ -113,7 +118,11 @@ export async function scanApplicantsInGuild(opts: { limit?: number; fresh?: bool
     if (res === "notified") r.notified++;
     if (res === "back") r.back++;
   };
-  for (let i = 0; i < apps.length; i += 5) await Promise.all(apps.slice(i, i + 5).map(one));
+  for (let i = 0; i < apps.length; i += 5) {
+    // Zeitbudget (Crons): lieber abbrechen, als dass die ganze Funktion am Limit scheitert
+    if (opts.deadline && Date.now() >= opts.deadline) break;
+    await Promise.all(apps.slice(i, i + 5).map(one));
+  }
   return r;
 }
 

@@ -57,19 +57,47 @@ export function isScoringPending(app: { aiRating: unknown; aiRatedAt: Date | nul
   return !readAiRating(app.aiRating) && !!app.aiRatedAt && now.getTime() - app.aiRatedAt.getTime() < LOCK_MS;
 }
 
-/** Bewerbung zum Bewerten reservieren. true = diese Instanz darf bewerten. */
-export async function claimForScoring(applicationId: string, now = new Date()) {
+/** Bewerbung zum Bewerten reservieren. Gibt den Reservierungszeitpunkt zurück (= diese Instanz darf bewerten), sonst null. */
+export async function claimForScoring(applicationId: string, now = new Date()): Promise<Date | null> {
   const app = await db.application.findUnique({ where: { id: applicationId }, select: { aiRating: true, consentVersion: true, aiConsentOverrideAt: true } });
-  if (!app || readAiRating(app.aiRating) || !aiScoreAllowed(app)) return false;
+  if (!app || readAiRating(app.aiRating) || !aiScoreAllowed(app)) return null;
   const res = await db.application.updateMany({
     where: { id: applicationId, OR: [{ aiRatedAt: null }, { aiRatedAt: { isSet: false } }, { aiRatedAt: { lt: new Date(now.getTime() - LOCK_MS) } }] },
     data: { aiRatedAt: now },
   });
-  return res.count === 1;
+  return res.count === 1 ? now : null;
+}
+
+/** Reservierung wieder lösen (nichts bewertet) – sonst hinge „KI bewertet gerade …“ bis zu einer Stunde. */
+export async function releaseScoringClaim(applicationId: string, claimedAt: Date) {
+  await db.application.updateMany({ where: { id: applicationId, aiRatedAt: claimedAt }, data: { aiRatedAt: null } });
+}
+
+/** Reservieren und bewerten; kam kein Ergebnis zustande, wird die Reservierung gelöst. */
+export async function claimAndScore(applicationId: string, opts: { actorId?: string | null } = {}) {
+  const claimedAt = await claimForScoring(applicationId);
+  if (!claimedAt) return null;
+  return scoreClaimed(applicationId, claimedAt, opts);
+}
+
+/** Bewerten, nachdem `claimForScoring` erfolgreich war. */
+export async function scoreClaimed(applicationId: string, claimedAt: Date, opts: { actorId?: string | null } = {}) {
+  const res = await scoreApplication(applicationId, opts).catch((e) => (console.error("[ai-score]", e), null));
+  if (!res) await releaseScoringClaim(applicationId, claimedAt).catch(() => {});
+  return res;
+}
+
+/** Warum gerade keine automatischen KI-Punkte möglich sind (null = alles bereit). */
+export async function scoringBlockedReason(settings?: Awaited<ReturnType<typeof getSettings>>): Promise<string | null> {
+  const s = settings ?? (await getSettings());
+  if (!s["ai.enabled"] || !isAiConfigured()) return "Die KI ist ausgeschaltet.";
+  if (!s["ai.autoScoreEnabled"]) return null;
+  if (!(await budgetLeft(s))) return "Das monatliche KI-Budget ist aufgebraucht – keine automatischen KI-Punkte.";
+  return null;
 }
 
 /** Fehlende KI-Punkte nachholen (offene Bewerbungen, älteste zuerst). */
-export async function scoreMissing(limit = 2) {
+export async function scoreMissing(limit = 2, deadline?: number) {
   const settings = await getSettings();
   if (!settings["ai.enabled"] || !settings["ai.autoScoreEnabled"] || !isAiConfigured()) return 0;
   const { ACTIVE_STATUSES } = await import("@/lib/applications/status");
@@ -81,10 +109,10 @@ export async function scoreMissing(limit = 2) {
   });
   let done = 0;
   for (const c of candidates) {
-    if (done >= limit) break;
+    if (done >= limit || (deadline && Date.now() >= deadline)) break;
     if (readAiRating(c.aiRating) || !aiScoreAllowed(c)) continue;
-    if (!(await claimForScoring(c.id))) continue;
-    if (await scoreApplication(c.id).catch((e) => (console.error("[ai-score]", e), null))) done++;
+    if (!(await budgetLeft(settings))) break;
+    if (await claimAndScore(c.id)) done++;
   }
   return done;
 }

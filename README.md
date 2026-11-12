@@ -97,7 +97,7 @@ Das Portal nutzt Transaktionen → MongoDB muss als **Replica Set** laufen. Atla
    `DATABASE_URL`, `AUTH_SECRET`, `AUTH_DISCORD_ID`, `AUTH_DISCORD_SECRET`, `AUTH_TRUST_HOST=true`, `NEXT_PUBLIC_APP_URL=https://bewerbung.nordverkehr.xyz`, `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, `TEAM_ROLE_ID`, `ADMIN_ROLE_ID`, `CRON_SECRET` (zufällig, ≥ 16 Zeichen); optional `DISCORD_LOG_CHANNEL_ID`, `ANTHROPIC_API_KEY`.
    **Nicht** setzen: `DEV_LOGIN`.
 3. **Domain:** *Settings → Domains* → `bewerbung.nordverkehr.xyz` hinzufügen und beim DNS-Anbieter den angezeigten CNAME setzen.
-4. **Cron-Jobs** (`vercel.json`): Zustellung ausstehender Discord-Nachrichten und Löschfristen laufen täglich. Auf **Vercel Pro** kannst du `/api/cron/outbox` z. B. auf `*/5 * * * *` stellen. Zusätzlich stellt das Portal Nachrichten **sofort** nach jeder Aktion zu und holt fällige Wiederholungen nach, sobald ein Teammitglied den Team-Bereich öffnet.
+4. **Cron-Jobs** (`vercel.json`): Zustellung ausstehender Discord-Nachrichten und Löschfristen laufen täglich. Vercel rechnet in UTC – deshalb stehen der 0-Uhr-Job (`/api/cron/outbox`) und die 8-Uhr-Team-Übersicht (`/api/cron/summary`) je zweimal drin (Winter- und Sommerzeit); nur der Lauf zur richtigen deutschen Uhrzeit erledigt die täglichen Aufgaben. Auf **Vercel Pro** kannst du `/api/cron/outbox` zusätzlich z. B. auf `*/5 * * * *` stellen (außerhalb von 0 Uhr wird dann nur zugestellt). Zusätzlich stellt das Portal Nachrichten **sofort** nach jeder Aktion zu und holt fällige Wiederholungen nach, sobald ein Teammitglied den Team-Bereich öffnet.
 
 ### Optional: Worker (sofortige Rollen-Updates)
 

@@ -13,8 +13,9 @@ export interface PickableSlot {
   note: string | null;
 }
 
-const day = (iso: string) => new Date(iso).toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" });
-const time = (iso: string) => new Date(iso).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+// Feste Zeitzone: Server (UTC) und Browser rendern sonst unterschiedlich (Hydration-Fehler, falsche Uhrzeit/Tag)
+const day = (iso: string) => new Date(iso).toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Berlin" });
+const time = (iso: string) => new Date(iso).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" });
 
 /** Bewerber wählt einen freien Gesprächstermin (oder bucht um). */
 export function SlotPicker({ applicationId, slots, current, canChange }: { applicationId: string; slots: PickableSlot[]; current: PickableSlot | null; canChange: boolean }) {

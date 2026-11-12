@@ -48,6 +48,31 @@ try {
   check(err.includes("nicht gefunden"), "Fremde Bewerbung kann nicht buchen");
   await changeStatus({ applicationId: app1.id, to: "REJECTED", actorId: team.id });
   check(!(await db.interviewSlot.findUnique({ where: { id: s2.id } }))!.applicationId, "Ablehnung gibt künftigen Slot frei");
+  check(!(await db.application.findUnique({ where: { id: app1.id } }))!.interviewAt, "Ablehnung leert den selbst gebuchten Termin");
+
+  // ── Zweites Gespräch: Gespräch → In Prüfung → Gespräch, dann neu buchen
+  const appR = await db.application.create({ data: { userId: a1.id, positionId: pos.id, status: "INTERVIEW", publicId: "NV-F-R", submittedAt: new Date() } });
+  await bookSlot(db, { userId: a1.id, applicationId: appR.id, slotId: s1.id });
+  await changeStatus({ applicationId: appR.id, to: "IN_REVIEW", actorId: team.id });
+  const r1 = await db.application.findUnique({ where: { id: appR.id } });
+  check(!r1!.interviewAt && !r1!.interviewRemindedFor && !(await db.interviewSlot.findUnique({ where: { id: s1.id } }))!.applicationId, "Verlassen von „Gespräch“ leert interviewAt und gibt Slot frei");
+  await changeStatus({ applicationId: appR.id, to: "INTERVIEW", actorId: team.id });
+  await bookSlot(db, { userId: a1.id, applicationId: appR.id, slotId: s2.id });
+  check((await db.interviewSlot.findUnique({ where: { id: s2.id } }))!.applicationId === appR.id, "Im zweiten Gespräch kann wieder gebucht werden");
+  // Vom Team fest gesetzter Termin (ohne Slot) bleibt beim Statuswechsel
+  const fixedAt = new Date(Date.now() + 48 * H);
+  await db.interviewSlot.updateMany({ where: { applicationId: appR.id }, data: { applicationId: null, bookedAt: null } });
+  await db.application.update({ where: { id: appR.id }, data: { interviewAt: fixedAt } });
+  await changeStatus({ applicationId: appR.id, to: "IN_REVIEW", actorId: team.id });
+  check((await db.application.findUnique({ where: { id: appR.id } }))!.interviewAt?.getTime() === fixedAt.getTime(), "Fester Team-Termin bleibt erhalten");
+  // Alter, vergangener Termin wird beim erneuten Gespräch vergessen
+  const pastSlot = await db.interviewSlot.create({ data: { startsAt: new Date(Date.now() - 48 * H), applicationId: appR.id, bookedAt: new Date(Date.now() - 72 * H) } });
+  await db.application.update({ where: { id: appR.id }, data: { interviewAt: pastSlot.startsAt, interviewRemindedFor: pastSlot.startsAt } });
+  await changeStatus({ applicationId: appR.id, to: "INTERVIEW", actorId: team.id });
+  const r2 = await db.application.findUnique({ where: { id: appR.id }, include: { slot: true } });
+  check(!r2!.interviewAt && !r2!.slot, "Erneut „Gespräch“: vergangener Termin wird gelöst");
+  await changeStatus({ applicationId: appR.id, to: "REJECTED", actorId: team.id });
+  await db.application.delete({ where: { id: appR.id } });
 
   // ── Erinnerung (Termin heute in 1 h, nach deutscher Zeit noch heute?)
   const soon = new Date(Date.now() + 30 * 60_000);
@@ -66,6 +91,11 @@ try {
   // ── Höchstzahl: 2 eingereicht → schließt
   check(await closeIfFull(db, pos.id), "Höchstzahl erreicht → Stelle geschlossen");
   check((await db.position.findUnique({ where: { id: pos.id } }))!.status === "CLOSED", "Status CLOSED");
+  // Voll geschlossen mit geplantem Startdatum → Startdatum wird geleert (sonst öffnet der Cron die volle Stelle wieder)
+  await db.position.update({ where: { id: pos.id }, data: { status: "OPEN", opensAt: new Date(Date.now() - H) } });
+  await closeIfFull(db, pos.id);
+  const full = await db.position.findUnique({ where: { id: pos.id } });
+  check(full!.status === "CLOSED" && !full!.opensAt && (await applyPositionSchedule(db)).length === 0, "Höchstzahl leert Startdatum, Cron öffnet nicht wieder");
 
   // ── Datum: öffnet wieder, Vorgemerkte bekommen DM-Auftrag
   await db.position.update({ where: { id: pos.id }, data: { opensAt: new Date(Date.now() - H), maxApplications: null } });
@@ -94,7 +124,13 @@ try {
   check((await applyGuildState(app4.id, false)) === "notified" && (await sys()) === 1, "Austritt → Bot-Nachricht im Portal");
   check((await applyGuildState(app4.id, false)) === null && (await sys()) === 1, "Kein zweites Mal beim selben Austritt");
   check((await collectDailySummary(db, { staleDays: 3, escalateDays: 7 })).leftGuild.some((x) => x.publicId === "NV-F-4"), "Steht in der Team-Übersicht");
-  check((await applyGuildState(app4.id, true)) === "back" && !(await db.application.findUnique({ where: { id: app4.id } }))!.guildLeftNotifiedAt, "Rückkehr setzt zurück");
+  {
+    const logs = () => db.outboxJob.count({ where: { applicationId: app4.id, type: "CHANNEL_MESSAGE" } });
+    const l0 = await logs();
+    const res = await Promise.all([applyGuildState(app4.id, true), applyGuildState(app4.id, true), applyGuildState(app4.id, true)]);
+    check(res.filter((r) => r === "back").length === 1 && !(await db.application.findUnique({ where: { id: app4.id } }))!.guildLeftNotifiedAt, "Rückkehr setzt zurück – nur einmal, auch gleichzeitig");
+    check((await logs()) - l0 <= 1, "Höchstens ein „wieder da“-Log");
+  }
   check((await applyGuildState(app4.id, false)) === "notified" && (await sys()) === 2, "Erneuter Austritt → neue Nachricht");
   const msg = await db.message.findFirst({ where: { applicationId: app4.id, direction: "SYSTEM" } });
   check(!!msg && msg.deliveryStatus === "NOT_SENT" && msg.body.includes("discord.gg"), "Nachricht mit Einladung, ohne DM-Versuch");

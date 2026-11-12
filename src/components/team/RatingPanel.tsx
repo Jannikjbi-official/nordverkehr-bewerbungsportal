@@ -15,6 +15,8 @@ export type AiRatingView =
   | { kind: "pending" }
   /** Bewerbung vor Einführung der KI-Punkte eingereicht (Einwilligung deckt es nicht) */
   | { kind: "notAllowed" }
+  /** Automatik gerade nicht möglich (z. B. Budget aufgebraucht) */
+  | { kind: "unavailable"; reason: string }
   | { kind: "off" };
 
 /** Bewertungsbogen: eigene Punkte pro Kriterium + Durchschnitt des Teams. */
@@ -235,10 +237,11 @@ function AiBlock({
         </p>
       )}
       {ai.kind === "none" && <p className="text-xs text-muted">Noch keine KI-Punkte.</p>}
+      {ai.kind === "unavailable" && <p className="text-xs text-muted">Noch keine KI-Punkte: {ai.reason}</p>}
       {ai.kind === "pending" && <p className="text-xs text-muted">Die KI bewertet die Bewerbung gerade … (aktualisiert sich gleich)</p>}
       <div className="flex items-center gap-2">
         <button type="button" className="nv-btn nv-btn-quiet nv-btn-sm !px-2" disabled={pending || ai.kind === "pending"} onClick={run}>
-          {pending ? "Berechne …" : ai.kind === "none" ? "KI-Punkte berechnen" : "Neu berechnen"}
+          {pending ? "Berechne …" : ai.kind === "none" || ai.kind === "unavailable" ? "KI-Punkte berechnen" : "Neu berechnen"}
         </button>
         {error && <span className="nv-error text-xs">{error}</span>}
       </div>

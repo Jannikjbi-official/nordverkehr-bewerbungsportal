@@ -74,9 +74,33 @@ export async function bookSlot(db: PrismaClient, opts: { userId: string; applica
   return slot;
 }
 
-/** Künftigen Termin einer Bewerbung wieder freigeben (Status ist nicht mehr „Gespräch“). */
-export function releaseFutureSlot(db: PrismaClient | Prisma.TransactionClient, applicationId: string, now = new Date()) {
-  return db.interviewSlot.updateMany({ where: { applicationId, startsAt: { gt: now } }, data: { applicationId: null, bookedAt: null } });
+/**
+ * Künftigen Termin einer Bewerbung wieder freigeben (Status ist nicht mehr „Gespräch“).
+ * War der Termin selbst gebucht, verschwindet auch `interviewAt` – sonst sähe der
+ * Bewerber bei einem zweiten Gespräch den alten Slot als „festen Team-Termin“.
+ * Vom Team fest eingetragene Zeiten (ohne passenden Slot) bleiben unangetastet.
+ */
+export async function releaseFutureSlot(db: PrismaClient | Prisma.TransactionClient, applicationId: string, now = new Date()) {
+  const slot = await db.interviewSlot.findFirst({ where: { applicationId, startsAt: { gt: now } } });
+  if (!slot) return { count: 0 };
+  await db.interviewSlot.updateMany({ where: { id: slot.id, applicationId }, data: { applicationId: null, bookedAt: null } });
+  await db.application.updateMany({
+    where: { id: applicationId, interviewAt: slot.startsAt },
+    data: { interviewAt: null, interviewRemindedFor: null },
+  });
+  return { count: 1 };
+}
+
+/**
+ * Bewerbung kommt (wieder) in „Gespräch“: ein vergangener Termin aus einer früheren
+ * Runde zählt nicht mehr – Termin leeren und alten Slot lösen, damit neu gebucht werden kann.
+ */
+export async function clearPastInterview(db: PrismaClient | Prisma.TransactionClient, applicationId: string, now = new Date()) {
+  await db.interviewSlot.updateMany({ where: { applicationId, startsAt: { lte: now } }, data: { applicationId: null } });
+  await db.application.updateMany({
+    where: { id: applicationId, interviewAt: { lte: now } },
+    data: { interviewAt: null, interviewRemindedFor: null },
+  });
 }
 
 /** Erinnerungs-DM an alle Bewerber, die heute (deutsche Zeit) ihr Gespräch haben. */

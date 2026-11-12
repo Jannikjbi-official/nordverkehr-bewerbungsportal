@@ -114,6 +114,10 @@ export async function submitApplicationAction(
     // Bestätigungs-DM + Log-Post direkt nach der Antwort zustellen (Worker = Fallback)
     after(async () => {
       await runOutbox({ ids: res.jobIds }).catch((e) => console.error("[outbox]", e));
+      // KI-Punkte gleich reservieren – sonst hält die Team-Seite die Bewerbung während
+      // des Taggings für „unbewertet“ und startet eine zweite, parallele Bewertung
+      const { claimForScoring, scoreClaimed } = await import("@/lib/ai/scoring");
+      const claimedAt = await claimForScoring(res.applicationId).catch(() => null);
       // Höchstzahl erreicht? Dann Stelle automatisch schließen
       const app = await db.application.findUnique({ where: { id: res.applicationId }, select: { positionId: true } });
       if (app) {
@@ -124,8 +128,7 @@ export async function submitApplicationAction(
       const { tagApplication } = await import("@/lib/ai/tagging");
       await tagApplication(res.applicationId).catch((e) => console.error("[ai-tags]", e));
       // KI-Punkte für den Bewertungsbogen (nur Einschätzung)
-      const { scoreApplication } = await import("@/lib/ai/scoring");
-      await scoreApplication(res.applicationId).catch((e) => console.error("[ai-score]", e));
+      if (claimedAt) await scoreClaimed(res.applicationId, claimedAt);
     });
     revalidatePath("/dashboard");
     return { ok: true, data: { applicationId: res.applicationId, publicId: res.publicId } };

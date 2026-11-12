@@ -73,7 +73,7 @@ export function AiPanel({ applicationId, cachedSummary, cachedAt }: { applicatio
       </div>
       {text && !busy && (
         <div className="mt-3 flex items-center justify-between text-xs text-muted">
-          <span>{active === "summary" && cachedAt && text === cachedSummary ? `Erstellt ${new Date(cachedAt).toLocaleString("de-DE")}` : "KI-Entwurf"}</span>
+          <span>{active === "summary" && cachedAt && text === cachedSummary ? `Erstellt ${new Date(cachedAt).toLocaleString("de-DE", { timeZone: "Europe/Berlin" })}` : "KI-Entwurf"}</span>
           <button type="button" className="nv-btn nv-btn-quiet nv-btn-sm !py-0.5" onClick={() => run(active)}>
             <ArrowsClockwise size={13} aria-hidden /> Neu
           </button>

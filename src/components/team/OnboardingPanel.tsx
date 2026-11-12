@@ -49,7 +49,7 @@ export function OnboardingPanel({ applicationId, items, state, probationUntil }:
                   <span className={check ? "text-muted line-through" : ""}>{item}</span>
                   {check && (
                     <span className="block text-[0.7rem] text-faint">
-                      {check.by} · {new Date(check.at).toLocaleDateString("de-DE")}
+                      {check.by} · {new Date(check.at).toLocaleDateString("de-DE", { timeZone: "Europe/Berlin" })}
                     </span>
                   )}
                 </span>

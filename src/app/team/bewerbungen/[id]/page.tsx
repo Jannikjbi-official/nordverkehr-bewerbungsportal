@@ -26,7 +26,7 @@ import { RatingPanel } from "@/components/team/RatingPanel";
 import { OnboardingPanel } from "@/components/team/OnboardingPanel";
 import { onboardingItems, readOnboarding } from "@/lib/team/onboarding";
 import { cleanScores, summarizeRatings } from "@/lib/team/ratings";
-import { claimForScoring, isScoringPending, readAiRating, scoreApplication } from "@/lib/ai/scoring";
+import { claimAndScore, isScoringPending, readAiRating, scoringBlockedReason } from "@/lib/ai/scoring";
 import { after } from "next/server";
 import { applyGuildState, guildStateKnown } from "@/lib/applications/guild-watch";
 import { aiScoreAllowed } from "@/lib/applications/form";
@@ -118,9 +118,12 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
   const myRating = app.ratings.find((r) => r.userId === me.id);
   const ratingSummary = summarizeRatings(app.ratings);
   // Noch keine KI-Punkte? Dann jetzt im Hintergrund nachholen (einmal, gesperrt gegen Doppelaufrufe)
-  if (aiEnabled && settings["ai.autoScoreEnabled"] && app.status !== "WITHDRAWN" && !readAiRating(app.aiRating) && !isScoringPending(app) && aiScoreAllowed(app)) {
+  const wantsAutoScore = aiEnabled && settings["ai.autoScoreEnabled"] && app.status !== "WITHDRAWN" && !readAiRating(app.aiRating) && aiScoreAllowed(app);
+  // Budget aufgebraucht o. Ä.? Dann nicht „bewertet gerade …“ anzeigen, sondern den Grund
+  const scoreBlocked = wantsAutoScore ? await scoringBlockedReason(settings) : null;
+  if (wantsAutoScore && !scoreBlocked && !isScoringPending(app)) {
     after(async () => {
-      if (await claimForScoring(app.id)) await scoreApplication(app.id).catch((e) => console.error("[ai-score]", e));
+      await claimAndScore(app.id);
     });
   }
   const storedAi = readAiRating(app.aiRating);
@@ -129,7 +132,9 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
     : !aiScoreAllowed(app)
       ? { kind: "notAllowed" }
       : !storedAi
-        ? isScoringPending(app)
+        ? scoreBlocked
+          ? { kind: "unavailable", reason: scoreBlocked }
+          : isScoringPending(app)
           ? { kind: "pending" }
           : settings["ai.autoScoreEnabled"] && app.status !== "WITHDRAWN"
             ? { kind: "pending" }

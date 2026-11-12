@@ -1,22 +1,32 @@
-import { isAuthorizedCron } from "@/lib/cron";
+import { deadlineIn, isAuthorizedCron, isScheduledHour } from "@/lib/cron";
 import { postDailySummary } from "@/lib/team/daily-summary";
 import { db } from "@/lib/db";
 
 export const maxDuration = 60;
 
-/** Jeden Morgen (ca. 8 Uhr deutscher Zeit): Team-Übersicht in den Teamchat. */
+/**
+ * Jeden Morgen um 8 Uhr deutscher Zeit: Team-Übersicht in den Teamchat.
+ * Wichtiges zuerst (Stellen, Erinnerungen, Übersicht), Langläufer danach mit Zeitbudget.
+ */
 export async function GET(req: Request) {
   if (!isAuthorizedCron(req)) return new Response("Unauthorized", { status: 401 });
+  if (!isScheduledHour(req, 8)) return Response.json({ skipped: "andere Stunde (Sommer-/Winterzeit)" });
+  const budget = deadlineIn(45);
   const { applyPositionSchedule } = await import("@/lib/positions/schedule");
   await applyPositionSchedule(db).catch((e) => console.error("[positions]", e));
-  // Bewerber noch auf dem Discord? (automatische Bot-Nachricht bei Austritt)
-  const { scanApplicantsInGuild } = await import("@/lib/applications/guild-watch");
-  await scanApplicantsInGuild({ fresh: true }).catch((e) => console.error("[guild-watch]", e));
   const { sendInterviewReminders } = await import("@/lib/team/slots");
   await sendInterviewReminders(db).catch((e) => console.error("[reminder]", e));
-  // Fehlende KI-Punkte nachholen (wenige pro Lauf, Zeitlimit)
-  const { scoreMissing } = await import("@/lib/ai/scoring");
-  await scoreMissing(2).catch((e) => console.error("[ai-score]", e));
-  const r = await postDailySummary(db);
+  const r = await postDailySummary(db).catch((e) => {
+    console.error("[summary]", e);
+    return { posted: false as const, reason: "error" };
+  });
+  // Bewerber noch auf dem Discord? (automatische Bot-Nachricht bei Austritt) – mit Zeitbudget
+  const { scanApplicantsInGuild } = await import("@/lib/applications/guild-watch");
+  await scanApplicantsInGuild({ fresh: true, deadline: budget.end - 15_000 }).catch((e) => console.error("[guild-watch]", e));
+  // Fehlende KI-Punkte nachholen (wenige pro Lauf, nur wenn noch Zeit ist)
+  if (budget.left() > 20_000) {
+    const { scoreMissing } = await import("@/lib/ai/scoring");
+    await scoreMissing(2, budget.end - 10_000).catch((e) => console.error("[ai-score]", e));
+  }
   return Response.json(r.posted ? { posted: true, jobs: r.jobIds.length, escalated: r.escalated } : { posted: false, reason: r.reason });
 }

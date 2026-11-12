@@ -73,7 +73,7 @@ export async function setInterviewAction(input: z.input<typeof interviewSchema>)
     data: { applicationId: null, bookedAt: null },
   });
   if (p.data.at && ["SUBMITTED", "IN_REVIEW"].includes(app.status)) {
-    await changeStatus({ applicationId: app.id, to: "INTERVIEW", actorId: user.id, note: "Gesprächstermin festgelegt" });
+    await changeStatus({ applicationId: app.id, to: "INTERVIEW", actorId: user.id, note: "Gesprächstermin festgelegt", keepInterview: true });
   }
   await audit("application.interview", { actorId: user.id, targetType: "application", targetId: app.id, meta: { at: p.data.at } });
   revalidatePath(`/team/bewerbungen/${app.id}`);
@@ -130,8 +130,16 @@ export async function deleteSlotAction(slotId: string): Promise<ActionResult> {
   if (!id.safeParse(slotId).success) return { ok: false, error: "Ungültig." };
   const slot = await db.interviewSlot.findUnique({ where: { id: slotId } });
   if (!slot) return { ok: true };
-  if (slot.applicationId && slot.startsAt > new Date()) return { ok: false, error: "Der Termin ist gebucht. Klär das erst mit dem Bewerber (oder setz in der Bewerbung eine andere Zeit)." };
-  await db.interviewSlot.delete({ where: { id: slotId } });
+  // Atomar: nur löschen, wenn (noch) frei oder schon vorbei – sonst könnte eine Buchung
+  // genau zwischen Prüfung und Löschen verloren gehen
+  const res = await db.interviewSlot.deleteMany({
+    where: { id: slotId, OR: [{ applicationId: null }, { applicationId: { isSet: false } }, { startsAt: { lte: new Date() } }] },
+  });
+  if (res.count === 0) {
+    const still = await db.interviewSlot.count({ where: { id: slotId } });
+    if (still) return { ok: false, error: "Der Termin ist gebucht. Klär das erst mit dem Bewerber (oder setz in der Bewerbung eine andere Zeit)." };
+    return { ok: true };
+  }
   await audit("slot.delete", { actorId: user.id, meta: { at: slot.startsAt.toISOString() } });
   revalidatePath("/team/termine");
   return { ok: true };

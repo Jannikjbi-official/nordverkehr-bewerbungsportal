@@ -32,7 +32,8 @@ async function appVersion(id: string) {
 async function listVersion(where: { userId?: string }) {
   const [count, last, lastMsg] = await Promise.all([
     db.application.count({ where: { ...where, NOT: { status: "DRAFT" } } }),
-    db.application.findFirst({ where, orderBy: { updatedAt: "desc" }, select: { updatedAt: true } }),
+    // Team-Listen: Entwürfe nicht mitzählen – sonst lädt jeder Autosave eines Bewerbers alle Team-Seiten neu
+    db.application.findFirst({ where: where.userId ? where : { NOT: { status: "DRAFT" } }, orderBy: { updatedAt: "desc" }, select: { updatedAt: true } }),
     db.message.findFirst({ where: where.userId ? { application: { userId: where.userId } } : {}, orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
   ]);
   return [count, t(last?.updatedAt), t(lastMsg?.createdAt)].join(".");

@@ -6,7 +6,7 @@
  * Danach wird der Stellenaufruf in Discord automatisch aktualisiert.
  */
 import type { PrismaClient } from "@prisma/client";
-import { enqueue, runOutbox } from "@/lib/discord/outbox-db";
+import { enqueue, runOutbox, runOutboxAll } from "@/lib/discord/outbox-db";
 import { botLog } from "@/lib/discord/botlog";
 import { publicEnv } from "@/lib/env";
 import { buildApplicantMessage } from "@/lib/messages/embed";
@@ -37,6 +37,24 @@ export function dueTransitions(positions: ScheduledPosition[], now: Date): Trans
   return out;
 }
 
+/**
+ * Status wurde von Hand (oder per Höchstzahl) geändert: Datumsregeln, die danach
+ * sofort wieder greifen würden, leeren. Gibt nur die zu ändernden Felder zurück.
+ *  - geöffnet: Startdatum ist verbraucht, ein abgelaufenes Enddatum würde sofort wieder schließen
+ *  - geschlossen: Enddatum ist verbraucht, ein erreichtes Startdatum würde sofort wieder öffnen
+ */
+export function clearStaleSchedule(to: Status, p: { opensAt: Date | null; closesAt: Date | null }, now: Date) {
+  const data: { opensAt?: null; closesAt?: null } = {};
+  if (to === "OPEN") {
+    if (p.opensAt) data.opensAt = null;
+    if (p.closesAt && p.closesAt <= now) data.closesAt = null;
+  } else if (to === "CLOSED") {
+    if (p.closesAt) data.closesAt = null;
+    if (p.opensAt && p.opensAt <= now) data.opensAt = null;
+  }
+  return data;
+}
+
 /** Bewerbungen, die auf die Höchstzahl zählen (eingereicht, nicht zurückgezogen). */
 export const countingWhere = (positionId: string) => ({ positionId, submittedAt: { not: null }, status: { not: "WITHDRAWN" as const } });
 
@@ -47,6 +65,7 @@ export async function applyPositionSchedule(db: PrismaClient, now = new Date()) 
     select: { id: true, title: true, slug: true, status: true, opensAt: true, closesAt: true },
   });
   const due = dueTransitions(positions as ScheduledPosition[], now);
+  const logIds: string[] = [];
   for (const t of due) {
     const p = positions.find((x) => x.id === t.id)!;
     // Datum verbraucht → zurücksetzen, sonst würde die Regel morgen erneut greifen
@@ -56,9 +75,11 @@ export async function applyPositionSchedule(db: PrismaClient, now = new Date()) 
     });
     if (!res.count) continue; // andere Instanz war schneller
     await db.auditLog.create({ data: { action: "position.auto", targetType: "position", targetId: t.id, meta: { to: t.to, reason: t.reason } } });
-    await botLog(t.to === "OPEN" ? `🟢 **${p.title}** ist jetzt automatisch geöffnet (Startdatum erreicht).` : `🔴 **${p.title}** wurde automatisch geschlossen (Enddatum erreicht).`);
+    const log = await botLog(t.to === "OPEN" ? `🟢 **${p.title}** ist jetzt automatisch geöffnet (Startdatum erreicht).` : `🔴 **${p.title}** wurde automatisch geschlossen (Enddatum erreicht).`);
+    if (log) logIds.push(log);
     if (t.to === "OPEN") await notifyPositionOpened(db, p);
   }
+  if (logIds.length) await runOutboxAll(logIds).catch(() => {});
   if (due.length) await refreshJobs(db);
   return due;
 }
@@ -69,7 +90,8 @@ export async function closeIfFull(db: PrismaClient, positionId: string) {
   if (!p || p.status !== "OPEN" || !p.maxApplications) return false;
   const count = await db.application.count({ where: countingWhere(p.id) });
   if (count < p.maxApplications) return false;
-  const res = await db.position.updateMany({ where: { id: p.id, status: "OPEN" }, data: { status: "CLOSED" } });
+  // Voll → auch geplante Daten leeren, sonst öffnet der Cron die volle Stelle am Startdatum wieder
+  const res = await db.position.updateMany({ where: { id: p.id, status: "OPEN" }, data: { status: "CLOSED", opensAt: null, closesAt: null } });
   if (!res.count) return false;
   await db.auditLog.create({ data: { action: "position.auto", targetType: "position", targetId: p.id, meta: { to: "CLOSED", reason: "max", count } } });
   const job = await botLog(`🔴 **${p.title}** wurde automatisch geschlossen – ${count} von ${p.maxApplications} Bewerbungen erreicht.`, { tone: "warn" });
@@ -94,7 +116,8 @@ export async function notifyPositionOpened(db: PrismaClient, position: { id: str
     const job = await enqueue({ type: "DM", discordUserId: u.discordId, purpose: "notify", message });
     ids.push(job.id);
   }
-  await runOutbox({ ids: ids.slice(0, 20) }).catch(() => {});
+  // Alle DMs gleich zustellen (in Paketen) – nicht erst beim nächtlichen Cron
+  await runOutboxAll(ids).catch(() => {});
   return ids.length;
 }
 

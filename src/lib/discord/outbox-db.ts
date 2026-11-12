@@ -139,6 +139,16 @@ export async function runOutbox(opts: { ids?: string[]; limit?: number } = {}) {
 
 const CONCURRENCY = 5;
 
+/** Bestimmte Jobs vollständig zustellen – in Paketen, statt nur die ersten 20. */
+export async function runOutboxAll(ids: string[], chunk = 20) {
+  let done = 0;
+  for (let i = 0; i < ids.length; i += chunk) {
+    const part = ids.slice(i, i + chunk);
+    done += await runOutbox({ ids: part, limit: part.length });
+  }
+  return done;
+}
+
 /**
  * Sofort zustellen und dabei kurz warten (Nachricht ist dann direkt „zugestellt“).
  * Dauert es länger als `waitMs`, läuft der Rest nach der Antwort weiter.
