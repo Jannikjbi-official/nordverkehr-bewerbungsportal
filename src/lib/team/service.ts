@@ -111,6 +111,9 @@ export async function changeStatus(opts: {
       jobIds.push(job.id);
     }
   });
+  // Termin-Abgleich (Discord-Event, Erinnerung an den Betreuer)
+  const { syncInterviewLater } = await import("@/lib/team/interview-sync");
+  await syncInterviewLater(app.id);
   return { jobIds };
 }
 
@@ -171,6 +174,9 @@ export async function setClaim(opts: { applicationId: string; actor: Actor; acti
   await db.auditLog.create({
     data: { actorId: opts.actor.id, action: `application.${opts.action}`, targetType: "application", targetId: app.id, meta: { publicId: app.publicId } },
   });
+  // Neuer Betreuer → Erinnerung vor dem Gespräch geht an ihn
+  const { syncInterviewLater } = await import("@/lib/team/interview-sync");
+  await syncInterviewLater(app.id);
   return { jobIds };
 }
 

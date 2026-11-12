@@ -34,6 +34,8 @@ export async function POST(req: Request) {
   const parsed = bodySchema.safeParse((() => { try { return JSON.parse(raw); } catch { return null; } })());
   if (!parsed.success) return Response.json({ error: "Ungültige Anfrage." }, { status: 400 });
   const input = parsed.data;
+  const { canAccessApplication, viewerOf } = await import("@/lib/team/visibility");
+  if (!(await canAccessApplication(viewerOf(ctx.user, ctx.access), input.applicationId))) return Response.json({ error: "Für diese Stelle bist du nicht zuständig." }, { status: 403 });
   const settings = await getSettings();
 
   let prompt: string;

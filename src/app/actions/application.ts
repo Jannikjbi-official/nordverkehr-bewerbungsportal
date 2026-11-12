@@ -240,6 +240,8 @@ export async function withdrawApplicationAction(applicationId: string, reason?: 
   ]);
   const { releaseFutureSlot } = await import("@/lib/team/slots");
   await releaseFutureSlot(db, app.id);
+  const { syncInterviewLater } = await import("@/lib/team/interview-sync");
+  await syncInterviewLater(app.id);
   const { postToThread } = await import("@/lib/discord/threads");
   const threadJob = await postToThread(app, "↩️ **Zurückgezogen** vom Bewerber. Thread wird archiviert.", { archive: true, kind: "final" });
   if (threadJob) await deliverNow([threadJob]);
@@ -408,4 +410,17 @@ export async function amendAnswersAction(input: z.input<typeof amendSchema>): Pr
   });
   revalidatePath(`/dashboard/${app.id}`);
   return { ok: true, data: { changed: changes.length } };
+}
+
+/** Teammitglieder: geheimen Kalender-Link erzeugen (alter Link wird ungültig). */
+export async function createCalendarTokenAction(): Promise<ActionResult<{ url: string }>> {
+  const user = await requireUser();
+  const me = await db.user.findUnique({ where: { id: user.id }, select: { isTeam: true } });
+  if (!me?.isTeam) return { ok: false, error: "Nur für das Team." };
+  const { newCalendarToken } = await import("@/lib/team/calendar");
+  const token = newCalendarToken();
+  await db.user.update({ where: { id: user.id }, data: { calendarToken: token } });
+  await audit("user.calendar", { actorId: user.id, targetType: "user", targetId: user.id });
+  revalidatePath("/konto");
+  return { ok: true, data: { url: `${publicEnv.appUrl}/api/calendar/${token}.ics` } };
 }

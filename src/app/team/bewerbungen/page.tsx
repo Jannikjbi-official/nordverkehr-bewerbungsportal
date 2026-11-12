@@ -12,6 +12,7 @@ import { TestPill } from "@/components/team/TestPill";
 import { testScenarioLabel } from "@/lib/setup/test-applications";
 import { requireTeam } from "@/lib/auth/session";
 import { db } from "@/lib/db";
+import { viewerOf } from "@/lib/team/visibility";
 import { PAGE_SIZE, filtersToQuery, listApplications, parseFilters, voteSummary } from "@/lib/team/queries";
 import type { ApplicationFlag } from "@/lib/applications/flags";
 
@@ -26,11 +27,12 @@ export default function ApplicationsPage({ searchParams }: PageProps<"/team/bewe
 }
 
 async function Content({ searchParams }: Pick<PageProps<"/team/bewerbungen">, "searchParams">) {
-  await requireTeam();
+  const { user, access } = await requireTeam();
+  const viewer = viewerOf(user, access);
   const f = parseFilters(await searchParams);
   const [positions, { rows, total, hits }] = await Promise.all([
     db.position.findMany({ orderBy: { sortOrder: "asc" }, select: { slug: true, title: true } }),
-    listApplications(f, { all: f.view === "board" }),
+    listApplications(f, { all: f.view === "board", viewer }),
   ]);
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { TAG_KEYS, type TagKey } from "@/lib/ai/tags";
 import { searchAnswers, type AnswerHit } from "@/lib/team/answer-search";
+import { hiddenPositionIds, type Viewer } from "@/lib/team/visibility";
 import type { Prisma } from "@prisma/client";
 import type { ApplicationStatus } from "@prisma/client";
 
@@ -86,8 +87,13 @@ export const applicationListInclude = {
   _count: { select: { comments: true, messages: { where: { direction: "APPLICANT_TO_TEAM", readAt: null } } } },
 } satisfies Prisma.ApplicationInclude;
 
-export async function listApplications(f: ApplicationFilters, opts: { all?: boolean } = {}) {
+export async function listApplications(f: ApplicationFilters, opts: { all?: boolean; viewer?: Viewer } = {}) {
   const where = buildWhere(f);
+  // Zuständigkeit pro Stelle: nur Stellen, für die die Person zuständig ist
+  if (opts.viewer) {
+    const hidden = await hiddenPositionIds(opts.viewer);
+    if (hidden.length) where.positionId = { notIn: hidden };
+  }
   // Suche in den Antworten: nur Bewerbungen mit Treffer, Ausschnitte für die Liste
   let hits: Map<string, AnswerHit[]> | null = null;
   if (f.text) {

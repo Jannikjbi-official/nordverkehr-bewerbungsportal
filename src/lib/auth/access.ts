@@ -26,6 +26,8 @@ export interface AccessState {
   isAdmin: boolean;
   guildJoinedAt: Date | null;
   roleCheckedAt: Date | null;
+  /** Discord-Rollen (für Zuständigkeit pro Stelle) – nur beim Abgleich mit Discord gesetzt */
+  roleIds?: string[];
 }
 
 export interface Access extends AccessState {
@@ -92,8 +94,8 @@ export async function resolveAccess(
   }
 
   const state: AccessState = member
-    ? { inGuild: true, ...evaluateRoles(member.roles, config), guildJoinedAt: member.joinedAt, roleCheckedAt: now }
-    : { ...DENIED, guildJoinedAt: null, roleCheckedAt: now };
+    ? { inGuild: true, ...evaluateRoles(member.roles, config), guildJoinedAt: member.joinedAt, roleCheckedAt: now, roleIds: [...member.roles] }
+    : { ...DENIED, guildJoinedAt: null, roleCheckedAt: now, roleIds: [] };
 
   await deps.persist(subject.id, state);
   return { ...state, source: "discord" };

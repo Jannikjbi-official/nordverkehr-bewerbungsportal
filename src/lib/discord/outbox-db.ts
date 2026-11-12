@@ -75,7 +75,7 @@ export const prismaOutboxStore: OutboxStore = {
 
 export async function enqueue(
   payload: OutboxPayload,
-  opts: { messageId?: string; applicationId?: string; tx?: Prisma.TransactionClient } = {},
+  opts: { messageId?: string; applicationId?: string; tx?: Prisma.TransactionClient; runAt?: Date } = {},
 ) {
   const client = opts.tx ?? db;
   // Nachtruhe: DMs an Bewerber / Team-Posts erst zum Ende der Nachtruhe
@@ -88,7 +88,8 @@ export async function enqueue(
       payload: payload as unknown as Prisma.InputJsonValue,
       messageId: opts.messageId,
       applicationId: opts.applicationId,
-      ...(holdUntil ? { runAt: holdUntil } : {}),
+      // Geplanter Zeitpunkt (z. B. Erinnerung vor dem Gespräch); Nachtruhe kann ihn nur nach hinten schieben
+      ...(holdUntil || opts.runAt ? { runAt: new Date(Math.max(holdUntil?.getTime() ?? 0, opts.runAt?.getTime() ?? 0)) } : {}),
     },
     select: { id: true },
   });

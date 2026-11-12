@@ -28,6 +28,7 @@ import { InterviewProtocol } from "@/components/team/InterviewProtocol";
 import { buildProtocol, protocolQuestions } from "@/lib/team/interview";
 import { testScenarioLabel } from "@/lib/setup/test-applications";
 import { isHeldNow } from "@/lib/night";
+import { canSeePosition, viewerOf } from "@/lib/team/visibility";
 import { RatingPanel } from "@/components/team/RatingPanel";
 import { OnboardingPanel } from "@/components/team/OnboardingPanel";
 import { onboardingItems, readOnboarding } from "@/lib/team/onboarding";
@@ -86,6 +87,8 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
     },
   });
   if (!app || app.status === "DRAFT") notFound();
+  // Zuständigkeit pro Stelle
+  if (!canSeePosition(viewerOf(me, access), app.position)) notFound();
   const ackBy = app.withdrawAckById ? await db.user.findUnique({ where: { id: app.withdrawAckById }, select: { globalName: true, username: true } }) : null;
 
   const [settings, templates, vars, otherApps, activeBan, applicantAccess, bot] = await Promise.all([

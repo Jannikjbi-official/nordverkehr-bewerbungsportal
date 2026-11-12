@@ -11,7 +11,7 @@ import { classifyDiscordError, type DiscordApi } from "@/lib/discord/client";
 import { isTestDiscordId } from "@/lib/discord/test-ids";
 
 /** "notify" = Rundmail (z. B. neue Stelle) – Fehler werden nicht einzeln geloggt */
-export type DmPurpose = "confirmation" | "team_message" | "status" | "reminder" | "notify" | "autoreply" | "digest" | "draft_reminder";
+export type DmPurpose = "confirmation" | "team_message" | "status" | "reminder" | "notify" | "autoreply" | "digest" | "draft_reminder" | "team_reminder";
 
 export type OutboxPayload =
   | {

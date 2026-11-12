@@ -68,6 +68,8 @@ export async function bookSlot(db: PrismaClient, opts: { userId: string; applica
     return target;
   });
 
+  const { syncInterviewLater } = await import("@/lib/team/interview-sync");
+  await syncInterviewLater(app.id);
   const job = await botLog(
     `📅 ${esc(app.user.globalName || app.user.username)} hat für **${app.publicId}** (${app.position.title}) ${app.slot ? "umgebucht auf" : "den Termin"} ${discordTime(slot.startsAt, "f")} gebucht`,
     { applicationId: app.id, url: `${publicEnv.appUrl}/team/bewerbungen/${app.id}` },

@@ -3,6 +3,7 @@ import { listApplications, parseFilters, voteSummary } from "@/lib/team/queries"
 import { audit } from "@/lib/audit";
 import { STATUS_LABEL } from "@/lib/applications/status";
 import { toCsv } from "@/lib/csv";
+import { viewerOf } from "@/lib/team/visibility";
 
 /** CSV-Export der gefilterten Bewerbungen (ohne Antworttexte – Datensparsamkeit). */
 export async function GET(req: Request) {
@@ -19,7 +20,7 @@ export async function GET(req: Request) {
     sp[key] = all.length > 1 ? all : all[0];
   }
   const filters = parseFilters(sp);
-  const { rows } = await listApplications(filters, { all: true });
+  const { rows } = await listApplications(filters, { all: true, viewer: viewerOf(ctx.user, ctx.access) });
 
   const csv = toCsv(
     ["Bewerbungs-ID", "Position", "Status", "Discord-Name", "Anzeigename", "Eingang", "Entschieden", "Pro", "Contra", "Enthaltung"],

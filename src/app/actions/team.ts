@@ -38,9 +38,13 @@ const statusSchema = z.object({
 });
 
 export async function changeStatusAction(input: z.input<typeof statusSchema>): Promise<ActionResult> {
-  const { user } = await requireTeam();
+  const { user, access } = await requireTeam();
   const p = statusSchema.safeParse(input);
   if (!p.success) return { ok: false, error: "Ungültige Eingabe." };
+  {
+    const denied = await guardApp(user, access, p.data.applicationId);
+    if (denied) return denied;
+  }
   try {
     const { jobIds } = await changeStatus({ ...p.data, actorId: user.id });
     await kick(jobIds);
@@ -59,9 +63,13 @@ const interviewSchema = z.object({
 });
 
 export async function setInterviewAction(input: z.input<typeof interviewSchema>): Promise<ActionResult> {
-  const { user } = await requireTeam();
+  const { user, access } = await requireTeam();
   const p = interviewSchema.safeParse(input);
   if (!p.success) return { ok: false, error: "Bitte ein gültiges Datum wählen." };
+  {
+    const denied = await guardApp(user, access, p.data.applicationId);
+    if (denied) return denied;
+  }
   const app = await db.application.findUnique({ where: { id: p.data.applicationId } });
   if (!app || app.status === "DRAFT") return { ok: false, error: "Bewerbung nicht gefunden." };
   const at = p.data.at ? new Date(p.data.at) : null;
@@ -78,13 +86,19 @@ export async function setInterviewAction(input: z.input<typeof interviewSchema>)
     await changeStatus({ applicationId: app.id, to: "INTERVIEW", actorId: user.id, note: "Gesprächstermin festgelegt", keepInterview: true });
   }
   await audit("application.interview", { actorId: user.id, targetType: "application", targetId: app.id, meta: { at: p.data.at } });
+  const { syncInterviewLater } = await import("@/lib/team/interview-sync");
+  await syncInterviewLater(app.id);
   revalidatePath(`/team/bewerbungen/${app.id}`);
   return { ok: true };
 }
 
 export async function voteAction(applicationId: string, value: "PRO" | "CONTRA" | "ABSTAIN" | null): Promise<ActionResult> {
-  const { user } = await requireTeam();
+  const { user, access } = await requireTeam();
   if (!id.safeParse(applicationId).success) return { ok: false, error: "Ungültig." };
+  {
+    const denied = await guardApp(user, access, applicationId);
+    if (denied) return denied;
+  }
   if (value === null) {
     await db.vote.deleteMany({ where: { applicationId, userId: user.id } });
   } else {
@@ -149,8 +163,12 @@ export async function deleteSlotAction(slotId: string): Promise<ActionResult> {
 
 /** Einarbeitungs-Punkt abhaken / zurücknehmen. */
 export async function toggleOnboardingAction(applicationId: string, item: string, done: boolean): Promise<ActionResult> {
-  const { user } = await requireTeam();
+  const { user, access } = await requireTeam();
   if (!id.safeParse(applicationId).success || typeof item !== "string" || item.length > 200) return { ok: false, error: "Ungültig." };
+  {
+    const denied = await guardApp(user, access, applicationId);
+    if (denied) return denied;
+  }
   const { readOnboarding } = await import("@/lib/team/onboarding");
   const app = await db.application.findUnique({ where: { id: applicationId }, select: { status: true, onboarding: true } });
   if (!app || app.status !== "ACCEPTED") return { ok: false, error: "Nur bei angenommenen Bewerbungen." };
@@ -165,7 +183,11 @@ export async function toggleOnboardingAction(applicationId: string, item: string
 
 /** Probezeit-Ende setzen oder entfernen. */
 export async function setProbationAction(applicationId: string, until: string | null): Promise<ActionResult> {
-  const { user } = await requireTeam();
+  const { user, access } = await requireTeam();
+  {
+    const denied = await guardApp(user, access, applicationId);
+    if (denied) return denied;
+  }
   if (!id.safeParse(applicationId).success) return { ok: false, error: "Ungültig." };
   const date = until ? new Date(until) : null;
   if (date && Number.isNaN(date.getTime())) return { ok: false, error: "Ungültiges Datum." };
@@ -179,9 +201,13 @@ const ratingSchema = z.object({ applicationId: id, scores: z.record(z.string(), 
 
 /** Bewertungsbogen speichern (leere Bewertung = löschen). */
 export async function rateAction(input: z.input<typeof ratingSchema>): Promise<ActionResult> {
-  const { user } = await requireTeam();
+  const { user, access } = await requireTeam();
   const p = ratingSchema.safeParse(input);
   if (!p.success) return { ok: false, error: "Ungültige Bewertung." };
+  {
+    const denied = await guardApp(user, access, p.data.applicationId);
+    if (denied) return denied;
+  }
   const { cleanScores } = await import("@/lib/team/ratings");
   const scores = cleanScores(p.data.scores);
   const note = p.data.note || null;
@@ -203,9 +229,13 @@ export async function rateAction(input: z.input<typeof ratingSchema>): Promise<A
 const commentSchema = z.object({ applicationId: id, body: z.string().trim().min(1).max(3000) });
 
 export async function addCommentAction(input: z.input<typeof commentSchema>): Promise<ActionResult> {
-  const { user } = await requireTeam();
+  const { user, access } = await requireTeam();
   const p = commentSchema.safeParse(input);
   if (!p.success) return { ok: false, error: "Kommentar ist leer oder zu lang." };
+  {
+    const denied = await guardApp(user, access, p.data.applicationId);
+    if (denied) return denied;
+  }
   await db.comment.create({ data: { applicationId: p.data.applicationId, authorId: user.id, body: p.data.body } });
   await audit("application.comment", { actorId: user.id, targetType: "application", targetId: p.data.applicationId });
   // In den Discord-Thread der Bewerbung spiegeln (falls eingerichtet)
@@ -245,9 +275,13 @@ const messageSchema = z.object({
 });
 
 export async function sendMessageAction(input: z.input<typeof messageSchema>): Promise<ActionResult<{ missing: string[] }>> {
-  const { user } = await requireTeam();
+  const { user, access } = await requireTeam();
   const p = messageSchema.safeParse(input);
   if (!p.success) return { ok: false, error: "Nachricht ist leer oder zu lang (max. 3800 Zeichen)." };
+  {
+    const denied = await guardApp(user, access, p.data.applicationId);
+    if (denied) return denied;
+  }
   const rl = await rateLimit(`team-msg:${user.id}`, 60, 3600);
   if (!rl.ok) return { ok: false, error: "Zu viele Nachrichten in kurzer Zeit." };
   try {
@@ -281,7 +315,11 @@ export async function sendMessageAction(input: z.input<typeof messageSchema>): P
 }
 
 export async function claimAction(applicationId: string, action: "claim" | "release"): Promise<ActionResult> {
-  const { user } = await requireTeam();
+  const { user, access } = await requireTeam();
+  {
+    const denied = await guardApp(user, access, applicationId);
+    if (denied) return denied;
+  }
   if (!id.safeParse(applicationId).success || !["claim", "release"].includes(action)) return { ok: false, error: "Ungültig." };
   try {
     const r = await setClaim({ applicationId, actor: user, action });
@@ -422,7 +460,11 @@ export async function deleteApplicationAction(applicationId: string): Promise<Ac
 
 /** KI-Einordnung manuell (neu) anstoßen. */
 export async function retagAction(applicationId: string): Promise<ActionResult<{ tags: string[] }>> {
-  const { user } = await requireTeam();
+  const { user, access } = await requireTeam();
+  {
+    const denied = await guardApp(user, access, applicationId);
+    if (denied) return denied;
+  }
   if (!id.safeParse(applicationId).success) return { ok: false, error: "Ungültig." };
   const { getSettings } = await import("@/lib/settings");
   const { assertAiAllowed, AiError } = await import("@/lib/ai/service");
@@ -455,8 +497,12 @@ export async function overrideAiConsentAction(applicationId: string): Promise<Ac
 
 /** KI-Punkte (neu) berechnen. */
 export async function rescoreAction(applicationId: string): Promise<ActionResult> {
-  const { user } = await requireTeam();
+  const { user, access } = await requireTeam();
   if (!id.safeParse(applicationId).success) return { ok: false, error: "Ungültig." };
+  {
+    const denied = await guardApp(user, access, applicationId);
+    if (denied) return denied;
+  }
   const { getSettings } = await import("@/lib/settings");
   const { assertAiAllowed, AiError } = await import("@/lib/ai/service");
   const { scoreApplication } = await import("@/lib/ai/scoring");
@@ -474,8 +520,12 @@ export async function rescoreAction(applicationId: string): Promise<ActionResult
 
 /** Rückzug während der Bearbeitung bestätigen (raus aus dem Dashboard, Bewerber wird informiert). */
 export async function acknowledgeWithdrawalAction(applicationId: string): Promise<ActionResult> {
-  const { user } = await requireTeam();
+  const { user, access } = await requireTeam();
   if (!id.safeParse(applicationId).success) return { ok: false, error: "Ungültig." };
+  {
+    const denied = await guardApp(user, access, applicationId);
+    if (denied) return denied;
+  }
   try {
     const r = await acknowledgeWithdrawal({ applicationId, actor: user });
     await kick(r.jobIds);
@@ -499,7 +549,11 @@ async function protocolApp(applicationId: string) {
 
 /** Frage im Protokoll abhaken / zurücknehmen. */
 export async function toggleInterviewCheckAction(applicationId: string, question: string, done: boolean): Promise<ActionResult> {
-  const { user } = await requireTeam();
+  const { user, access } = await requireTeam();
+  {
+    const denied = await guardApp(user, access, applicationId);
+    if (denied) return denied;
+  }
   if (!(await protocolApp(applicationId)) || !protocolQuestion.min(1).safeParse(question).success) return { ok: false, error: "Ungültig." };
   if (done) {
     try {
@@ -524,9 +578,13 @@ const noteSchema = z.object({ applicationId: id, question: protocolQuestion, bod
 
 /** Notiz zu einer Frage (oder zum Gesamtfazit, question = "") hinzufügen. */
 export async function addInterviewNoteAction(input: z.input<typeof noteSchema>): Promise<ActionResult> {
-  const { user } = await requireTeam();
+  const { user, access } = await requireTeam();
   const p = noteSchema.safeParse(input);
   if (!p.success || !(await protocolApp(p.data.applicationId))) return { ok: false, error: "Notiz ist leer oder zu lang." };
+  {
+    const denied = await guardApp(user, access, p.data.applicationId);
+    if (denied) return denied;
+  }
   const note = await db.interviewNote.create({ data: { applicationId: p.data.applicationId, question: p.data.question, body: p.data.body, authorId: user.id } });
   await audit("application.protocol", { actorId: user.id, targetType: "application", targetId: p.data.applicationId, meta: { note: note.id, fazit: p.data.question === "" } });
   revalidatePath(`/team/bewerbungen/${p.data.applicationId}`);
@@ -548,7 +606,11 @@ export async function deleteInterviewNoteAction(noteId: string): Promise<ActionR
 
 /** Eigene Fragen für diese Bewerbung ergänzen (eine pro Zeile, z. B. aus den KI-Gesprächsfragen). */
 export async function addInterviewQuestionsAction(applicationId: string, text: string): Promise<ActionResult<{ added: number }>> {
-  const { user } = await requireTeam();
+  const { user, access } = await requireTeam();
+  {
+    const denied = await guardApp(user, access, applicationId);
+    if (denied) return denied;
+  }
   if (typeof text !== "string" || text.length > 5000) return { ok: false, error: "Zu lang." };
   const app = await protocolApp(applicationId);
   if (!app) return { ok: false, error: "Bewerbung nicht gefunden." };
@@ -571,8 +633,12 @@ export async function addInterviewQuestionsAction(applicationId: string, text: s
  * (Portal + DM) und kann neu buchen; ab dem zweiten Mal erscheint ein Hinweis.
  */
 export async function markNoShowAction(applicationId: string): Promise<ActionResult> {
-  const { user } = await requireTeam();
+  const { user, access } = await requireTeam();
   if (!id.safeParse(applicationId).success) return { ok: false, error: "Ungültig." };
+  {
+    const denied = await guardApp(user, access, applicationId);
+    if (denied) return denied;
+  }
   const app = await db.application.findUnique({ where: { id: applicationId }, include: { user: true, position: { select: { title: true } } } });
   if (!app || app.status !== "INTERVIEW" || !app.interviewAt) return { ok: false, error: "Nur bei einem Gespräch mit Termin." };
   if (app.interviewAt.getTime() > Date.now()) return { ok: false, error: "Der Termin liegt noch in der Zukunft." };
@@ -615,6 +681,14 @@ export async function markNoShowAction(applicationId: string): Promise<ActionRes
     return [dm.id, ...(log ? [log] : [])];
   });
   await kick(jobIds);
+  const { syncInterviewLater } = await import("@/lib/team/interview-sync");
+  await syncInterviewLater(app.id);
   revalidatePath(`/team/bewerbungen/${app.id}`);
   return { ok: true };
+}
+
+/** Zuständigkeit pro Stelle: Zugriff auf die Bewerbung? (Admins immer) */
+async function guardApp(user: { id: string; roleIds?: string[] }, access: { isAdmin: boolean } | null | undefined, applicationId: string): Promise<{ ok: false; error: string } | null> {
+  const { canAccessApplication, viewerOf } = await import("@/lib/team/visibility");
+  return (await canAccessApplication(viewerOf(user, access), applicationId)) ? null : { ok: false, error: "Für diese Stelle bist du nicht zuständig." };
 }

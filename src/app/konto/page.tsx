@@ -6,6 +6,8 @@ import { DeleteAccount, SignOutEverywhere } from "@/components/dashboard/Account
 import { requireUser } from "@/lib/auth/session";
 import { NotifyToggle } from "@/components/NotifyToggle";
 import { DigestToggle } from "@/components/DigestToggle";
+import { CalendarLink } from "@/components/CalendarLink";
+import { publicEnv } from "@/lib/env";
 import { getSettings } from "@/lib/settings";
 import { db } from "@/lib/db";
 
@@ -31,7 +33,7 @@ async function Account() {
   const [apps, messages, me, settings] = await Promise.all([
     db.application.count({ where: { userId: user.id } }),
     db.message.count({ where: { application: { userId: user.id } } }),
-    db.user.findUnique({ where: { id: user.id }, select: { isTeam: true, digestOptOut: true } }),
+    db.user.findUnique({ where: { id: user.id }, select: { isTeam: true, digestOptOut: true, calendarToken: true } }),
     getSettings(),
   ]);
   return (
@@ -73,6 +75,8 @@ async function Account() {
           <>
             <div className="nv-divider" />
             <DigestToggle on={!me.digestOptOut} globallyOff={!settings["team.personalDigestEnabled"]} />
+            <div className="nv-divider" />
+            <CalendarLink url={me.calendarToken ? `${publicEnv.appUrl}/api/calendar/${me.calendarToken}.ics` : null} />
           </>
         )}
       </section>

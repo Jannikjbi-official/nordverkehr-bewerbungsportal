@@ -7,6 +7,7 @@ import { publishedEntries, versionLabel } from "@/lib/changelog";
 import { DiscordMarkdown } from "@/components/DiscordMarkdown";
 import { AckWithdrawalButton } from "@/components/team/AckWithdrawalButton";
 import { requireTeam } from "@/lib/auth/session";
+import { viewerOf, visiblePositionFilter } from "@/lib/team/visibility";
 import { db } from "@/lib/db";
 import { ACTIVE_STATUSES, FOLLOW_UP_DAYS } from "@/lib/applications/status";
 import { daysAgo } from "@/lib/time";
@@ -24,30 +25,32 @@ async function Overview({ searchParams }: Pick<PageProps<"/team">, "searchParams
   const { user, access } = await requireTeam();
   const sp = await searchParams;
   const weekAgo = daysAgo(7);
+  // Zuständigkeit pro Stelle: nur eigene Stellen zählen/zeigen
+  const vis = await visiblePositionFilter(viewerOf(user, access));
 
   const [open, newWeek, interviews, unreadReplies, dmFailed, needsMyVote, recent, withdrawn] = await Promise.all([
-    db.application.count({ where: { status: { in: ACTIVE_STATUSES } } }),
-    db.application.count({ where: { submittedAt: { gte: weekAgo } } }),
+    db.application.count({ where: { ...vis, status: { in: ACTIVE_STATUSES } } }),
+    db.application.count({ where: { ...vis, submittedAt: { gte: weekAgo } } }),
     db.application.findMany({
-      where: { status: "INTERVIEW", interviewAt: { gte: daysAgo(1 / 24) } },
+      where: { ...vis, status: "INTERVIEW", interviewAt: { gte: daysAgo(1 / 24) } },
       include: { user: true, position: true },
       orderBy: { interviewAt: "asc" },
       take: 5,
     }),
     db.application.findMany({
-      where: { messages: { some: { direction: "APPLICANT_TO_TEAM", readAt: null } } },
+      where: { ...vis, messages: { some: { direction: "APPLICANT_TO_TEAM", readAt: null } } },
       include: { user: true, position: true },
       take: 5,
     }),
-    db.application.count({ where: { status: { in: ACTIVE_STATUSES }, confirmationDmStatus: { in: ["DM_CLOSED", "FAILED"] } } }),
+    db.application.count({ where: { ...vis, status: { in: ACTIVE_STATUSES }, confirmationDmStatus: { in: ["DM_CLOSED", "FAILED"] } } }),
     db.application.findMany({
-      where: { status: { in: ACTIVE_STATUSES }, votes: { none: { userId: user.id } } },
+      where: { ...vis, status: { in: ACTIVE_STATUSES }, votes: { none: { userId: user.id } } },
       include: { user: true, position: true },
       orderBy: { submittedAt: "asc" },
       take: 6,
     }),
     db.application.findMany({
-      where: { status: { not: "DRAFT" } },
+      where: { ...vis, status: { not: "DRAFT" } },
       include: { user: true, position: true },
       orderBy: { submittedAt: "desc" },
       take: 6,

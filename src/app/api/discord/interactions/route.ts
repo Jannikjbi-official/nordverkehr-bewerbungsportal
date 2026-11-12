@@ -60,8 +60,14 @@ export async function POST(req: Request) {
   }
 
   if (action.kind === "claim") {
-    const app = await db.application.findUnique({ where: { id: action.applicationId }, select: { id: true, publicId: true, status: true, claimedById: true, claimedBy: { select: { globalName: true, username: true } } } });
+    const app = await db.application.findUnique({
+      where: { id: action.applicationId },
+      select: { id: true, publicId: true, status: true, claimedById: true, claimedBy: { select: { globalName: true, username: true } }, position: { select: { teamRoleIds: true } } },
+    });
     if (!app || app.status === "DRAFT") return Response.json(ephemeral("Die Bewerbung gibt es nicht mehr."));
+    // Zuständigkeit pro Stelle (Rollen direkt aus der signierten Interaktion)
+    const { canSeePosition } = await import("@/lib/team/visibility");
+    if (!canSeePosition({ isAdmin, roleIds: i.member.roles }, app.position)) return Response.json(ephemeral("Für diese Stelle bist du nicht zuständig."));
     const link = `${publicEnv.appUrl}/team/bewerbungen/${app.id}`;
     if (app.claimedById === user.id) return Response.json(ephemeral(`Du betreust **${app.publicId}** schon. ${link}`));
     if (app.claimedById) {

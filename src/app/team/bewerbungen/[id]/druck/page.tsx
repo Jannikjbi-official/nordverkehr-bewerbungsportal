@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { buildProtocol, protocolQuestions } from "@/lib/team/interview";
 import { getSettings } from "@/lib/settings";
+import { canSeePosition, viewerOf } from "@/lib/team/visibility";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -27,7 +28,7 @@ export default function PrintPage(props: PageProps<"/team/bewerbungen/[id]/druck
 }
 
 async function PrintView({ params, searchParams }: PageProps<"/team/bewerbungen/[id]/druck">) {
-  const { user } = await requireTeam();
+  const { user, access } = await requireTeam();
   const { id } = await params;
   const sp = await searchParams;
   const internal = sp.intern !== "0";
@@ -49,6 +50,7 @@ async function PrintView({ params, searchParams }: PageProps<"/team/bewerbungen/
     },
   });
   if (!app || app.status === "DRAFT") notFound();
+  if (!canSeePosition(viewerOf(user, access), app.position)) notFound();
   const protocol = buildProtocol(
     protocolQuestions(app.position.interviewQuestions, (await getSettings())["interview.defaultQuestions"], app.interviewExtraQuestions),
     app.interviewExtraQuestions,
