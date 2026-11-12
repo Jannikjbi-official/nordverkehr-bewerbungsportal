@@ -51,7 +51,7 @@ export default function HomePage() {
           <Suspense fallback={<span className="nv-pill">Mindestalter …</span>}>
             <MinAgePill />
           </Suspense>
-          <span className="nv-pill">Ehrenamtlich</span>
+          <span className="nv-pill">Community-Projekt · ehrenamtlich</span>
           <span className="nv-pill">Gespräch &amp; Support auf Discord</span>
           <span className="nv-pill">Hamburg RP</span>
         </div>

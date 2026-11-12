@@ -168,7 +168,7 @@ export const CONFIRMATIONS = [
   },
   {
     key: "unpaid",
-    label: "Mir ist klar, dass die Mitarbeit im Team ehrenamtlich ist – es gibt keine Bezahlung.",
+    label: "Mir ist klar, dass Nordverkehr ein Hobby- und Community-Projekt ist und die Mitarbeit im Team ehrenamtlich ist – derzeit gibt es keine Bezahlung.",
   },
   {
     key: "truth",

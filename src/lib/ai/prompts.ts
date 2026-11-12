@@ -91,7 +91,7 @@ export function buildAutoReplyPrompt(ctx: AutoReplyContext, message: string) {
 - Übliche Bearbeitungszeit: ${ctx.processingTime}
 - Gesprächstermin: ${ctx.interview ?? "noch keiner festgelegt"}
 - Bewerbungsgespräch und Support laufen über Discord (Sprachkanal), funktionierendes Mikrofon nötig; TeamSpeak mit SaltyChat nur für Ingame-Voice
-- Teamarbeit ist ehrenamtlich – es gibt keine Bezahlung
+- Nordverkehr ist ein Hobby-/Community-Projekt, Teamarbeit ist ehrenamtlich und derzeit unbezahlt; ob es später einmal Bezahlung gibt, ist nicht absehbar – nichts versprechen
 - Mindestalter Team: ${ctx.minAge} Jahre
 - Regelwerk: https://nordverkehr.xyz/regeln
 - Start auf GTA 5, danach Umzug auf GTA 6

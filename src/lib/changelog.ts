@@ -90,7 +90,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: "2026-11-12",
     items: [
       { kind: "besser", text: "**Gespräch auf Discord** – Bewerbungsgespräche und Support laufen über Discord, TeamSpeak & SaltyChat nur fürs Ingame-Voice. Stellenseite, Termine, Erinnerungen und Bausteine sind angepasst." },
-      { kind: "besser", text: "**Ehrenamtlich** – auf jeder Stellenseite steht „keine Bezahlung“, beim Absenden wird es einmal bestätigt." },
+      { kind: "besser", text: "**Ehrenamtlich** – Nordverkehr ist ein Hobby- und Community-Projekt: Auf jeder Stellenseite steht „derzeit keine Bezahlung“, beim Absenden wird es einmal bestätigt." },
       { kind: "neu", text: "**Phase 2 erst ab 3 Sternen** – ins Bewerbungsgespräch geht es nur mit einem Team-Schnitt von mindestens 3 Sternen im Bewertungsbogen. Grenze im Admin-Bereich einstellbar." },
       { kind: "neu", text: "**Gespräch absagen** – Bewerber sagen mit „Ich kann nicht“ direkt in der Erinnerungs-DM oder im Portal ab, das Team bekommt Bescheid." },
       { kind: "neu", text: "**/offen und /claim** – offene Bewerbungen deiner Stellen sehen und übernehmen, direkt in Discord." },

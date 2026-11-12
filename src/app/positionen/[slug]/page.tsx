@@ -101,7 +101,7 @@ async function PositionDetail({ params }: Pick<PageProps<"/positionen/[slug]">, 
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-muted">Vergütung</dt>
-                <dd>Ehrenamtlich, keine Bezahlung</dd>
+                <dd className="text-right">Ehrenamtlich – derzeit keine Bezahlung</dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-muted">Sperrfrist nach Absage</dt>

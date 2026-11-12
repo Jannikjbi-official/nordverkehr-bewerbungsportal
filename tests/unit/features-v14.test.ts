@@ -180,5 +180,5 @@ describe("Gespräch & Support auf Discord, ehrenamtlich", () => {
     expect(DEFAULT_CONFIRMATION_TEMPLATE).toContain("Gespräch auf unserem Discord");
     expect(DEFAULT_CONFIRMATION_TEMPLATE).not.toContain("TeamSpeak");
   });
-  it("Pflicht-Haken: ehrenamtlich", () => expect(CONFIRMATIONS.some((c) => c.key === "unpaid" && c.label.includes("keine Bezahlung"))).toBe(true));
+  it("Pflicht-Haken: ehrenamtlich", () => expect(CONFIRMATIONS.some((c) => c.key === "unpaid" && c.label.includes("derzeit gibt es keine Bezahlung"))).toBe(true));
 });
