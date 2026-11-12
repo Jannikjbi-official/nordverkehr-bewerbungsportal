@@ -410,7 +410,19 @@ const MIGRATIONS: { id: string; run: (db: PrismaClient, opts: Options) => Promis
   { id: "2026-11-szenarien-pro-stelle", run: scenariosPerPosition },
   // KI-Text-Check wurde wieder entfernt → gespeicherte Ergebnisse und Audit-Einträge löschen
   { id: "2026-11-remove-textcheck", run: (db, o) => (o.dryRun ? Promise.resolve(0) : removeTextCheckData(db)) },
+  // Neuer Baustein: Zustimmung zu KI-Punkten (nur anlegen, falls es ihn noch nicht gibt)
+  { id: "2026-11-template-ki-zustimmung", run: (db, o) => (o.dryRun ? Promise.resolve(0) : addKiConsentTemplate(db)) },
 ];
+
+async function addKiConsentTemplate(db: PrismaClient) {
+  const { KI_CONSENT_TEMPLATE_BODY, KI_CONSENT_TEMPLATE_TITLE } = await import("@/lib/setup/seed-data");
+  if (await db.messageTemplate.findFirst({ where: { title: KI_CONSENT_TEMPLATE_TITLE } })) return 0;
+  const last = await db.messageTemplate.aggregate({ _max: { sortOrder: true }, where: { category: "RUECKFRAGE" } });
+  await db.messageTemplate.create({
+    data: { category: "RUECKFRAGE", title: KI_CONSENT_TEMPLATE_TITLE, body: KI_CONSENT_TEMPLATE_BODY, sortOrder: (last._max.sortOrder ?? 0) + 1 },
+  });
+  return 1;
+}
 
 async function removeTextCheckData(db: PrismaClient) {
   await db.$runCommandRaw({
