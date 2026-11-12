@@ -98,6 +98,8 @@ export const CHANGELOG: ChangelogEntry[] = [
       { kind: "neu", text: "**Freie Plätze** – jede Annahme belegt einen Platz, sind alle vergeben, schließt die Stelle automatisch. Bewerber sehen „Noch 2 Plätze frei“." },
       { kind: "neu", text: "**Annahme-Automatik** – zusätzliche Rollen, Namens-Präfix wie „[Support]“ und ein Willkommensgruß im Teamchat. Wird die Annahme zurückgenommen, verschwinden Rollen und Präfix wieder." },
       { kind: "neu", text: "**Claim-Erinnerung** – wer eine Bewerbung übernimmt und dann 3 Tage nichts macht, bekommt einmal eine DM." },
+      { kind: "neu", text: "**Stummschalten** – neue Antworten eines Bewerbers für 1 Std. bis 3 Tage ohne Bot-Log, im Portal bleibt alles sichtbar." },
+      { kind: "besser", text: "**Discord-Vorschau hell/dunkel** – sieh, wie die DM bei Bewerbern mit hellem Discord aussieht." },
       { kind: "neu", text: "**Bewertungsbogen** – pro Kriterium 1–5 Sterne (Kommunikation, Erfahrung, Szenarien, Motivation, Verfügbarkeit, Teamfit), mit Schnitt des Teams." },
       { kind: "neu", text: "**Discord-Pflicht** – absenden nur mit Mitgliedschaft auf dem Discord. Verlässt jemand den Server während der Bewerbung, schreibt ihm der Bot automatisch im Portal, das Team sieht es in der Bewerbung und in der Team-Übersicht." },
       { kind: "besser", text: "**Live-Aktualisierung** – neue Nachrichten, Status, Kommentare und Bewertungen erscheinen von selbst, ohne die Seite neu zu laden." },

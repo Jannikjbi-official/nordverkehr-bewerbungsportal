@@ -1,8 +1,7 @@
 # Release nur bei großen Änderungen – nie automatisch pro Tag:
 #  - Tag pushen:            git tag v1.1 && git push origin v1.1
 #  - oder in GitHub:        Actions → Release → „Run workflow“ → Version eintragen
-# Ergebnis: GitHub-Release mit allen Changelog-Einträgen seit dem letzten Release
-# und zwei Docker-Images unter „Packages“ (Portal und Worker).
+# Ergebnis: GitHub-Release mit allen Changelog-Einträgen seit dem letzten Release.
 name: Release
 
 on:
@@ -16,7 +15,6 @@ on:
 
 permissions:
   contents: write
-  packages: write
 
 concurrency:
   group: release
@@ -25,8 +23,6 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
-    outputs:
-      tag: ${{ steps.tag.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -64,33 +60,3 @@ jobs:
           else
             gh release create "$TAG" --target "${{ github.sha }}" --title "Nordverkehr Bewerbungsportal ${TAG}" --notes-file release-notes.md
           fi
-
-  packages:
-    needs: release
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        target: [web, worker]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Image-Name
-        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}-${{ matrix.target }}" >> "$GITHUB_ENV"
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          target: ${{ matrix.target }}
-          push: true
-          tags: |
-            ${{ env.IMAGE }}:${{ needs.release.outputs.tag }}
-            ${{ env.IMAGE }}:latest
-          labels: |
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.version=${{ needs.release.outputs.tag }}
-          cache-from: type=gha,scope=${{ matrix.target }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.target }}

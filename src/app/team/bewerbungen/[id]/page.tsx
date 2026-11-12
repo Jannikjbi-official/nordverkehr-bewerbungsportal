@@ -31,6 +31,7 @@ import { isHeldNow } from "@/lib/night";
 import { canSeePosition, viewerOf } from "@/lib/team/visibility";
 import { RatingPanel } from "@/components/team/RatingPanel";
 import { OnboardingPanel } from "@/components/team/OnboardingPanel";
+import { MuteControl } from "@/components/team/MuteControl";
 import { onboardingItems, readOnboarding } from "@/lib/team/onboarding";
 import { cleanScores, criteriaFor, formatScore, summarizeRatings } from "@/lib/team/ratings";
 import { claimAndScore, isScoringPending, readAiRating, scoringBlockedReason } from "@/lib/ai/scoring";
@@ -483,6 +484,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
               </p>
             )}
             <HelpLink id="status" label="Was bedeuten die Status?" />
+            {["SUBMITTED", "IN_REVIEW", "INTERVIEW"].includes(app.status) && <MuteControl applicationId={app.id} until={app.mutedUntil?.toISOString() ?? null} nowMs={nowMs()} />}
             <div className="nv-divider" />
             <InterviewForm applicationId={app.id} at={app.interviewAt?.toISOString() ?? null} note={app.interviewNote} />
             {app.status === "INTERVIEW" && interviewPast && <NoShowButton applicationId={app.id} count={app.noShowCount} />}

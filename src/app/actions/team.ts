@@ -700,3 +700,18 @@ async function guardApp(user: { id: string; roleIds?: string[] }, access: { isAd
   const { canAccessApplication, viewerOf } = await import("@/lib/team/visibility");
   return (await canAccessApplication(viewerOf(user, access), applicationId as string)) ? null : { ok: false, error: "Für diese Stelle bist du nicht zuständig." };
 }
+
+/** Bewerbung stummschalten: neue Bewerber-Nachrichten erzeugen so lange keinen Bot-Log (0 = aufheben). */
+export async function setMuteAction(applicationId: string, hours: number): Promise<ActionResult<{ until: string | null }>> {
+  const { user, access } = await requireTeam();
+  if (!id.safeParse(applicationId).success || ![0, 1, 8, 24, 72].includes(hours)) return { ok: false, error: "Ungültig." };
+  {
+    const denied = await guardApp(user, access, applicationId);
+    if (denied) return denied;
+  }
+  const until = hours ? new Date(Date.now() + hours * 3_600_000) : null;
+  const res = await db.application.updateMany({ where: { id: applicationId }, data: { mutedUntil: until } });
+  if (!res.count) return { ok: false, error: "Bewerbung nicht gefunden." };
+  await audit("application.mute", { actorId: user.id, targetType: "application", targetId: applicationId, meta: { hours } });
+  return { ok: true, data: { until: until?.toISOString() ?? null } };
+}

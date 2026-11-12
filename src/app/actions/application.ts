@@ -304,10 +304,14 @@ export async function replyToTeamAction(input: z.input<typeof replySchema>): Pro
     await maybeAutoReply(message.id).catch((e) => console.error("[autoreply]", e));
   });
 
-  const job = await botLog(
-    `💬 Neue Antwort von ${esc(user.globalName || user.username)} zu **${app.publicId}** (${app.position.title})`,
-    { applicationId: app.id, url: `${publicEnv.appUrl}/team/bewerbungen/${app.id}` },
-  );
+  // Vom Team stummgeschaltet? Dann kein Bot-Log (im Portal bleibt alles sichtbar)
+  const muted = !!app.mutedUntil && app.mutedUntil.getTime() > Date.now();
+  const job = muted
+    ? null
+    : await botLog(`💬 Neue Antwort von ${esc(user.globalName || user.username)} zu **${app.publicId}** (${app.position.title})`, {
+        applicationId: app.id,
+        url: `${publicEnv.appUrl}/team/bewerbungen/${app.id}`,
+      });
   if (job) await deliverNow([job]);
   revalidatePath(`/dashboard/${app.id}`);
   return { ok: true };

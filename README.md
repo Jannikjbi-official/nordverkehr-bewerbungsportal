@@ -183,7 +183,7 @@ tests/unit/            Vitest (Rollenprüfung, Routen, Nachrichtenversand, Schut
 
 Bewerbungsarten sind ein eigenes Modell (`ApplicationType`, heute nur `team`). Für Whitelist- oder Fraktionsbewerbungen neue Typen anlegen; Positionen, Formular-Schritte und Fragen hängen bereits am Typ.
 
-## Releases & Docker-Images
+## Releases
 
 Releases gibt es nur bei größeren Änderungen – nie automatisch pro Tag:
 
@@ -191,6 +191,6 @@ Releases gibt es nur bei größeren Änderungen – nie automatisch pro Tag:
 git tag v1.1 && git push origin v1.1
 ```
 
-oder in GitHub unter *Actions → Release → Run workflow*. Der Workflow (`.github/workflows/release.yml`) legt ein GitHub-Release mit allen Changelog-Einträgen seit dem letzten Release an und veröffentlicht zwei Docker-Images unter *Packages*: `…-web` (Portal) und `…-worker` (Discord-Gateway, Zustellung, Löschfristen).
+oder in GitHub unter *Actions → Release → Run workflow*. Der Workflow (`.github/workflows/release.yml`) legt ein GitHub-Release mit allen Changelog-Einträgen seit dem letzten Release an.
 
 # abonieren sie cisko
