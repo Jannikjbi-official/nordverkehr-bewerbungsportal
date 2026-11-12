@@ -240,6 +240,8 @@ const messageSchema = z.object({
   grund: z.string().trim().max(1000).optional(),
   alsoStatus: STATUS.optional(),
   asTeam: z.boolean().default(false),
+  /** Rückfrage mit Frist: Bewerber wird erinnert, wenn keine Antwort kommt */
+  expectReply: z.boolean().default(false),
 });
 
 export async function sendMessageAction(input: z.input<typeof messageSchema>): Promise<ActionResult<{ missing: string[] }>> {
@@ -267,6 +269,7 @@ export async function sendMessageAction(input: z.input<typeof messageSchema>): P
       body: p.data.body,
       templateIds: p.data.templateIds,
       vars: { grund: p.data.grund },
+      expectReply: p.data.expectReply,
     });
     jobIds.push(...res.jobIds);
     await kick(jobIds);

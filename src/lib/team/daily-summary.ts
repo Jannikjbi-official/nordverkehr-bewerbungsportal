@@ -32,7 +32,7 @@ export function lastTeamActivity(a: { submittedAt: Date | null; createdAt: Date;
   return new Date(Math.max(...times.map((d) => d.getTime())));
 }
 
-export async function collectDailySummary(db: PrismaClient, opts: { now?: Date; staleDays: number; escalateDays: number }): Promise<DailySummary> {
+export async function collectDailySummary(db: PrismaClient, opts: { now?: Date; staleDays: number; escalateDays: number; closeDays?: number }): Promise<DailySummary> {
   const now = opts.now ?? new Date();
   const user = { select: { globalName: true, username: true } } as const;
   const userAndPos = { user, position: { select: { title: true } }, claimedBy: user } as const;
@@ -96,8 +96,15 @@ export async function collectDailySummary(db: PrismaClient, opts: { now?: Date; 
   const waiting: SummaryItem[] = [];
   const stale: SummaryItem[] = [];
   const escalations: SummaryItem[] = [];
+  const noReply: SummaryItem[] = [];
+  const closeBefore = now.getTime() - (opts.closeDays ?? 7) * DAY;
 
   for (const a of active) {
+    // Rückfrage mit Frist abgelaufen → Vorschlag „schließen“ (statt „liegengeblieben“)
+    if (a.awaitingReplySince && a.awaitingReplySince.getTime() <= closeBefore) {
+      noReply.push(item(a, a.awaitingReplySince));
+      continue;
+    }
     if (a.status === "INTERVIEW" && a.interviewAt && a.interviewAt >= new Date(now.getTime() - 3_600_000) && a.interviewAt < endOfDay) {
       interviews.push(item(a, a.interviewAt));
     }
@@ -133,6 +140,7 @@ export async function collectDailySummary(db: PrismaClient, opts: { now?: Date; 
     withdrawals: withdrawn.map((a) => item(a, a.decidedAt ?? a.updatedAt)),
     probation: probation.map((a) => item(a, a.probationUntil!)),
     leftGuild: active.filter((a) => a.guildLeftNotifiedAt).map((a) => item(a, a.guildLeftNotifiedAt!)),
+    noReply,
     escalations,
     staleDays: opts.staleDays,
     escalateDays: opts.escalateDays,
@@ -159,7 +167,7 @@ export async function postDailySummary(db: PrismaClient, opts: { now?: Date; for
     return { posted: false, reason: "Heute wurde schon gepostet." };
   }
 
-  const summary = await collectDailySummary(db, { now, staleDays: s["team.staleDays"], escalateDays: s["team.escalateDays"] });
+  const summary = await collectDailySummary(db, { now, staleDays: s["team.staleDays"], escalateDays: s["team.escalateDays"], closeDays: s["followup.closeDays"] });
   if (!opts.force && isQuiet(summary)) {
     await db.setting.create({ data: { key, value: { at: now.toISOString(), quiet: true } } }).catch(() => null);
     return { posted: false, reason: "Nichts zu tun – heute kein Post.", summary };
@@ -193,7 +201,7 @@ export async function sendPersonalDigests(db: PrismaClient, opts: { now?: Date; 
   if (!s["team.personalDigestEnabled"]) return 0;
   const now = opts.now ?? new Date();
   // Schon gesammelte Übersicht wiederverwenden (Morgen-Cron) – sonst selbst sammeln
-  const summary = opts.summary ?? (await collectDailySummary(db, { now, staleDays: s["team.staleDays"], escalateDays: s["team.escalateDays"] }));
+  const summary = opts.summary ?? (await collectDailySummary(db, { now, staleDays: s["team.staleDays"], escalateDays: s["team.escalateDays"], closeDays: s["followup.closeDays"] }));
   const groups = groupByClaimer(summary);
   if (!groups.size) return 0;
   const users = await db.user.findMany({

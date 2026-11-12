@@ -121,6 +121,10 @@ model User {
   digestOptOut       Boolean   @default(false)
   /// Testbewerber (Admin → Testbewerbungen) – kein echter Discord-Account
   isTest             Boolean   @default(false)
+  /// Discord-Rollen (Cache aus der Rollenprüfung) – für Zuständigkeit pro Stelle
+  roleIds            String[]  @default([])
+  /// Geheimer Schlüssel fürs Kalender-Abo (Gespräche als .ics)
+  calendarToken      String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
@@ -227,6 +231,12 @@ model Position {
   quizMinScore    Int?
   /// Vorlage fürs Gesprächsprotokoll (leer = Standard aus den Einstellungen)
   interviewQuestions String[] @default([])
+  /// Vier-Augen-Prinzip: Annahme erst ab so vielen Pro-Stimmen (null = aus)
+  minProVotes     Int?
+  /// Vier-Augen-Prinzip: Annahme nur durch Admins
+  requireAdminApproval Boolean @default(false)
+  /// Zuständigkeit: nur Teammitglieder mit einer dieser Discord-Rollen sehen die Bewerbungen (leer = alle)
+  teamRoleIds     String[]   @default([])
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
@@ -333,6 +343,20 @@ model Application {
   isTest               Boolean   @default(false)
   /// Szenario der Testbewerbung (lib/setup/test-applications.ts)
   testScenario         String?
+  /// Rückfrage mit Frist: Team wartet seit … auf eine Antwort (null = keine offene Rückfrage)
+  awaitingReplySince   DateTime?
+  awaitingRemindedAt   DateTime?
+  /// Nicht zum Gespräch erschienen (Anzahl)
+  noShowCount          Int       @default(0)
+  /// Discord-Server-Event zum Gespräch
+  discordEventId       String?
+  /// Geplante Erinnerungs-DM an den Betreuer vor dem Gespräch (Outbox-Job)
+  teamReminderJobId    String?
+  /// Auf dem Discord gebannt (erkannt bei der Mitgliedschaftsprüfung)
+  guildBannedAt        DateTime?
+  guildBanReason       String?
+  /// Bewerber hat Antworten nachgereicht
+  amendedAt            DateTime?
   /// Einarbeitung nach der Annahme: { [Punkt]: { at, by } }
   onboarding           Json      @default("{}")
   probationUntil       DateTime?

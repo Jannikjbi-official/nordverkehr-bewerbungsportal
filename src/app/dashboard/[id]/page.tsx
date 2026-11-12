@@ -27,6 +27,8 @@ import { publicEnv } from "@/lib/env";
 import { ACTIVE_STATUSES, FOLLOW_UP_DAYS, STATUS_HINT, STATUS_LABEL, TIMELINE, canFollowUp, isInProcessing } from "@/lib/applications/status";
 import { formatAnswerForDisplay, type AnswerValue } from "@/lib/applications/form";
 import { getSettings } from "@/lib/settings";
+import { AMENDABLE_TYPES, canAmend, getQueueInfo, queueText } from "@/lib/applications/queue";
+import { AmendForm } from "@/components/dashboard/AmendForm";
 import { isNight } from "@/lib/night";
 import type { ApplicationStatus } from "@prisma/client";
 
@@ -75,6 +77,12 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
   // Nachtruhe: Hinweis, dass das Team erst morgens antwortet
   const settings = await getSettings();
   const nightNotice = settings["night.portalNotice"] && isNight(settings) && (active || followUp);
+  // Warteschlange & Bearbeitungszeit (nur solange es läuft) und Nachreichen (bis das Team draufschaut)
+  const queue =
+    settings["applications.queueInfo"] && (app.status === "SUBMITTED" || app.status === "IN_REVIEW") ? await getQueueInfo(db, app).catch(() => null) : null;
+  const amendable = settings["applications.amendEnabled"] && canAmend(app)
+    ? app.answers.filter((a) => (AMENDABLE_TYPES as readonly string[]).includes(a.type)).map((a) => ({ id: a.id, label: a.label, section: a.sectionTitle, type: a.type, value: typeof a.value === "string" ? a.value : String(a.value ?? "") }))
+    : [];
   const nightText = `Nachtruhe bis ${settings["night.end"]} Uhr – das Team schläft. Deine Nachricht kommt trotzdem an, ab ${settings["night.end"]} Uhr meldet sich jemand persönlich.${settings["night.aiReply"] ? " Bis dahin antwortet dir unser Bot automatisch." : ""}`;
   const dmIssue = app.confirmationDmStatus === "DM_CLOSED" || app.confirmationDmStatus === "FAILED";
   const unread = app.messages.some((m) => m.direction === "TEAM_TO_APPLICANT" && !m.readAt);
@@ -148,6 +156,12 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
             ) : (
               <FeedbackForm applicationId={app.id} />
             ))}
+          {queue && (
+            <p className="nv-card p-4 text-sm text-fg-2" data-testid="queue-info">
+              ⏳ {queueText(queue, app.status as "SUBMITTED" | "IN_REVIEW", app.position.title)}
+            </p>
+          )}
+          {amendable.length > 0 && <AmendForm applicationId={app.id} answers={amendable} />}
           {selfBooking && (
             <SlotPicker
               applicationId={app.id}

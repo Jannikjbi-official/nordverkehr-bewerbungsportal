@@ -34,6 +34,8 @@ export interface DailySummary {
   withdrawals: SummaryItem[];
   /** Laufende Bewerbung, Person nicht mehr auf dem Discord (at = erkannt) */
   leftGuild: SummaryItem[];
+  /** Rückfrage seit `followup.closeDays` unbeantwortet – Vorschlag: schließen (at = Rückfrage) */
+  noReply?: SummaryItem[];
   /** Angenommen, Probezeit endet in den nächsten Tagen (at = Ende) */
   probation: SummaryItem[];
   /** Davon so lange liegengeblieben, dass die Leitung Bescheid bekommt */
@@ -49,7 +51,17 @@ const NL = "\n";
 
 /** Nichts, worum sich jemand kümmern müsste? Dann wird nichts gepostet. */
 export function isQuiet(s: DailySummary) {
-  return !s.newSince && !s.unclaimed && !s.interviews.length && !s.waiting.length && !s.stale.length && !s.withdrawals.length && !s.probation.length && !s.leftGuild.length;
+  return (
+    !s.newSince &&
+    !s.unclaimed &&
+    !s.interviews.length &&
+    !s.waiting.length &&
+    !s.stale.length &&
+    !s.withdrawals.length &&
+    !s.probation.length &&
+    !s.leftGuild.length &&
+    !s.noReply?.length
+  );
 }
 
 const clean = (v: string) => v.replace(/([\\*_~`|>#@[\]])/g, "\\$1");
@@ -93,6 +105,7 @@ export function buildDailySummaryMessage(s: DailySummary, appUrl: string): RESTP
     list(`⏳ Seit ${s.staleDays}+ Tagen nichts passiert`, s.stale, appUrl, (it) => `zuletzt ${discordTime(it.at, "R")}`),
     list("↩️ Rückzug noch nicht bestätigt", s.withdrawals, appUrl, (it) => `zurückgezogen ${discordTime(it.at, "R")}`),
     list("🚪 Nicht mehr auf dem Discord", s.leftGuild, appUrl, (it) => `Bot hat ${discordTime(it.at, "R")} Bescheid gegeben`),
+    list("🔕 Keine Antwort auf Rückfrage – schließen?", s.noReply ?? [], appUrl, (it) => `gefragt ${discordTime(it.at, "R")}`),
     list("🎓 Probezeit endet bald", s.probation, appUrl, (it) => `endet ${discordTime(it.at, "R")}`),
   ].filter((x): x is string => !!x);
 
@@ -138,17 +151,18 @@ export interface PersonalDigest {
   stale: SummaryItem[];
   withdrawals: SummaryItem[];
   leftGuild: SummaryItem[];
+  noReply: SummaryItem[];
 }
 
-const DIGEST_KEYS = ["interviews", "waiting", "stale", "withdrawals", "leftGuild"] as const;
+const DIGEST_KEYS = ["interviews", "waiting", "stale", "withdrawals", "leftGuild", "noReply"] as const;
 
 /** Team-Übersicht nach Betreuer aufteilen. Nur Betreuer mit mindestens einem Punkt. */
 export function groupByClaimer(s: DailySummary): Map<string, PersonalDigest> {
   const out = new Map<string, PersonalDigest>();
   for (const key of DIGEST_KEYS) {
-    for (const it of s[key]) {
+    for (const it of s[key] ?? []) {
       if (!it.claimerId) continue;
-      const d = out.get(it.claimerId) ?? { interviews: [], waiting: [], stale: [], withdrawals: [], leftGuild: [] };
+      const d = out.get(it.claimerId) ?? { interviews: [], waiting: [], stale: [], withdrawals: [], leftGuild: [], noReply: [] };
       d[key].push(it);
       out.set(it.claimerId, d);
     }
@@ -166,6 +180,7 @@ export function digestHeadline(d: PersonalDigest) {
   if (d.stale.length) parts.push(`${plural(d.stale.length, "Bewerbung liegt", "Bewerbungen liegen")} schon länger`);
   if (d.withdrawals.length) parts.push(`${plural(d.withdrawals.length, "Rückzug", "Rückzüge")} zu bestätigen`);
   if (d.leftGuild.length) parts.push(`${plural(d.leftGuild.length, "Bewerber ist", "Bewerber sind")} nicht mehr auf dem Discord`);
+  if (d.noReply.length) parts.push(`${plural(d.noReply.length, "Rückfrage", "Rückfragen")} ohne Antwort`);
   return parts.join(", ");
 }
 
@@ -183,6 +198,7 @@ export function buildPersonalDigestMessage(name: string, d: PersonalDigest, stal
     block(`⏳ Seit ${staleDays}+ Tagen nichts passiert`, d.stale, (it) => `zuletzt ${discordTime(it.at, "R")}`),
     block("↩️ Rückzug bestätigen", d.withdrawals, (it) => `zurückgezogen ${discordTime(it.at, "R")}`),
     block("🚪 Nicht mehr auf dem Discord", d.leftGuild, (it) => `seit ${discordTime(it.at, "R")}`),
+    block("🔕 Keine Antwort – schließen?", d.noReply, (it) => `gefragt ${discordTime(it.at, "R")}`),
   ].filter((x): x is string => !!x);
   return v2Message(BRAND_COLOR, [
     text(`-# 📌 DEINE BEWERBUNGEN HEUTE${NL}## Moin ${clean(name)}!${NL}${digestHeadline(d)}.`),

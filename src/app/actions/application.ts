@@ -276,6 +276,8 @@ export async function replyToTeamAction(input: z.input<typeof replySchema>): Pro
   const message = await db.message.create({
     data: { applicationId: app.id, direction: "APPLICANT_TO_TEAM", authorId: user.id, body: parsed.data.body },
   });
+  // Offene Rückfrage ist beantwortet → Frist endet
+  if (app.awaitingReplySince) await db.application.update({ where: { id: app.id }, data: { awaitingReplySince: null, awaitingRemindedAt: null } });
   // Ist gerade niemand vom Team online, antwortet (falls aktiviert) die KI – mit Schutzfiltern
   after(async () => {
     const { maybeAutoReply } = await import("@/lib/ai/autoreply");
@@ -299,4 +301,111 @@ export async function markMessagesReadAction(applicationId: string): Promise<Act
     data: { readAt: new Date() },
   });
   return { ok: true };
+}
+
+const amendSchema = z.object({
+  applicationId: idSchema,
+  answers: z.record(idSchema, z.string().max(4000)).refine((r) => Object.keys(r).length <= 60),
+});
+
+/**
+ * Antworten nachreichen: nur solange niemand die Bewerbung angesehen oder übernommen hat.
+ * Ändert nur Textantworten, prüft die Längen der Frage, setzt KI-Einordnung/-Punkte zurück
+ * (werden neu berechnet) und berechnet die automatischen Hinweise neu.
+ */
+export async function amendAnswersAction(input: z.input<typeof amendSchema>): Promise<ActionResult<{ changed: number }>> {
+  const user = await requireUser();
+  const p = amendSchema.safeParse(input);
+  if (!p.success) return { ok: false, error: "Ungültige Eingabe." };
+  const rl = await rateLimit(`amend:${user.id}`, 20, 3600);
+  if (!rl.ok) return { ok: false, error: "Zu viele Änderungen in kurzer Zeit." };
+  const { getSettings } = await import("@/lib/settings");
+  const settings = await getSettings();
+  if (!settings["applications.amendEnabled"]) return { ok: false, error: "Nachreichen ist gerade ausgeschaltet." };
+  const app = await db.application.findFirst({
+    where: { id: p.data.applicationId, userId: user.id },
+    include: { answers: true, position: { select: { title: true } } },
+  });
+  const { AMENDABLE_TYPES, canAmend } = await import("@/lib/applications/queue");
+  if (!app || !canAmend(app)) return { ok: false, error: "Das Team bearbeitet deine Bewerbung schon – ergänzen kannst du jetzt nur noch per Nachricht." };
+
+  const editable = app.answers.filter((a) => (AMENDABLE_TYPES as readonly string[]).includes(a.type));
+  const questions = await db.question.findMany({ where: { id: { in: editable.map((a) => a.questionId).filter((x): x is string => !!x) } } });
+  const { validateAnswer, DEFAULT_MAX_LENGTH } = await import("@/lib/applications/form");
+  const changes: { id: string; value: string }[] = [];
+  const fieldErrors: Record<string, string> = {};
+  for (const a of editable) {
+    const next = p.data.answers[a.id];
+    if (next === undefined) continue;
+    const value = next.trim();
+    if (value === String(a.value ?? "").trim()) continue;
+    const q = questions.find((x) => x.id === a.questionId);
+    const err = validateAnswer(
+      {
+        id: a.id,
+        key: null,
+        label: a.label,
+        helpText: null,
+        placeholder: null,
+        type: a.type,
+        required: q?.required ?? true,
+        minLength: q?.minLength ?? null,
+        maxLength: q?.maxLength ?? DEFAULT_MAX_LENGTH[a.type] ?? null,
+        minValue: null,
+        maxValue: null,
+        options: [],
+      },
+      value,
+    );
+    if (err) fieldErrors[a.id] = err;
+    else changes.push({ id: a.id, value });
+  }
+  if (Object.keys(fieldErrors).length) return { ok: false, error: "Bitte prüf die markierten Antworten.", fieldErrors };
+  if (!changes.length) return { ok: true, data: { changed: 0 } };
+
+  // Hinweise neu berechnen (Texte haben sich geändert)
+  const { computeFlags } = await import("@/lib/applications/flags");
+  const texts = app.answers
+    .filter((a) => a.type === "LONG_TEXT" || a.type === "SCENARIO")
+    .map((a) => ({ label: a.label, value: changes.find((c) => c.id === a.id)?.value ?? String(a.value ?? ""), minExpected: questions.find((q) => q.id === a.questionId)?.minLength ?? 0 }));
+  const others = await db.application.findMany({
+    where: { positionId: app.positionId, submittedAt: { not: null }, NOT: { userId: user.id } },
+    orderBy: { submittedAt: "desc" },
+    take: 150,
+    select: { publicId: true, answers: { where: { type: { in: ["LONG_TEXT", "SCENARIO"] } }, select: { value: true } } },
+  });
+  const flags = computeFlags({
+    textAnswers: texts,
+    discordCreatedAt: user.discordCreatedAt,
+    now: new Date(),
+    minAccountDays: settings["applications.minDiscordAccountDays"],
+    names: [user.globalName, user.username],
+    otherApplications: others.map((o) => ({ publicId: o.publicId ?? "?", text: o.answers.map((x) => (typeof x.value === "string" ? x.value : "")).join(" \n ") })),
+  });
+
+  // Bedingt: wurde die Bewerbung gerade geöffnet/übernommen, gilt die Änderung nicht mehr
+  const ok = await db.$transaction(async (tx) => {
+    const res = await tx.application.updateMany({
+      where: { id: app.id, status: "SUBMITTED", OR: [{ claimedById: null }, { claimedById: { isSet: false } }], AND: [{ OR: [{ firstReviewedAt: null }, { firstReviewedAt: { isSet: false } }] }] },
+      data: { amendedAt: new Date(), flags: flags as unknown as Prisma.InputJsonValue, aiTags: [], aiTaggedAt: null, aiRating: null, aiRatedAt: null, aiSummary: null, aiSummaryAt: null },
+    });
+    if (!res.count) return false;
+    for (const c of changes) await tx.answer.update({ where: { id: c.id }, data: { value: c.value } });
+    return true;
+  });
+  if (!ok) return { ok: false, error: "Das Team hat deine Bewerbung gerade übernommen – ergänzen kannst du jetzt nur noch per Nachricht." };
+
+  await audit("application.amend", { actorId: user.id, targetType: "application", targetId: app.id, meta: { changed: changes.length } });
+  const job = await botLog(`✏️ ${esc(user.globalName || user.username)} hat bei **${app.publicId}** (${app.position.title}) ${changes.length} Antwort(en) nachgereicht`, {
+    applicationId: app.id,
+    url: `${publicEnv.appUrl}/team/bewerbungen/${app.id}`,
+  });
+  if (job) await deliverNow([job]);
+  // KI-Einordnung neu anstoßen (Punkte berechnet die Team-Ansicht beim Öffnen)
+  after(async () => {
+    const { tagApplication } = await import("@/lib/ai/tagging");
+    await tagApplication(app.id).catch((e) => console.error("[ai-tags]", e));
+  });
+  revalidatePath(`/dashboard/${app.id}`);
+  return { ok: true, data: { changed: changes.length } };
 }

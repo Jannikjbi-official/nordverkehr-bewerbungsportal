@@ -180,6 +180,8 @@ export async function sendTeamMessage(opts: {
   body: string;
   templateIds: string[];
   vars?: Partial<TemplateVars>;
+  /** Rückfrage mit Frist: Antwort erwartet (Erinnerung/Vorschlag „schließen“ per Morgen-Cron) */
+  expectReply?: boolean;
 }) {
   const app = await db.application.findUnique({ where: { id: opts.applicationId }, include: { user: true } });
   if (!app || app.status === "DRAFT") throw new UserFacingError("Bewerbung nicht gefunden.");
@@ -201,6 +203,9 @@ export async function sendTeamMessage(opts: {
         deliveryStatus: "PENDING",
       },
     });
+    if (opts.expectReply) {
+      await tx.application.update({ where: { id: app.id }, data: { awaitingReplySince: new Date(), awaitingRemindedAt: null } });
+    }
     const job = await enqueue(
       {
         type: "DM",

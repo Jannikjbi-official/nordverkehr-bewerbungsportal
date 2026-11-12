@@ -40,9 +40,11 @@ interface Props {
   statusTargets: ApplicationStatus[];
   /** Eigener Name/Avatar für persönliche Nachrichten; claimedByMe = Standard "als ich" */
   sender: { name: string; avatarUrl: string; claimedByMe: boolean };
+  /** Rückfrage mit Frist (Einstellungen) */
+  followUp?: { reminderDays: number; closeDays: number };
 }
 
-export function MessageComposer({ applicationId, publicId, templates, vars, suggested, statusTargets, sender }: Props) {
+export function MessageComposer({ applicationId, publicId, templates, vars, suggested, statusTargets, sender, followUp = { reminderDays: 0, closeDays: 7 } }: Props) {
   const router = useRouter();
   const textarea = useRef<HTMLTextAreaElement>(null);
   const [category, setCategory] = useState<TemplateCategory>(suggested[0] ?? "EINGANG");
@@ -57,6 +59,9 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
   const [pending, start] = useTransition();
   // Wer die Bewerbung geclaimt hat, schreibt standardmäßig persönlich
   const [asTeam, setAsTeam] = useState(!sender.claimedByMe);
+  // Rückfrage mit Frist: erinnert den Bewerber, wenn keine Antwort kommt (automatisch bei Rückfrage-Bausteinen)
+  const [expectReply, setExpectReply] = useState(false);
+  const [expectTouched, setExpectTouched] = useState(false);
   // Vorschau in der Seitenleiste – nur solange das Nachrichtenfeld sichtbar ist (Reiter offen)
   const slot = useSyncExternalStore(subscribeWide, getSlot, () => null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -85,6 +90,7 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
     if (!titleTouched && used.length === 0) setTitle(t.title);
     setBody((b) => (b.trim() ? `${b.trimEnd()}\n\n${t.body}` : t.body));
     setUsed((u) => (u.includes(t.id) ? u : [...u, t.id]));
+    if (t.category === "RUECKFRAGE" && !expectTouched) setExpectReply(true);
     setSent(false);
     requestAnimationFrame(() => textarea.current?.focus());
   }
@@ -110,6 +116,7 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
         grund: grund || undefined,
         alsoStatus: alsoStatus ? (alsoStatus as "SUBMITTED") : undefined,
         asTeam,
+        expectReply,
       });
       if (!res.ok) setSendError(res.error);
       else {
@@ -119,6 +126,8 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
         setTitle(DEFAULT_TITLE);
         setTitleTouched(false);
         setAlsoStatus("");
+        setExpectReply(false);
+        setExpectTouched(false);
         setSent(true);
         router.refresh();
       }
@@ -303,6 +312,25 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
             </div>
             <HelpLink id="absender" label="Unterschied?" />
           </div>
+          {followUp.reminderDays > 0 && (
+            <label className="flex items-start gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                className="nv-check !mt-0.5"
+                checked={expectReply}
+                onChange={(e) => {
+                  setExpectReply(e.target.checked);
+                  setExpectTouched(true);
+                }}
+              />
+              <span>
+                Antwort erwartet (Rückfrage mit Frist)
+                <span className="block text-xs text-muted">
+                  Kommt nichts, erinnert der Bot nach {followUp.reminderDays} Tag{followUp.reminderDays === 1 ? "" : "en"}; nach {followUp.closeDays} Tagen schlägt das Portal vor, die Bewerbung zu schließen.
+                </span>
+              </span>
+            </label>
+          )}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs text-muted" aria-live="polite">
               {sent ? "Gesendet – Zustellstatus siehst du im Verlauf." : `${rendered.text.length} / 3800 Zeichen`}

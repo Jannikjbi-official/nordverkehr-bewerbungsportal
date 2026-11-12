@@ -246,6 +246,22 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
           Kein echter Bewerber – Nachrichten erscheinen nur im Portal, DMs und Rollen werden nicht verschickt. Löschen unter Admin-Bereich → Daten & Tests.
         </Notice>
       )}
+      {app.awaitingReplySince && ["SUBMITTED", "IN_REVIEW", "INTERVIEW"].includes(app.status) && (
+        <Notice
+          tone={Date.now() - app.awaitingReplySince.getTime() >= settings["followup.closeDays"] * 86_400_000 ? "warn" : "info"}
+          icon={WarningCircle}
+          title={`Offene Rückfrage seit ${formatDayTime(app.awaitingReplySince)} Uhr`}
+        >
+          {Date.now() - app.awaitingReplySince.getTime() >= settings["followup.closeDays"] * 86_400_000
+            ? `Seit über ${settings["followup.closeDays"]} Tagen keine Antwort${app.awaitingRemindedAt ? " – trotz Erinnerung" : ""}. Vorschlag: Bewerbung schließen (ablehnen) oder nochmal nachhaken.`
+            : `Das Team wartet auf eine Antwort.${app.awaitingRemindedAt ? ` Erinnerung verschickt am ${formatDayTime(app.awaitingRemindedAt)} Uhr.` : ` Kommt nichts, erinnert der Bot nach ${settings["followup.reminderDays"]} Tagen.`}`}
+        </Notice>
+      )}
+      {app.amendedAt && (
+        <Notice tone="info" icon={WarningCircle} title={`Antworten nachgereicht am ${formatDayTime(app.amendedAt)} Uhr`}>
+          Der Bewerber hat vor der Bearbeitung Antworten ergänzt. Die Antworten unten sind der aktuelle Stand; KI-Einordnung und KI-Punkte wurden neu berechnet.
+        </Notice>
+      )}
       {(dmIssue || flags.length > 0 || activeBan) && (
         <div className="grid gap-2">
           {activeBan && (
@@ -424,6 +440,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
                 suggested={suggested}
                 statusTargets={allowedTeamTargets(app.status)}
                 sender={{ name: me.globalName || me.username, avatarUrl: avatarUrl(me.discordId, me.avatar, 128), claimedByMe: app.claimedById === me.id }}
+                followUp={{ reminderDays: settings["followup.reminderDays"], closeDays: settings["followup.closeDays"] }}
               />
             </div>
           </section>

@@ -50,6 +50,14 @@ export const settingsSchema = z.object({
   "applications.processingTime": z.string().min(2).max(80).default("in der Regel 3–7 Tage"),
   "applications.minFillSeconds": z.coerce.number().int().min(0).max(3600).default(90),
   "applications.minDiscordAccountDays": z.coerce.number().int().min(0).max(3650).default(30),
+  /** Bewerber dürfen Antworten nachreichen, solange noch niemand die Bewerbung angesehen hat */
+  "applications.amendEnabled": bool(true),
+  /** Bewerber sehen ihre Position in der Warteschlange und die aktuelle Bearbeitungszeit */
+  "applications.queueInfo": bool(true),
+  /** Rückfrage mit Frist: Erinnerung an den Bewerber nach X Tagen ohne Antwort (0 = aus) */
+  "followup.reminderDays": z.coerce.number().int().min(0).max(30).default(3),
+  /** … und Vorschlag „schließen“ ans Team nach X Tagen */
+  "followup.closeDays": z.coerce.number().int().min(1).max(60).default(7),
   /** Einmalige DM an Bewerber, deren Entwurf seit X Tagen liegt (0 = aus) */
   "applications.draftReminderDays": z.coerce.number().int().min(0).max(60).default(3),
 
@@ -77,6 +85,17 @@ export const settingsSchema = z.object({
   /** Tägliche Team-Übersicht (morgens) im Teamchat */
   "discord.dailySummaryEnabled": bool(true),
   "discord.summaryChannelId": channel("1569736476797837312"),
+  /** Neue Bewerbungen automatisch dem Teammitglied mit den wenigsten offenen Bewerbungen zuteilen */
+  "team.autoAssign": bool(false),
+  /** Gespräche als Discord-Server-Event anlegen (Bot braucht „Events verwalten“) */
+  "interview.discordEvent": bool(false),
+  /** DM an den Betreuer so viele Minuten vor dem Gespräch (0 = aus) */
+  "interview.teamReminderMinutes": z.coerce.number().int().min(0).max(240).default(15),
+  /** Störungs-Alarm in den Leitungs-Chat (fehlgeschlagene Zustellungen, ausgefallene Läufe) */
+  "alerts.enabled": bool(true),
+  "alerts.failedThreshold": z.coerce.number().int().min(1).max(100).default(3),
+  /** Wochenbericht montags an die Leitung */
+  "report.weeklyEnabled": bool(true),
   /** Persönliche Morgen-DM an Betreuer mit ihren offenen Punkten (pro Person abschaltbar) */
   "team.personalDigestEnabled": bool(true),
   /** Leitungs-Chat: Hinweis, wenn Bewerbungen zu lange liegen (leer = aus) */

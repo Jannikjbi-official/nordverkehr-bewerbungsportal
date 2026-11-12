@@ -24,6 +24,8 @@ export async function GET(req: Request) {
   // Persönliche Morgen-DM an Betreuer und Erinnerung an liegengebliebene Entwürfe
   const { sendPersonalDigests } = await import("@/lib/team/daily-summary");
   await sendPersonalDigests(db, { summary: r.summary, deadline: budget.end - 20_000 }).catch((e) => console.error("[digest]", e));
+  const { sendFollowUpReminders } = await import("@/lib/applications/followup");
+  await sendFollowUpReminders(db).catch((e) => console.error("[followup]", e));
   const { sendDraftReminders } = await import("@/lib/applications/draft-reminder");
   await sendDraftReminders(db).catch((e) => console.error("[draft-reminder]", e));
   // Bewerber noch auf dem Discord? (automatische Bot-Nachricht bei Austritt) – mit Zeitbudget
