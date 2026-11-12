@@ -7,7 +7,7 @@ import { createPortal } from "react-dom";
 import { PaperPlaneTilt, Plus, Star, WarningCircle, X } from "@phosphor-icons/react/ssr";
 import { sendMessageAction } from "@/app/actions/team";
 import { CATEGORY_LABEL, CATEGORY_ORDER } from "@/lib/applications/status";
-import { PLACEHOLDERS, renderTemplate, type TemplateVars } from "@/lib/messages/placeholders";
+import { PLACEHOLDERS, renderTemplate, subjectFromTemplateTitle, type TemplateVars } from "@/lib/messages/placeholders";
 import { DiscordPreview } from "@/components/team/DiscordPreview";
 import { StatusSelect } from "@/components/team/StatusSelect";
 import { HelpLink } from "@/components/team/HelpLink";
@@ -87,7 +87,7 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
 
   function insert(t: Template) {
     // Betreff: erster gewählter Baustein bestimmt den Titel, solange niemand ihn selbst geändert hat
-    if (!titleTouched && used.length === 0) setTitle(t.title);
+    if (!titleTouched && used.length === 0) setTitle(subjectFromTemplateTitle(t.title));
     setBody((b) => (b.trim() ? `${b.trimEnd()}\n\n${t.body}` : t.body));
     setUsed((u) => (u.includes(t.id) ? u : [...u, t.id]));
     if (t.category === "RUECKFRAGE" && !expectTouched) setExpectReply(true);

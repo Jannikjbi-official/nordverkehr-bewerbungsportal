@@ -100,3 +100,12 @@ export function buildTemplateVars(input: VarsInput): TemplateVars {
     discord_link: input.discordInvite ?? undefined,
   };
 }
+
+/**
+ * Betreff aus dem Baustein-Namen: Zusätze in Klammern am Ende („Absage (freundlich)“)
+ * sind nur zur Unterscheidung in der Bausteinliste gedacht, nicht für den Bewerber.
+ */
+export function subjectFromTemplateTitle(title: string): string {
+  const clean = title.replace(/\s*[([][^()[\]]*[)\]]\s*$/, "").trim();
+  return clean || title.trim();
+}

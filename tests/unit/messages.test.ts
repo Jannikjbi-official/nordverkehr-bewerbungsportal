@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildTemplateVars, combineTemplates, findPlaceholders, renderTemplate } from "@/lib/messages/placeholders";
+import { buildTemplateVars, combineTemplates, findPlaceholders, renderTemplate, subjectFromTemplateTitle } from "@/lib/messages/placeholders";
 import {
   BRAND_COLOR,
   COMPONENTS_V2,
@@ -130,4 +130,16 @@ describe("CSV-Export", () => {
     expect(csvCell('sag "moin"')).toBe('"sag ""moin"""');
     expect(csvCell(null)).toBe("");
   });
+});
+
+describe("Betreff aus Baustein-Namen", () => {
+  it("entfernt Klammer-Zusätze am Ende", () => {
+    expect(subjectFromTemplateTitle("Absage (freundlich)")).toBe("Absage");
+    expect(subjectFromTemplateTitle("Einladung [kurz]")).toBe("Einladung");
+  });
+  it("lässt normale Titel und Klammern mittendrin stehen", () => {
+    expect(subjectFromTemplateTitle("Rückfrage zur Verfügbarkeit")).toBe("Rückfrage zur Verfügbarkeit");
+    expect(subjectFromTemplateTitle("Gespräch (TS) morgen")).toBe("Gespräch (TS) morgen");
+  });
+  it("nur Klammer → Original bleibt", () => expect(subjectFromTemplateTitle("(intern)")).toBe("(intern)"));
 });
