@@ -11,6 +11,7 @@ import { DiscordDiagnostics, type FailedJob } from "@/components/team/DiscordDia
 import { HelpLink } from "@/components/team/HelpLink";
 import { DangerZone } from "@/components/team/DangerZone";
 import { TestDataPanel } from "@/components/team/TestDataPanel";
+import { ConfigBackupPanel } from "@/components/team/ConfigBackupPanel";
 import { TEST_SCENARIOS } from "@/lib/setup/test-applications";
 import { RESET_CONFIRM_PHRASE, countApplications } from "@/lib/team/reset";
 import { formatDayTime } from "@/components/ui";
@@ -114,6 +115,7 @@ async function DataTools() {
   ]);
   return (
     <>
+      <ConfigBackupPanel />
       <TestDataPanel positions={positions} scenarios={TEST_SCENARIOS.map(({ key, label, description }) => ({ key, label, description }))} existing={testCount} />
       <DangerZone counts={appCounts} phrase={RESET_CONFIRM_PHRASE} />
     </>

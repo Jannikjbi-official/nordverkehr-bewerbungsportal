@@ -48,6 +48,8 @@ export type AuditAction =
   | "user.export"
   | "user.delete"
   | "settings.update"
+  | "settings.export"
+  | "settings.import"
   | "ai.request"
   | "export.csv"
   | "retention.cleanup";
@@ -124,6 +126,8 @@ export const AUDIT_LABELS: Record<string, string> = {
   "user.export": "Datenexport",
   "user.delete": "Account gelöscht",
   "settings.update": "Einstellungen",
+  "settings.export": "Einstellungen exportiert",
+  "settings.import": "Einstellungen importiert",
   "ai.request": "KI-Anfrage",
   "export.csv": "CSV-Export",
   "retention.cleanup": "Löschfristen",

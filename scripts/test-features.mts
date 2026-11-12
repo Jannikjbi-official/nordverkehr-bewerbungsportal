@@ -307,6 +307,123 @@ try {
     setDiscordApiForTests(null);
   }
 
+  // ── Ideen-Paket: Rückfrage, Vier-Augen, Verteilung, Zuständigkeit, Termin-Abgleich, Bann, Alarm, Bericht, Sicherung
+  {
+    const { saveSettings } = await import("../src/lib/settings");
+    const { sendTeamMessage } = await import("../src/lib/team/service");
+    const { sendFollowUpReminders } = await import("../src/lib/applications/followup");
+    const { collectDailySummary } = await import("../src/lib/team/daily-summary");
+    const D = 86_400_000;
+    const mkApp = async (n: string, id: string, data: Record<string, unknown> = {}) => {
+      const u = await mk(n, id);
+      return db.application.create({ data: { userId: u.id, positionId: pos.id, status: "IN_REVIEW", publicId: `NV-I-${id.slice(-3)}`, submittedAt: new Date(), ...data } });
+    };
+
+    // #1 Rückfrage mit Frist
+    const fa = await mkApp("Fiona", "100000000000000071");
+    await sendTeamMessage({ applicationId: fa.id, actor: { ...team, isAdmin: false }, title: "Frage", body: "Wann hast du Zeit?", templateIds: [], expectReply: true });
+    check(!!(await db.application.findUnique({ where: { id: fa.id } }))!.awaitingReplySince, "Rückfrage: Frist läuft");
+    const r1 = await sendFollowUpReminders(db, new Date(Date.now() + 4 * D));
+    const r2 = await sendFollowUpReminders(db, new Date(Date.now() + 5 * D));
+    check(r1 === 1 && r2 === 0 && (await db.message.count({ where: { applicationId: fa.id, direction: "SYSTEM" } })) === 1, `Rückfrage: genau eine Erinnerung, nur an diese Bewerbung (${r1}/${r2})`);
+    const sum = await collectDailySummary(db, { now: new Date(Date.now() + 8 * D), staleDays: 3, escalateDays: 30, closeDays: 7 });
+    check(!!sum.noReply?.some((x) => x.id === fa.id) && !sum.stale.some((x) => x.id === fa.id), "Rückfrage: nach 7 Tagen „schließen?“ in der Übersicht");
+
+    // #3 Vier-Augen-Prinzip
+    const p4 = await db.position.create({ data: { typeId: type.id, slug: "vieraugen", title: "Vier", tagline: "x", description: "x", minProVotes: 2, requireAdminApproval: true } });
+    const admin = await mk("Ada", "100000000000000072", { isTeam: true, isAdmin: true });
+    const va = await db.application.create({ data: { userId: (await mk("Vera", "100000000000000073")).id, positionId: p4.id, status: "INTERVIEW", publicId: "NV-I-VA", submittedAt: new Date() } });
+    let e1 = "";
+    try { await changeStatus({ applicationId: va.id, to: "ACCEPTED", actorId: team.id }); } catch (e) { e1 = String(e); }
+    check(e1.includes("nur ein Admin"), "Vier-Augen: Nicht-Admin darf nicht annehmen");
+    let e2 = "";
+    try { await changeStatus({ applicationId: va.id, to: "ACCEPTED", actorId: admin.id }); } catch (e) { e2 = String(e); }
+    check(e2.includes("mindestens 2 Pro-Stimmen"), "Vier-Augen: zu wenige Pro-Stimmen");
+    await db.vote.createMany({ data: [{ applicationId: va.id, userId: admin.id, value: "PRO" }, { applicationId: va.id, userId: team.id, value: "PRO" }] });
+    await changeStatus({ applicationId: va.id, to: "ACCEPTED", actorId: admin.id });
+    check((await db.application.findUnique({ where: { id: va.id } }))!.status === "ACCEPTED", "Vier-Augen: mit 2 Pro + Admin angenommen");
+
+    // #5 Zuständigkeit pro Stelle
+    const { canAccessApplication, hiddenPositionIds } = await import("../src/lib/team/visibility");
+    const p5 = await db.position.create({ data: { typeId: type.id, slug: "nur-mod", title: "Nur Mod", tagline: "x", description: "x", teamRoleIds: ["900000000000000001"] } });
+    const a5 = await db.application.create({ data: { userId: (await mk("Malte", "100000000000000074")).id, positionId: p5.id, status: "SUBMITTED", publicId: "NV-I-M", submittedAt: new Date() } });
+    check((await hiddenPositionIds({ isAdmin: false, roleIds: [] })).includes(p5.id) && !(await canAccessApplication({ isAdmin: false, roleIds: [] }, a5.id)), "Zuständigkeit: ohne Rolle kein Zugriff");
+    check(await canAccessApplication({ isAdmin: false, roleIds: ["900000000000000001"] }, a5.id), "Zuständigkeit: mit Rolle Zugriff");
+    check(await canAccessApplication({ isAdmin: true, roleIds: [] }, a5.id), "Zuständigkeit: Admin sieht alles");
+
+    // #4 Faire Verteilung
+    const { autoAssign } = await import("../src/lib/team/assign");
+    await saveSettings({ "team.autoAssign": true }, team.id);
+    const busy = await mk("Busy", "100000000000000075", { isTeam: true, lastTeamActiveAt: new Date() });
+    const free = await mk("Free", "100000000000000076", { isTeam: true, lastTeamActiveAt: new Date() });
+    await db.user.update({ where: { id: team.id }, data: { lastTeamActiveAt: new Date(Date.now() - 30 * D) } });
+    await db.user.update({ where: { id: admin.id }, data: { lastTeamActiveAt: new Date(Date.now() - 30 * D) } });
+    await mkApp("Load1", "100000000000000077", { claimedById: busy.id, claimedAt: new Date() });
+    const na = await mkApp("Neu", "100000000000000078", { status: "SUBMITTED" });
+    const res = await autoAssign(db, na.id);
+    check(res?.userId === free.id, `Verteilung: geht an den mit den wenigsten offenen (${res?.userId === free.id ? "Free" : res?.userId})`);
+    const p5app = await db.application.create({ data: { userId: (await mk("Rolf", "100000000000000079")).id, positionId: p5.id, status: "SUBMITTED", publicId: "NV-I-R", submittedAt: new Date() } });
+    check((await autoAssign(db, p5app.id)) === null, "Verteilung: niemand zuständig → keine Zuteilung");
+    await saveSettings({ "team.autoAssign": false }, team.id);
+
+    // #2 Termin-Abgleich: Erinnerung an den Betreuer
+    const { syncInterview } = await import("../src/lib/team/interview-sync");
+    const ia = await mkApp("Ines", "100000000000000080", { status: "INTERVIEW", interviewAt: new Date(Date.now() + 3 * D), claimedById: free.id, claimedAt: new Date() });
+    await syncInterview(ia.id);
+    const i1 = await db.application.findUnique({ where: { id: ia.id } });
+    const job1 = i1!.teamReminderJobId ? await db.outboxJob.findUnique({ where: { id: i1!.teamReminderJobId } }) : null;
+    check(!!job1 && Math.abs(job1.runAt.getTime() - (i1!.interviewAt!.getTime() - 15 * 60_000)) < 1000, "Termin: Erinnerung an den Betreuer 15 min vorher geplant");
+    await db.application.update({ where: { id: ia.id }, data: { interviewAt: new Date(Date.now() + 4 * D) } });
+    await syncInterview(ia.id);
+    const i2 = await db.application.findUnique({ where: { id: ia.id } });
+    check(!(await db.outboxJob.findUnique({ where: { id: job1!.id } })) && i2!.teamReminderJobId !== job1!.id, "Termin verschoben: alte Erinnerung weg, neue geplant");
+    await changeStatus({ applicationId: ia.id, to: "REJECTED", actorId: team.id });
+    check(!(await db.application.findUnique({ where: { id: ia.id } }))!.teamReminderJobId, "Absage: Erinnerung gelöscht");
+
+    // #9 Bann erkannt (Discord-Antwort simuliert)
+    const { setDiscordApiForTests } = await import("../src/lib/discord/client");
+    const { applyGuildState } = await import("../src/lib/applications/guild-watch");
+    process.env.DISCORD_GUILD_ID = "1";
+    setDiscordApiForTests({ getMember: async () => null, openDm: async () => "d", postMessage: async () => "m", editMessage: async () => {}, deleteMessage: async () => {}, addRole: async () => {}, startThread: async () => "t", archiveThread: async () => {}, getBan: async () => ({ reason: "Spam" }) });
+    const ba = await mkApp("Bert", "100000000000000081");
+    const rb = await applyGuildState(ba.id, false);
+    const bApp = await db.application.findUnique({ where: { id: ba.id } });
+    check(rb === "banned" && !!bApp!.guildBannedAt && (bApp!.flags as { code: string }[]).some((f) => f.code === "guild_banned"), "Bann: Bewerbung markiert");
+    check((await db.message.count({ where: { applicationId: ba.id, direction: "SYSTEM" } })) === 0, "Bann: keine „tritt wieder bei“-Nachricht");
+    check((await applyGuildState(ba.id, true)) === "back" && !(await db.application.findUnique({ where: { id: ba.id } }))!.guildBannedAt, "Entbannt und zurück: Markierung weg");
+    setDiscordApiForTests(null);
+    delete process.env.DISCORD_GUILD_ID;
+
+    // #10 Störungs-Alarm & #11 Wochenbericht
+    const { checkAlerts, beat } = await import("../src/lib/team/alerts");
+    const { postWeeklyReport } = await import("../src/lib/team/weekly-report");
+    await saveSettings({ "discord.leadChannelId": "123456789012345678", "alerts.failedThreshold": 3 }, team.id);
+    for (let k = 0; k < 3; k++) await db.outboxJob.create({ data: { type: "DM", payload: {}, status: "FAILED", lastError: "DM geschlossen" } });
+    await db.setting.upsert({ where: { key: "heartbeat:summary" }, create: { key: "heartbeat:summary", value: { at: new Date(Date.now() - 30 * 3_600_000).toISOString() } }, update: { value: { at: new Date(Date.now() - 30 * 3_600_000).toISOString() } } });
+    const al1 = await checkAlerts(db, ["summary"]);
+    const before = await db.outboxJob.count({ where: { type: "CHANNEL_MESSAGE" } });
+    await checkAlerts(db, ["summary"]);
+    check(al1.length === 2 && (await db.outboxJob.count({ where: { type: "CHANNEL_MESSAGE" } })) === before, `Alarm: Fehlschläge + ausgefallener Lauf, je einmal pro Tag (${al1.join(",")})`);
+    await beat(db, "summary");
+    const wid = await postWeeklyReport(db, { force: true });
+    check(!!wid, "Wochenbericht wird gepostet");
+
+    // #12 Sicherung: Export → Änderung → Vorschau → Einspielen
+    const { exportConfig, importConfig, backupSchema } = await import("../src/lib/admin/config-backup");
+    const backup = await exportConfig(db);
+    check(backupSchema.safeParse(JSON.parse(JSON.stringify(backup))).success, "Sicherung: Export ist gültig");
+    const b2 = JSON.parse(JSON.stringify(backup));
+    b2.positions.find((x: { slug: string }) => x.slug === "support").title = "Support (neu)";
+    b2.positions.push({ ...b2.positions[0], slug: "neu-aus-backup", title: "Neu" });
+    const dry = await importConfig(db, b2, { dryRun: true, actorId: team.id });
+    check((await db.position.findUnique({ where: { slug: "support" } }))!.title === "Support" && dry.positions.created === 1, "Sicherung: Vorschau ändert nichts");
+    const done = await importConfig(db, b2, { dryRun: false, actorId: team.id });
+    check(
+      (await db.position.findUnique({ where: { slug: "support" } }))!.title === "Support (neu)" && !!(await db.position.findUnique({ where: { slug: "neu-aus-backup" } })) && done.questions.created === 0,
+      `Sicherung: eingespielt, nichts doppelt (${JSON.stringify(done.questions)})`,
+    );
+  }
+
   // ── Feedback (eins pro Bewerbung)
   await db.feedback.create({ data: { applicationId: app1.id, rating: 5 } });
   dup = false;

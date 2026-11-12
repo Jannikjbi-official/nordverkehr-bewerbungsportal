@@ -151,6 +151,8 @@ export const HELP: HelpSection[] = [
           { label: "Identische Antwort", text: "Derselbe Text steht bei mehreren Fragen." },
           { label: "Sehr ähnlich zu Bewerbung …", text: "Starke Übereinstimmung mit einer anderen Bewerbung – evtl. kopiert." },
           { label: "Junger Discord-Account", text: "Der Discord-Account ist jünger als in den Einstellungen festgelegt." },
+          { label: "Nicht zum Gespräch erschienen", text: "Ab dem zweiten verpassten Termin (Knopf „Nicht erschienen“ in der Bewerbung)." },
+          { label: "Auf dem Discord gebannt", text: "Die Person hat den Server per Bann verlassen – der Bot schreibt ihr dann keine „tritt wieder bei“-Nachricht." },
           {
             label: "Name möglicherweise unpassend",
             text: "Anzeige- oder Benutzername enthält eine Beleidigung, einen extremistischen Begriff/Code, gibt sich als Team oder Nordverkehr aus oder versucht die KI zu manipulieren. Wird mit dem aktuellen Namen geprüft.",

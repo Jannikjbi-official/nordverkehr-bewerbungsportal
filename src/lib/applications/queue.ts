@@ -23,7 +23,7 @@ export async function getQueueInfo(db: PrismaClient, app: { id: string; position
   const open = { positionId: app.positionId, status: { in: ["SUBMITTED" as const, "IN_REVIEW" as const] }, isTest: { not: true } };
   const since = new Date(now.getTime() - 90 * DAY);
   const [ahead, total, reviewed, decided] = await Promise.all([
-    db.application.count({ where: { ...open, submittedAt: { lt: app.submittedAt }, NOT: { id: app.id } } }),
+    db.application.count({ where: { ...open, submittedAt: { not: null, lt: app.submittedAt }, NOT: { id: app.id } } }),
     db.application.count({ where: open }),
     db.application.findMany({ where: { isTest: { not: true }, firstReviewedAt: { gte: since } }, select: { submittedAt: true, firstReviewedAt: true }, take: 300 }),
     db.application.findMany({ where: { isTest: { not: true }, status: { in: ["ACCEPTED", "REJECTED"] }, decidedAt: { gte: since } }, select: { submittedAt: true, decidedAt: true }, take: 300 }),

@@ -21,6 +21,12 @@ export async function GET(req: Request) {
     console.error("[summary]", e);
     return { posted: false as const, reason: "error", summary: undefined };
   });
+  // Wochenbericht (montags), Herzschlag + Störungs-Alarm (lief der Nachtlauf?)
+  const { postWeeklyReport } = await import("@/lib/team/weekly-report");
+  await postWeeklyReport(db).catch((e) => console.error("[weekly]", e));
+  const { beat, checkAlerts } = await import("@/lib/team/alerts");
+  await beat(db, "summary").catch(() => {});
+  await checkAlerts(db, ["outbox-daily"]).catch((e) => console.error("[alerts]", e));
   // Persönliche Morgen-DM an Betreuer und Erinnerung an liegengebliebene Entwürfe
   const { sendPersonalDigests } = await import("@/lib/team/daily-summary");
   await sendPersonalDigests(db, { summary: r.summary, deadline: budget.end - 20_000 }).catch((e) => console.error("[digest]", e));

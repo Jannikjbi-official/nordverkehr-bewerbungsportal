@@ -114,6 +114,10 @@ export async function submitApplicationAction(
     // Bestätigungs-DM + Log-Post direkt nach der Antwort zustellen (Worker = Fallback)
     after(async () => {
       await runOutbox({ ids: res.jobIds }).catch((e) => console.error("[outbox]", e));
+      // Faire Verteilung: automatisch zuteilen (falls eingeschaltet)
+      const { autoAssign } = await import("@/lib/team/assign");
+      const assigned = await autoAssign(db, res.applicationId).catch((e) => (console.error("[assign]", e), null));
+      if (assigned?.jobId) await runOutbox({ ids: [assigned.jobId] }).catch(() => {});
       // KI-Punkte gleich reservieren – sonst hält die Team-Seite die Bewerbung während
       // des Taggings für „unbewertet“ und startet eine zweite, parallele Bewertung
       const { claimForScoring, scoreClaimed } = await import("@/lib/ai/scoring");

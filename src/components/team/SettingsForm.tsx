@@ -127,6 +127,10 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
           {num("applications.minFillSeconds", "Mindest-Ausfüllzeit (Sekunden)", "Spam-Schutz: schnellere Absendungen werden abgewiesen.")}
           {num("applications.minDiscordAccountDays", "Hinweis bei jungen Discord-Accounts (Tage)", "Nur Hinweis für das Team, keine Sperre.")}
         </div>
+        <div className="mt-4 space-y-3">
+          {toggle("applications.amendEnabled", "Bewerber dürfen Antworten nachreichen", "Textantworten ergänzen oder korrigieren, solange noch niemand aus dem Team die Bewerbung übernommen hat. Das Team sieht „nachgereicht“, KI-Einordnung und Hinweise werden neu berechnet.")}
+          {toggle("applications.queueInfo", "Warteschlange & Bearbeitungszeit für Bewerber", "Im Dashboard: „Du bist Nr. 4 von 9 – erste Sichtung dauert gerade etwa 2 Tage“ (echte Werte der letzten 90 Tage).")}
+        </div>
       </Card>
       )}
 
@@ -165,7 +169,7 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
       )}
 
       {show("zustellung") && (
-      <Card title="Team-Übersicht & Erinnerungen" desc="Was der Bot morgens ans Team schickt und wann er an Liegengebliebenes erinnert.">
+      <Card title="Team, Übersicht & Erinnerungen" desc="Was der Bot morgens ans Team schickt, wie neue Bewerbungen verteilt werden und wann er an Liegengebliebenes erinnert.">
         <div className="space-y-3">
           {toggle(
             "discord.dailySummaryEnabled",
@@ -181,7 +185,24 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
             {num("team.staleDays", "„Liegengeblieben“ ab (Tagen)", "So lange ohne Statuswechsel, Nachricht oder Kommentar vom Team.")}
             {num("team.escalateDays", "Leitung informieren ab (Tagen)", "Dann kommt zusätzlich ein Hinweis in den Leitungs-Chat (leere Kanal-ID = aus).")}
             {num("applications.draftReminderDays", "Erinnerung an Entwürfe nach (Tagen)", "Einmalige DM mit Link zum Weitermachen. 0 = aus.")}
+            {num("followup.reminderDays", "Rückfrage: Erinnerung nach (Tagen)", "Hat das Team „Antwort erwartet“ markiert, erinnert der Bot den Bewerber einmal. 0 = aus.")}
+            {num("followup.closeDays", "Rückfrage: „schließen?“ nach (Tagen)", "Dann steht die Bewerbung in der Team-Übersicht unter „Keine Antwort – schließen?“.")}
           </div>
+          {toggle(
+            "team.autoAssign",
+            "Neue Bewerbungen automatisch zuteilen",
+            "An das aktive Teammitglied (letzte 14 Tage im Team-Bereich) mit den wenigsten offenen Bewerbungen – unter Beachtung der zuständigen Rollen pro Stelle. Die Auslastung steht im Team-Dashboard.",
+          )}
+        </div>
+      </Card>
+      )}
+
+      {show("zustellung") && (
+      <Card title="Störungs-Alarm & Wochenbericht" desc="Meldungen an die Leitung (Leitungs-Chat, sonst Bot-Log bzw. Teamchat).">
+        <div className="space-y-3">
+          {toggle("alerts.enabled", "Störungs-Alarm", "Warnt, wenn viele Zustellungen fehlschlagen oder der Nacht- bzw. Morgenlauf über 26 Stunden nicht lief. Höchstens einmal pro Tag und Art.")}
+          <div className="grid gap-4 sm:grid-cols-2">{num("alerts.failedThreshold", "Alarm ab fehlgeschlagenen Zustellungen (24 h)")}</div>
+          {toggle("report.weeklyEnabled", "Wochenbericht montags", "Eingänge, Annahmequote, Bearbeitungszeit, häufigste Absagegründe und Feedback der letzten 7 Tage. Testen: Admin-Bereich → Discord → „Wochenbericht jetzt senden“.")}
         </div>
       </Card>
       )}
@@ -284,6 +305,22 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
             <p className="nv-help mt-1">Häkchen hängen am Text – benennst du einen Punkt um, gilt er bei bestehenden Teammitgliedern als offen.</p>
           </div>
           {num("onboarding.probationDays", "Probezeit (Tage)", "0 = keine Probezeit.")}
+        </div>
+      </Card>
+      )}
+
+      {show("bewerbungen") && (
+      <Card title="Gesprächstermine" desc="Was rund um einen festen oder gebuchten Gesprächstermin passiert.">
+        <div className="space-y-3">
+          {toggle(
+            "interview.discordEvent",
+            "Gespräch als Discord-Server-Event anlegen",
+            "Der Bot legt zu jedem Termin ein Event an („Bewerbungsgespräch · Support“, ohne Bewerbernamen), verschiebt es bei Änderungen und löscht es bei Absage/Abschluss. Braucht die Berechtigung „Events verwalten“. Achtung: Events sieht der ganze Server.",
+          )}
+          <div className="grid gap-4 sm:grid-cols-2">
+            {num("interview.teamReminderMinutes", "Erinnerung an den Betreuer (Minuten vorher)", "DM an den Betreuer vor dem Gespräch. 0 = aus. Pünktlich nur mit laufendem Worker, sonst beim nächsten Cron.")}
+          </div>
+          <p className="nv-help">Gesprächstermine als Kalender-Abo: jedes Teammitglied unter „Konto“ → „Kalender-Link erzeugen“.</p>
         </div>
       </Card>
       )}

@@ -102,7 +102,7 @@ export async function releaseFutureSlot(db: PrismaClient | Prisma.TransactionCli
 export async function clearPastInterview(db: PrismaClient | Prisma.TransactionClient, applicationId: string, now = new Date()) {
   await db.interviewSlot.updateMany({ where: { applicationId, startsAt: { lte: now } }, data: { applicationId: null } });
   await db.application.updateMany({
-    where: { id: applicationId, interviewAt: { lte: now } },
+    where: { id: applicationId, interviewAt: { not: null, lte: now } },
     data: { interviewAt: null, interviewRemindedFor: null },
   });
 }

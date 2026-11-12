@@ -45,6 +45,10 @@ export async function GET(req: Request) {
     const { scoreMissing } = await import("@/lib/ai/scoring");
     await scoreMissing(2, budget.end - 10_000).catch((e) => console.error("[ai-score]", e));
   }
+  // Herzschlag + Störungs-Alarm (lief der Morgenlauf? viele Fehlschläge?)
+  const { beat, checkAlerts } = await import("@/lib/team/alerts");
+  await beat(db, "outbox-daily").catch(() => {});
+  await checkAlerts(db, ["summary"]).catch((e) => console.error("[alerts]", e));
   // Was dabei entstanden ist (Bot-Log), gleich mitnehmen
   if (!budget.passed()) total += await drainOutbox(2);
   return Response.json({ processed: total, changelogPosted: changelog.length, daily: true });

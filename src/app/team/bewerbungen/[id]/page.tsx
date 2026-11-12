@@ -127,6 +127,8 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
     after(() => applyGuildState(app.id, inGuildNow).catch((e) => console.error("[guild-watch]", e)));
   }
   const accountAgeDays = Math.floor((nowMs() - app.user.discordCreatedAt.getTime()) / 86_400_000);
+  const replyOverdue = !!app.awaitingReplySince && nowMs() - app.awaitingReplySince.getTime() >= settings["followup.closeDays"] * 86_400_000;
+  const interviewPast = !!app.interviewAt && app.interviewAt.getTime() < nowMs();
   const myVote = app.votes.find((v) => v.userId === me.id)?.value ?? null;
   const aiEnabled = settings["ai.enabled"] && isAiConfigured();
   const myRating = app.ratings.find((r) => r.userId === me.id);
@@ -252,11 +254,11 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
       )}
       {app.awaitingReplySince && ["SUBMITTED", "IN_REVIEW", "INTERVIEW"].includes(app.status) && (
         <Notice
-          tone={Date.now() - app.awaitingReplySince.getTime() >= settings["followup.closeDays"] * 86_400_000 ? "warn" : "info"}
+          tone={replyOverdue ? "warn" : "info"}
           icon={WarningCircle}
           title={`Offene Rückfrage seit ${formatDayTime(app.awaitingReplySince)} Uhr`}
         >
-          {Date.now() - app.awaitingReplySince.getTime() >= settings["followup.closeDays"] * 86_400_000
+          {replyOverdue
             ? `Seit über ${settings["followup.closeDays"]} Tagen keine Antwort${app.awaitingRemindedAt ? " – trotz Erinnerung" : ""}. Vorschlag: Bewerbung schließen (ablehnen) oder nochmal nachhaken.`
             : `Das Team wartet auf eine Antwort.${app.awaitingRemindedAt ? ` Erinnerung verschickt am ${formatDayTime(app.awaitingRemindedAt)} Uhr.` : ` Kommt nichts, erinnert der Bot nach ${settings["followup.reminderDays"]} Tagen.`}`}
         </Notice>
@@ -478,7 +480,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
             <HelpLink id="status" label="Was bedeuten die Status?" />
             <div className="nv-divider" />
             <InterviewForm applicationId={app.id} at={app.interviewAt?.toISOString() ?? null} note={app.interviewNote} />
-            {app.status === "INTERVIEW" && app.interviewAt && app.interviewAt.getTime() < Date.now() && <NoShowButton applicationId={app.id} count={app.noShowCount} />}
+            {app.status === "INTERVIEW" && interviewPast && <NoShowButton applicationId={app.id} count={app.noShowCount} />}
             {app.noShowCount > 0 && (
               <p className={`text-xs ${app.noShowCount >= 2 ? "text-[var(--tone-danger)]" : "text-muted"}`}>
                 🚫 {app.noShowCount}× nicht zum Gespräch erschienen

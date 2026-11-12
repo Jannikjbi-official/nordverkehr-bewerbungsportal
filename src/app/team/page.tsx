@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import { Suspense } from "react";
-import { ArrowRight, ArrowUUpLeft, CalendarCheck, Megaphone, ChatCircleDots, DiscordLogo, HandPointing, ShieldWarning } from "@phosphor-icons/react/ssr";
+import { ArrowRight, ArrowUUpLeft, CalendarCheck, Megaphone, ChatCircleDots, DiscordLogo, HandPointing, ShieldWarning, UsersThree } from "@phosphor-icons/react/ssr";
 import { Avatar, Notice, Stat, StatusBadge, formatDay, formatDayTime, formatRelative } from "@/components/ui";
 import { publishedEntries, versionLabel } from "@/lib/changelog";
 import { DiscordMarkdown } from "@/components/DiscordMarkdown";
 import { AckWithdrawalButton } from "@/components/team/AckWithdrawalButton";
 import { requireTeam } from "@/lib/auth/session";
 import { viewerOf, visiblePositionFilter } from "@/lib/team/visibility";
+import { teamWorkload } from "@/lib/team/assign";
 import { db } from "@/lib/db";
 import { ACTIVE_STATUSES, FOLLOW_UP_DAYS } from "@/lib/applications/status";
 import { daysAgo } from "@/lib/time";
@@ -69,6 +70,8 @@ async function Overview({ searchParams }: Pick<PageProps<"/team">, "searchParams
     }),
   ]);
 
+  const workload = await teamWorkload(db);
+  const maxLoad = Math.max(1, ...workload.map((w) => w.open));
   const latest = publishedEntries()[0];
   // Bewerber noch auf dem Discord? Höchstens alle 15 Minuten, nach der Antwort
   after(async () => {
@@ -185,6 +188,22 @@ async function Overview({ searchParams }: Pick<PageProps<"/team">, "searchParams
           {recent.map((a) => (
             <AppRow key={a.id} a={a} meta={a.submittedAt ? formatRelative(a.submittedAt) : ""} status />
           ))}
+        </Panel>
+        <Panel title="Auslastung im Team" icon={<UsersThree size={18} aria-hidden />} href="/team/bewerbungen?status=SUBMITTED&status=IN_REVIEW&status=INTERVIEW">
+          {workload.length === 0 ? (
+            <p className="text-sm text-muted">Noch niemand aktiv.</p>
+          ) : (
+            <ul className="space-y-2" data-testid="workload">
+              {workload.map((w) => (
+                <li key={w.userId} className="grid grid-cols-[minmax(0,140px)_1fr_28px] items-center gap-3 text-sm">
+                  <span className={`truncate ${w.userId === user.id ? "font-semibold" : "text-fg-2"}`}>{w.name}</span>
+                  <span className="h-2 rounded-r-[4px] bg-red/70" style={{ width: `${(w.open / maxLoad) * 100}%`, minWidth: w.open ? 4 : 0 }} aria-hidden />
+                  <span className="tabular-nums text-right">{w.open}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="text-xs text-muted mt-3">Offene Bewerbungen pro Betreuer (aktiv in den letzten 30 Tagen).</p>
         </Panel>
       </div>
     </div>

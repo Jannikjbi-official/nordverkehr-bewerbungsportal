@@ -612,3 +612,46 @@ export async function deleteTestApplicationsAction(): Promise<ActionResult<{ mes
   revalidatePath("/team/bewerbungen");
   return { ok: true, data: { message: `${r.applications} Testbewerbung${r.applications === 1 ? "" : "en"} und ${r.users} Testbewerber gelöscht.` } };
 }
+
+// ─── Einstellungen sichern & wiederherstellen ─────────────────
+
+/** Sicherung einlesen: erst Vorschau (dryRun), dann übernehmen. Führt zusammen, löscht nie. */
+export async function importConfigAction(json: string, dryRun: boolean): Promise<ActionResult<{ report: import("@/lib/admin/config-backup").ImportReport }>> {
+  const { user } = await requireAdmin();
+  if (typeof json !== "string" || json.length > 3_000_000) return { ok: false, error: "Datei zu groß (max. 3 MB)." };
+  let raw: unknown;
+  try {
+    raw = JSON.parse(json);
+  } catch {
+    return { ok: false, error: "Das ist keine gültige JSON-Datei." };
+  }
+  const { backupSchema, importConfig } = await import("@/lib/admin/config-backup");
+  const p = backupSchema.safeParse(raw);
+  if (!p.success) {
+    const i = p.error.issues[0];
+    return { ok: false, error: `Datei passt nicht (${i.path.join(".") || "Aufbau"}: ${i.message}). Nur Sicherungen aus diesem Portal.` };
+  }
+  try {
+    const report = await importConfig(db, p.data, { dryRun, actorId: user.id });
+    if (!dryRun) {
+      await audit("settings.import", { actorId: user.id, meta: { ...report, skipped: report.skipped.length } });
+      revalidatePath("/team/admin", "layout");
+      revalidatePath("/team/positionen");
+      revalidatePath("/team/bausteine");
+      refreshJobsAfter();
+    }
+    return { ok: true, data: { report } };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Import fehlgeschlagen." };
+  }
+}
+
+/** Wochenbericht sofort an die Leitung schicken (Test). */
+export async function postWeeklyNowAction(): Promise<ActionResult<{ message: string }>> {
+  await requireAdmin();
+  const { postWeeklyReport } = await import("@/lib/team/weekly-report");
+  const id = await postWeeklyReport(db, { force: true });
+  if (!id) return { ok: false, error: "Kein Kanal eingetragen (Leitungs-Chat oder Teamchat)." };
+  const job = await db.outboxJob.findUnique({ where: { id }, select: { status: true, lastError: true } });
+  return job?.lastError ? { ok: false, error: `Fehler: ${job.lastError}` } : { ok: true, data: { message: job?.status === "DONE" ? "Wochenbericht gepostet." : "Wochenbericht ist in der Warteschlange (Nachtruhe oder Discord nicht erreichbar)." } };
+}
