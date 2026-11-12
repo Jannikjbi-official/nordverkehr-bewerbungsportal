@@ -97,11 +97,33 @@ export interface DiscordApi {
   deleteMessage(channelId: string, messageId: string): Promise<void>;
 
   addRole(guildId: string, userId: string, roleId: string, reason?: string): Promise<void>;
+  /** Bann auf dem Server (null = nicht gebannt). Wirft, wenn der Bot keine Bans lesen darf. */
+  getBan?(guildId: string, userId: string): Promise<{ reason: string | null } | null>;
+  /** Server-Event anlegen/ändern/löschen (Gesprächstermine) */
+  createEvent?(guildId: string, event: GuildEventInput): Promise<string>;
+  updateEvent?(guildId: string, eventId: string, event: Partial<GuildEventInput>): Promise<void>;
+  deleteEvent?(guildId: string, eventId: string): Promise<void>;
   /** Thread an einer Nachricht starten. Gibt die Thread-ID zurück. */
   startThread(channelId: string, messageId: string, name: string, autoArchiveMinutes?: 60 | 1440 | 4320 | 10080): Promise<string>;
   /** Thread archivieren (bleibt lesbar, eine neue Nachricht holt ihn zurück). */
   archiveThread(threadId: string): Promise<void>;
 }
+
+export interface GuildEventInput {
+  name: string;
+  description?: string;
+  location: string;
+  start: Date;
+  end: Date;
+}
+
+const eventBody = (e: Partial<GuildEventInput>) => ({
+  ...(e.name !== undefined ? { name: e.name.slice(0, 100) } : {}),
+  ...(e.description !== undefined ? { description: e.description.slice(0, 1000) } : {}),
+  ...(e.location !== undefined ? { entity_metadata: { location: e.location.slice(0, 100) } } : {}),
+  ...(e.start ? { scheduled_start_time: e.start.toISOString() } : {}),
+  ...(e.end ? { scheduled_end_time: e.end.toISOString() } : {}),
+});
 
 /** DM-Kanal-ID pro Nutzer (ändert sich bei Discord nicht) – spart einen Aufruf pro DM */
 const dmChannels = new Map<string, string>();
@@ -161,6 +183,42 @@ export function createDiscordApi(token: string, opts: { timeoutMs?: number } = {
         await rest.put(Routes.guildMemberRole(guildId, userId, roleId), { reason });
       } catch (err) {
         throw classifyDiscordError(err);
+      }
+    },
+    async getBan(guildId, userId) {
+      try {
+        const ban = (await rest.get(Routes.guildBan(guildId, userId))) as { reason: string | null };
+        return { reason: ban.reason ?? null };
+      } catch (err) {
+        const e = classifyDiscordError(err);
+        if (e.kind === "not_found") return null;
+        throw e;
+      }
+    },
+    async createEvent(guildId, event) {
+      try {
+        const ev = (await rest.post(Routes.guildScheduledEvents(guildId), {
+          body: { ...eventBody(event), privacy_level: 2, entity_type: 3 },
+        })) as { id: string };
+        return ev.id;
+      } catch (err) {
+        throw classifyDiscordError(err);
+      }
+    },
+    async updateEvent(guildId, eventId, event) {
+      try {
+        await rest.patch(Routes.guildScheduledEvent(guildId, eventId), { body: eventBody(event) });
+      } catch (err) {
+        throw classifyDiscordError(err);
+      }
+    },
+    async deleteEvent(guildId, eventId) {
+      try {
+        await rest.delete(Routes.guildScheduledEvent(guildId, eventId));
+      } catch (err) {
+        const e = classifyDiscordError(err);
+        if (e.kind === "not_found") return;
+        throw e;
       }
     },
     async startThread(channelId, messageId, name, autoArchiveMinutes = 10080) {

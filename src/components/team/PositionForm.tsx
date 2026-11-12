@@ -28,6 +28,9 @@ interface PositionData {
   maxApplications: number | null;
   quizMinScore: number | null;
   interviewQuestions: string[];
+  minProVotes: number | null;
+  requireAdminApproval: boolean;
+  teamRoleIds: string[];
 }
 
 /** ISO → Wert für <input type="datetime-local"> (lokale Zeit des Browsers) */
@@ -56,6 +59,9 @@ const EMPTY: PositionData = {
   maxApplications: null,
   quizMinScore: null,
   interviewQuestions: [],
+  minProVotes: null,
+  requireAdminApproval: false,
+  teamRoleIds: [],
 };
 
 const slugify = (s: string) =>
@@ -202,6 +208,30 @@ export function PositionForm({ position, applicationCount = 0 }: { position: Pos
           </label>
           <input id="p-quiz" type="number" min={0} className="nv-input" placeholder="kein Minimum" value={p.quizMinScore ?? ""} onChange={(e) => set("quizMinScore", optNum(e.target.value))} />
           <p className="nv-help mt-1">Nur Hinweis fürs Team (rote Pille), kein automatischer Ausschluss. Quizfragen legst du unten als Fragetyp „Quiz“ an.</p>
+        </div>
+        <div>
+          <label htmlFor="p-minpro" className="nv-field-label">
+            Vier-Augen: Pro-Stimmen für Annahme
+          </label>
+          <input id="p-minpro" type="number" min={1} max={20} className="nv-input" placeholder="keine Mindestzahl" value={p.minProVotes ?? ""} onChange={(e) => set("minProVotes", optNum(e.target.value))} />
+          <label className="mt-2 flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" className="nv-check !mt-0" checked={p.requireAdminApproval} onChange={(e) => set("requireAdminApproval", e.target.checked)} />
+            Annahme nur durch Admins
+          </label>
+          <p className="nv-help mt-1">„Angenommen“ geht erst, wenn genug Teammitglieder mit Pro gestimmt haben bzw. ein Admin annimmt.</p>
+        </div>
+        <div>
+          <label htmlFor="p-roles" className="nv-field-label">
+            Zuständige Discord-Rollen
+          </label>
+          <input
+            id="p-roles"
+            className="nv-input font-mono text-sm"
+            placeholder="leer = ganzes Team"
+            value={p.teamRoleIds.join(", ")}
+            onChange={(e) => set("teamRoleIds", e.target.value.split(/[\s,]+/).map((x) => x.replace(/\D/g, "")).filter(Boolean))}
+          />
+          <p className="nv-help mt-1">Rollen-IDs, mit Komma getrennt. Dann sehen nur Teammitglieder mit einer dieser Rollen (und Admins) die Bewerbungen dieser Stelle.</p>
         </div>
       </div>
 

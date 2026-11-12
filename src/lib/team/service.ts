@@ -39,6 +39,11 @@ export async function changeStatus(opts: {
   if (!canTeamTransition(app.status, opts.to)) {
     throw new UserFacingError(`Wechsel von „${app.status}“ nach „${opts.to}“ ist nicht möglich.`);
   }
+  // Vier-Augen-Prinzip (pro Stelle): Annahme erst ab X Pro-Stimmen bzw. nur durch Admins
+  if (opts.to === "ACCEPTED") {
+    const block = await acceptBlockReason(app.id, app.position, opts.actorId);
+    if (block) throw new UserFacingError(block);
+  }
   const settings = await getSettings();
   const now = new Date();
   const jobIds: string[] = [];
@@ -107,6 +112,27 @@ export async function changeStatus(opts: {
     }
   });
   return { jobIds };
+}
+
+/** Regeln der Stelle als Text (für Hinweise in der Bewerbung) – oder null. */
+export function acceptRuleText(position: { minProVotes: number | null; requireAdminApproval: boolean }) {
+  const parts: string[] = [];
+  if (position.minProVotes) parts.push(`mindestens ${position.minProVotes} Pro-Stimme${position.minProVotes === 1 ? "" : "n"}`);
+  if (position.requireAdminApproval) parts.push("Freigabe durch einen Admin");
+  return parts.length ? `Annahme nur mit ${parts.join(" und ")}.` : null;
+}
+
+/** Warum die Annahme (noch) nicht geht – oder null. */
+export async function acceptBlockReason(applicationId: string, position: { minProVotes: number | null; requireAdminApproval: boolean }, actorId: string) {
+  if (position.requireAdminApproval) {
+    const actor = await db.user.findUnique({ where: { id: actorId }, select: { isAdmin: true } });
+    if (!actor?.isAdmin) return "Vier-Augen-Prinzip: Bei dieser Stelle darf nur ein Admin annehmen.";
+  }
+  if (position.minProVotes) {
+    const pro = await db.vote.count({ where: { applicationId, value: "PRO" } });
+    if (pro < position.minProVotes) return `Vier-Augen-Prinzip: Für die Annahme braucht es mindestens ${position.minProVotes} Pro-Stimmen (bisher ${pro}).`;
+  }
+  return null;
 }
 
 /**

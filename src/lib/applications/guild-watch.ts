@@ -37,10 +37,47 @@ export function leftGuildMessage(name: string, position: string, invite: string)
  * Stand für eine Bewerbung anwenden. Gibt "notified" zurück, wenn gerade eine
  * Nachricht verschickt wurde, "back" bei Rückkehr, sonst null.
  */
-export async function applyGuildState(applicationId: string, inGuild: boolean): Promise<"notified" | "back" | null> {
+/** Bann auf dem Nordverkehr-Discord nachsehen. null = nicht gebannt oder nicht prüfbar (fehlende Rechte, kein Bot). */
+export async function lookupBan(discordId: string): Promise<{ reason: string | null } | null> {
+  const guildId = process.env.DISCORD_GUILD_ID;
+  if (!guildId) return null;
+  try {
+    const { getDiscordApi } = await import("@/lib/discord/client");
+    const api = getDiscordApi();
+    return api.getBan ? await api.getBan(guildId, discordId) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Bewerbung als „auf dem Discord gebannt“ markieren (einmal), Hinweis + Bot-Log. */
+async function markBanned(
+  app: { id: string; publicId: string | null; flags: unknown; guildBannedAt: Date | null; user: { globalName: string | null; username: string }; position: { title: string } },
+  reason: string | null,
+  now: Date,
+): Promise<"banned" | null> {
+  if (app.guildBannedAt) return null;
+  const flags = ((app.flags as { code: string; message: string }[]) ?? []).filter((f) => f.code !== "guild_banned");
+  flags.push({ code: "guild_banned", message: `Auf dem Nordverkehr-Discord gebannt${reason ? ` (Grund: ${reason.slice(0, 120)})` : ""}.` });
+  const res = await db.application.updateMany({
+    where: { id: app.id, OR: [{ guildBannedAt: null }, { guildBannedAt: { isSet: false } }] },
+    data: { guildBannedAt: now, guildBanReason: reason, guildLeftNotifiedAt: now, flags: flags as never },
+  });
+  if (!res.count) return null;
+  const name = app.user.globalName || app.user.username;
+  const job = await botLog(`⛔ ${esc(name)} ist auf dem Discord **gebannt** (**${app.publicId}**, ${app.position.title})${reason ? ` – Grund: ${esc(reason.slice(0, 200))}` : ""}. Keine Nachricht an den Bewerber.`, {
+    applicationId: app.id,
+    tone: "warn",
+    url: `${publicEnv.appUrl}/team/bewerbungen/${app.id}`,
+  });
+  if (job) await runOutbox({ ids: [job] }).catch(() => {});
+  return "banned";
+}
+
+export async function applyGuildState(applicationId: string, inGuild: boolean): Promise<"notified" | "back" | "banned" | null> {
   const app = await db.application.findUnique({
     where: { id: applicationId },
-    select: { id: true, publicId: true, status: true, guildLeftNotifiedAt: true, user: { select: { globalName: true, username: true } }, position: { select: { title: true } } },
+    select: { id: true, publicId: true, status: true, guildLeftNotifiedAt: true, guildBannedAt: true, flags: true, user: { select: { globalName: true, username: true, discordId: true } }, position: { select: { title: true } } },
   });
   if (!app) return null;
 
@@ -49,7 +86,13 @@ export async function applyGuildState(applicationId: string, inGuild: boolean): 
     // Bedingt zurücksetzen: erkennen mehrere Stellen die Rückkehr gleichzeitig, loggt nur eine
     const reset = await db.application.updateMany({
       where: { id: app.id, guildLeftNotifiedAt: { not: null } },
-      data: { guildLeftNotifiedAt: null },
+      // Wieder auf dem Server = auch kein Bann mehr
+      data: {
+        guildLeftNotifiedAt: null,
+        guildBannedAt: null,
+        guildBanReason: null,
+        flags: ((app.flags as { code: string }[]) ?? []).filter((f) => f.code !== "guild_banned") as never,
+      },
     });
     if (reset.count !== 1) return null;
     const job = await botLog(`↩️ ${esc(app.user.globalName || app.user.username)} ist wieder auf dem Discord (**${app.publicId}**).`, { applicationId: app.id });
@@ -59,6 +102,9 @@ export async function applyGuildState(applicationId: string, inGuild: boolean): 
 
   if (!WATCHED.includes(app.status) || app.guildLeftNotifiedAt) return null;
   const now = new Date();
+  // Gebannt? Dann keine „tritt wieder bei“-Nachricht, sondern ein Hinweis fürs Team
+  const ban = await lookupBan(app.user.discordId);
+  if (ban) return markBanned(app, ban.reason, now);
   // Reservieren: nur eine Instanz verschickt die Nachricht
   const claimed = await db.application.updateMany({
     where: { id: app.id, OR: [{ guildLeftNotifiedAt: null }, { guildLeftNotifiedAt: { isSet: false } }] },

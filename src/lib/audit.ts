@@ -21,6 +21,7 @@ export type AuditAction =
   | "application.protocol"
   | "application.feedback"
   | "application.amend"
+  | "application.no_show"
   | "slot.create"
   | "slot.delete"
   | "position.auto"
@@ -95,6 +96,7 @@ export const AUDIT_LABELS: Record<string, string> = {
   "application.protocol": "Gesprächsprotokoll",
   "application.feedback": "Feedback abgegeben",
   "application.amend": "Antworten nachgereicht",
+  "application.no_show": "Nicht zum Gespräch erschienen",
   "slot.create": "Gesprächstermine angelegt",
   "slot.delete": "Gesprächstermin gelöscht",
   "position.auto": "Position automatisch geöffnet/geschlossen",

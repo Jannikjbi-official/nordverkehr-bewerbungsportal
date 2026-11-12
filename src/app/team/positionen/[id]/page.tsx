@@ -89,6 +89,9 @@ async function Editor({ params }: Pick<PageProps<"/team/positionen/[id]">, "para
             maxApplications: position.maxApplications ?? null,
             quizMinScore: position.quizMinScore ?? null,
             interviewQuestions: position.interviewQuestions ?? [],
+            minProVotes: position.minProVotes ?? null,
+            requireAdminApproval: !!position.requireAdminApproval,
+            teamRoleIds: position.teamRoleIds ?? [],
           }}
           applicationCount={applicationCount}
         />

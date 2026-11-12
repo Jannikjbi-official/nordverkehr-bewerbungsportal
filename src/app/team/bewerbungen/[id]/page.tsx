@@ -23,6 +23,7 @@ import { avatarUrl } from "@/lib/discord/snowflake";
 import { AiPanel } from "@/components/team/AiPanel";
 import { Tabs } from "@/components/Tabs";
 import { QuizPill } from "@/components/team/QuizPill";
+import { NoShowButton } from "@/components/team/NoShowButton";
 import { InterviewProtocol } from "@/components/team/InterviewProtocol";
 import { buildProtocol, protocolQuestions } from "@/lib/team/interview";
 import { testScenarioLabel } from "@/lib/setup/test-applications";
@@ -42,7 +43,7 @@ import { requireTeam, getAccess } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { getBotProfile } from "@/lib/discord/bot-profile";
 import { getSettings } from "@/lib/settings";
-import { getTemplateVarsFor } from "@/lib/team/service";
+import { acceptRuleText, getTemplateVarsFor } from "@/lib/team/service";
 import { FOLLOW_UP_DAYS, STATUS_LABEL, SUGGESTED_CATEGORIES, allowedTeamTargets, canFollowUp } from "@/lib/applications/status";
 import { formatAnswerForDisplay, type AnswerValue } from "@/lib/applications/form";
 import { nameFlag, type ApplicationFlag } from "@/lib/applications/flags";
@@ -466,9 +467,20 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
         <aside className="space-y-4 min-w-0">
           <div className="nv-card p-5 space-y-5">
             <StatusControl applicationId={app.id} current={app.status} targets={allowedTeamTargets(app.status)} />
+            {acceptRuleText(app.position) && app.status !== "ACCEPTED" && (
+              <p className="text-xs text-muted">
+                👀 Vier-Augen-Prinzip: {acceptRuleText(app.position)} Bisher {app.votes.filter((v) => v.value === "PRO").length} Pro-Stimme(n).
+              </p>
+            )}
             <HelpLink id="status" label="Was bedeuten die Status?" />
             <div className="nv-divider" />
             <InterviewForm applicationId={app.id} at={app.interviewAt?.toISOString() ?? null} note={app.interviewNote} />
+            {app.status === "INTERVIEW" && app.interviewAt && app.interviewAt.getTime() < Date.now() && <NoShowButton applicationId={app.id} count={app.noShowCount} />}
+            {app.noShowCount > 0 && (
+              <p className={`text-xs ${app.noShowCount >= 2 ? "text-[var(--tone-danger)]" : "text-muted"}`}>
+                🚫 {app.noShowCount}× nicht zum Gespräch erschienen
+              </p>
+            )}
             {app.interviewAt && (
               <p className="flex items-center gap-1.5 text-xs text-muted">
                 <CalendarCheck size={14} aria-hidden /> {formatDayTime(app.interviewAt)} Uhr{app.slot ? " · vom Bewerber gebucht" : ""}

@@ -563,3 +563,58 @@ export async function addInterviewQuestionsAction(applicationId: string, text: s
   revalidatePath(`/team/bewerbungen/${applicationId}`);
   return { ok: true, data: { added: lines.length } };
 }
+
+// ─── Nicht erschienen ─────────────────────────────────────────
+
+/**
+ * Bewerber war nicht beim Gespräch: Termin wird frei, Bewerber bekommt eine Nachricht
+ * (Portal + DM) und kann neu buchen; ab dem zweiten Mal erscheint ein Hinweis.
+ */
+export async function markNoShowAction(applicationId: string): Promise<ActionResult> {
+  const { user } = await requireTeam();
+  if (!id.safeParse(applicationId).success) return { ok: false, error: "Ungültig." };
+  const app = await db.application.findUnique({ where: { id: applicationId }, include: { user: true, position: { select: { title: true } } } });
+  if (!app || app.status !== "INTERVIEW" || !app.interviewAt) return { ok: false, error: "Nur bei einem Gespräch mit Termin." };
+  if (app.interviewAt.getTime() > Date.now()) return { ok: false, error: "Der Termin liegt noch in der Zukunft." };
+  const { enqueue } = await import("@/lib/discord/outbox-db");
+  const { buildApplicantMessage } = await import("@/lib/messages/embed");
+  const { botLog, esc } = await import("@/lib/discord/botlog");
+  const { publicEnv } = await import("@/lib/env");
+  const count = app.noShowCount + 1;
+  const name = app.user.globalName || app.user.username;
+  const body =
+    `Moin ${name},\n\nleider warst du bei deinem Gespräch für **${app.position.title}** nicht da. ` +
+    `Kein Drama – such dir im Portal einfach einen neuen Termin aus oder schreib uns kurz, was los war.` +
+    (count >= 2 ? `\n\n-# Das ist schon das zweite Mal. Bitte sag uns Bescheid, wenn es mit einem Termin nicht klappt.` : "");
+  const flags = (app.flags as unknown as { code: string; message: string }[]).filter((f) => f.code !== "no_show");
+  if (count >= 2) flags.push({ code: "no_show", message: `${count}× nicht zum Gespräch erschienen.` });
+  const jobIds = await db.$transaction(async (tx) => {
+    // Termin lösen: vergangener Slot wird frei, Bewerber kann neu buchen
+    await tx.interviewSlot.updateMany({ where: { applicationId: app.id }, data: { applicationId: null, bookedAt: null } });
+    await tx.application.update({
+      where: { id: app.id },
+      data: { noShowCount: count, interviewAt: null, interviewRemindedFor: null, flags: flags as never },
+    });
+    const message = await tx.message.create({ data: { applicationId: app.id, direction: "SYSTEM", body, deliveryStatus: "PENDING" } });
+    const dm = await enqueue(
+      {
+        type: "DM",
+        discordUserId: app.user.discordId,
+        purpose: "status",
+        message: buildApplicantMessage({ title: "Wir haben dich beim Gespräch vermisst", body, publicId: app.publicId, statusUrl: `${publicEnv.appUrl}/dashboard/${app.id}` }),
+      },
+      { tx, messageId: message.id, applicationId: app.id },
+    );
+    const log = await botLog(`🚫 **${app.publicId}** (${app.position.title}): nicht zum Gespräch erschienen (${count}×) – markiert von ${esc(user.globalName || user.username)}`, {
+      tx,
+      applicationId: app.id,
+      tone: count >= 2 ? "warn" : "default",
+      url: `${publicEnv.appUrl}/team/bewerbungen/${app.id}`,
+    });
+    await tx.auditLog.create({ data: { actorId: user.id, action: "application.no_show", targetType: "application", targetId: app.id, meta: { count } } });
+    return [dm.id, ...(log ? [log] : [])];
+  });
+  await kick(jobIds);
+  revalidatePath(`/team/bewerbungen/${app.id}`);
+  return { ok: true };
+}

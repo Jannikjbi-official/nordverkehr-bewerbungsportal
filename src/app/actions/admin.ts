@@ -60,6 +60,9 @@ const positionSchema = z.object({
   maxApplications: z.number().int().min(1).max(10000).nullable().optional(),
   quizMinScore: z.number().int().min(0).max(100).nullable().optional(),
   interviewQuestions: z.array(z.string().trim().min(1).max(300)).max(30).optional(),
+  minProVotes: z.number().int().min(1).max(20).nullable().optional(),
+  requireAdminApproval: z.boolean().optional(),
+  teamRoleIds: z.array(z.string().regex(/^\d{15,25}$/, "Ungültige Rollen-ID")).max(10).optional(),
 });
 
 /** Stelle wurde (wieder) geöffnet → Vorgemerkte per DM informieren (nach der Antwort). */
@@ -75,7 +78,7 @@ export async function savePositionAction(input: z.input<typeof positionSchema>):
   const p = positionSchema.safeParse(input);
   if (!p.success) return { ok: false, error: p.error.issues[0].message };
   const { id: pid, ...rest } = p.data;
-  const data = { ...rest, opensAt: rest.opensAt ?? null, closesAt: rest.closesAt ?? null, maxApplications: rest.maxApplications ?? null, quizMinScore: rest.quizMinScore ?? null, interviewQuestions: rest.interviewQuestions ?? [] };
+  const data = { ...rest, opensAt: rest.opensAt ?? null, closesAt: rest.closesAt ?? null, maxApplications: rest.maxApplications ?? null, quizMinScore: rest.quizMinScore ?? null, interviewQuestions: rest.interviewQuestions ?? [], minProVotes: rest.minProVotes ?? null, requireAdminApproval: rest.requireAdminApproval ?? false, teamRoleIds: rest.teamRoleIds ?? [] };
   if (data.opensAt && data.closesAt && data.opensAt >= data.closesAt) return { ok: false, error: "Das Enddatum muss nach dem Startdatum liegen." };
   if (data.status === "OPEN" && data.closesAt && data.closesAt <= new Date()) {
     return { ok: false, error: "Das Enddatum liegt in der Vergangenheit – die Stelle würde sofort wieder geschlossen. Datum leeren oder anpassen." };

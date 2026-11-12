@@ -6,7 +6,7 @@
 import { checkNames } from "@/lib/applications/name-check";
 
 export interface ApplicationFlag {
-  code: "short_answers" | "duplicate_answers" | "similar_to_other" | "young_account" | "dm_closed" | "ai_hint" | "inappropriate_name";
+  code: "short_answers" | "duplicate_answers" | "similar_to_other" | "young_account" | "dm_closed" | "ai_hint" | "inappropriate_name" | "no_show" | "guild_banned";
   message: string;
 }
 
