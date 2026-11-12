@@ -105,7 +105,8 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-2">
+    <div className="@container">
+    <div className="grid gap-6 @4xl:grid-cols-2">
       <div className="space-y-4 min-w-0">
         {/* Bausteine */}
         <div>
@@ -128,25 +129,32 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
               );
             })}
           </div>
-          <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+          <ul className="mt-3 grid gap-1.5 @2xl:grid-cols-2 max-h-64 overflow-y-auto pr-1">
             {byCat.length === 0 && <li className="text-sm text-muted">Keine Bausteine in dieser Kategorie.</li>}
             {byCat.map((t) => (
               <li key={t.id}>
                 <button
                   type="button"
                   onClick={() => insert(t)}
-                  className="group w-full text-left rounded-xl border border-line hover:border-red-line hover:bg-red-soft p-3 transition-colors"
+                  title={t.body}
+                  className={`group w-full text-left rounded-lg border px-3 py-2 transition-colors ${
+                    used.includes(t.id) ? "border-red-line bg-red-soft" : "border-line hover:border-red-line hover:bg-red-soft"
+                  }`}
                 >
-                  <span className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium">{t.title}</span>
-                    <Plus size={14} className="text-muted group-hover:text-red-text shrink-0" aria-hidden />
+                  <span className="flex items-center gap-2 min-w-0">
+                    <span className="text-sm font-medium truncate flex-1 min-w-0">{t.title}</span>
+                    {used.includes(t.id) ? (
+                      <span className="text-[0.65rem] text-red-text shrink-0">eingefügt</span>
+                    ) : (
+                      <Plus size={14} className="text-muted group-hover:text-red-text shrink-0" aria-hidden />
+                    )}
                   </span>
-                  <span className="mt-1 block text-xs text-muted line-clamp-2">{t.body}</span>
+                  <span className="mt-0.5 text-xs text-muted line-clamp-1 break-all">{t.body.replace(/\s+/g, " ")}</span>
                 </button>
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-xs text-muted">Klick fügt den Baustein ans Ende an – mehrere lassen sich kombinieren.</p>
+          <p className="mt-2 text-xs text-muted">Klick fügt den Baustein ans Ende an – mehrere lassen sich kombinieren. Maus drauf zeigt den ganzen Text.</p>
         </div>
 
         {/* Editor */}
@@ -280,6 +288,7 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
         </div>
         {sendError && <p className="nv-error">{sendError}</p>}
       </div>
+    </div>
     </div>
   );
 }
