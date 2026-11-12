@@ -3,8 +3,10 @@
  * kein Score. Sie sollen nur auf Dinge aufmerksam machen, die man sich
  * genauer ansehen sollte.
  */
+import { checkNames } from "@/lib/applications/name-check";
+
 export interface ApplicationFlag {
-  code: "short_answers" | "duplicate_answers" | "similar_to_other" | "young_account" | "dm_closed" | "ai_hint";
+  code: "short_answers" | "duplicate_answers" | "similar_to_other" | "young_account" | "dm_closed" | "ai_hint" | "inappropriate_name";
   message: string;
 }
 
@@ -15,6 +17,14 @@ export interface FlagInput {
   minAccountDays: number;
   /** Texte anderer Bewerbungen (bereits normalisiert) zum Ähnlichkeitsvergleich */
   otherApplications: { publicId: string; text: string }[];
+  /** Discord-Anzeigename und Benutzername (Namens-Check) */
+  names?: (string | null | undefined)[];
+}
+
+/** Hinweis bei unpassendem Namen (oder null). */
+export function nameFlag(names: (string | null | undefined)[]): ApplicationFlag | null {
+  const hit = checkNames(names);
+  return hit ? { code: "inappropriate_name", message: `Name möglicherweise unpassend: „${hit.name.slice(0, 60)}“ (${hit.issues.join(", ")}).` } : null;
 }
 
 export function normalizeText(s: string) {
@@ -81,6 +91,9 @@ export function computeFlags(input: FlagInput): ApplicationFlag[] {
   if (input.minAccountDays > 0 && accountDays < input.minAccountDays) {
     flags.push({ code: "young_account", message: `Discord-Account ist erst ${Math.max(0, Math.floor(accountDays))} Tage alt.` });
   }
+
+  const name = input.names ? nameFlag(input.names) : null;
+  if (name) flags.push(name);
 
   return flags;
 }

@@ -140,6 +140,7 @@ export async function submitApplication(
     discordCreatedAt: user.discordCreatedAt,
     now: new Date(),
     minAccountDays: settings["applications.minDiscordAccountDays"],
+    names: [user.globalName, user.username],
     otherApplications: recent.map((r) => ({
       publicId: r.publicId ?? "?",
       text: r.answers.map((a) => (typeof a.value === "string" ? a.value : "")).join(" \n "),

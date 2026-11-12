@@ -151,6 +151,10 @@ export const HELP: HelpSection[] = [
           { label: "Identische Antwort", text: "Derselbe Text steht bei mehreren Fragen." },
           { label: "Sehr ähnlich zu Bewerbung …", text: "Starke Übereinstimmung mit einer anderen Bewerbung – evtl. kopiert." },
           { label: "Junger Discord-Account", text: "Der Discord-Account ist jünger als in den Einstellungen festgelegt." },
+          {
+            label: "Name möglicherweise unpassend",
+            text: "Anzeige- oder Benutzername enthält eine Beleidigung, einen extremistischen Begriff/Code, gibt sich als Team oder Nordverkehr aus oder versucht die KI zu manipulieren. Wird mit dem aktuellen Namen geprüft.",
+          },
         ],
       },
       {

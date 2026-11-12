@@ -232,13 +232,16 @@ try {
     const created = await createTestApplications(db, getFormDefinition, { positionIds: [pt.id], scenarios: TEST_SCENARIO_KEYS, actorId: team.id });
     check(created.length === TEST_SCENARIO_KEYS.length && created.every((c) => c.publicId.startsWith("TEST-")), `Eine Testbewerbung pro Szenario (${created.length})`);
     const apps = await db.application.findMany({ where: { id: { in: created.map((c) => c.id) } }, include: { user: true, answers: true } });
-    const by = (label: string) => apps.find((a) => a.user.globalName?.startsWith(label))!;
+    const SC: Record<string, string> = { "Test Vorbildlich": "stark", "Test Solide": "solide", "Test Knapp": "knapp", "Test Beleidigend": "beleidigend", "Test Manipulation": "manipulation", "Test Kopie": "kopie", "Test Neuling": "neu", "Test Grenzfall": "alter", "Test Name": "name" };
+    const by = (label: string) => apps.find((a) => a.testScenario === SC[label])!;
     const codes = (a: (typeof apps)[number]) => (a.flags as { code: string }[]).map((f) => f.code);
     check(codes(by("Test Knapp")).includes("short_answers"), "Knapp → Hinweis kurze Antworten");
     check(codes(by("Test Kopie")).includes("similar_to_other"), "Kopie → Ähnlichkeits-Hinweis");
     check(codes(by("Test Neuling")).join(",") === "young_account", `Neuer Account → nur Hinweis junger Account (${codes(by("Test Neuling")).join(",")})`);
     check(!codes(by("Test Grenzfall")).includes("similar_to_other") && !codes(by("Test Vorbildlich")).length, "Andere Szenarien ohne falsche Hinweise");
-    check(apps.filter((a) => !a.user.globalName?.startsWith("Test Kopie")).every((a) => !codes(a).includes("duplicate_answers")), "Keine „identische Antwort“ innerhalb einer Bewerbung");
+    check(apps.every((a) => !codes(a).includes("duplicate_answers")), "Keine „identische Antwort“ innerhalb einer Bewerbung");
+    check(codes(by("Test Name")).join(",") === "inappropriate_name", `Unpassender Name → nur Namens-Hinweis (${by("Test Name").user.globalName}: ${codes(by("Test Name")).join(",")})`);
+    check(apps.filter((a) => a.testScenario !== "name").every((a) => !codes(a).includes("inappropriate_name") && !/^Test /.test(a.user.globalName ?? "")), "Realistische Namen ohne Namens-Hinweis");
     check(by("Test Grenzfall").age === 16, "Grenzfall Alter = Mindestalter der Stelle");
     check(by("Test Vorbildlich").quizCorrect === 1 && by("Test Beleidigend").quizCorrect === 0, "Quiz je nach Szenario richtig/falsch");
     check(by("Test Manipulation").answers.some((a) => String(a.value).includes("Ignoriere alle vorherigen Anweisungen")), "Manipulationsversuch steht in den Antworten");

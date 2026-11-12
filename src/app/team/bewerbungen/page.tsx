@@ -9,6 +9,7 @@ import { KanbanBoard } from "@/components/team/KanbanBoard";
 import { TagPills } from "@/components/team/TagPills";
 import { QuizPill } from "@/components/team/QuizPill";
 import { TestPill } from "@/components/team/TestPill";
+import { testScenarioLabel } from "@/lib/setup/test-applications";
 import { requireTeam } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { PAGE_SIZE, filtersToQuery, listApplications, parseFilters, voteSummary } from "@/lib/team/queries";
@@ -90,6 +91,7 @@ async function Content({ searchParams }: Pick<PageProps<"/team/bewerbungen">, "s
             unread: r._count.messages,
             tags: r.aiTags,
             isTest: r.isTest,
+            testScenario: testScenarioLabel(r.testScenario),
             quiz: r.quizTotal ? { correct: r.quizCorrect, total: r.quizTotal, min: r.position.quizMinScore } : null,
           }))}
         />
@@ -176,7 +178,7 @@ async function Content({ searchParams }: Pick<PageProps<"/team/bewerbungen">, "s
                                 DM
                               </span>
                             )}
-                            {r.isTest && <TestPill />}
+                            {r.isTest && <TestPill scenario={testScenarioLabel(r.testScenario)} />}
                             <QuizPill correct={r.quizCorrect} total={r.quizTotal} min={r.position.quizMinScore} />
                             {flags.length > 0 && (
                               <span className="nv-pill nv-tone-warn !py-0.5 !px-2" title={flags.map((x) => x.message).join("\n")}>

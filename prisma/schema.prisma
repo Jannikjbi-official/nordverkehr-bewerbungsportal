@@ -331,6 +331,8 @@ model Application {
   discordThreadId      String?
   /// Testbewerbung (Admin → Testbewerbungen): keine DMs, nicht in Statistik/Höchstzahl
   isTest               Boolean   @default(false)
+  /// Szenario der Testbewerbung (lib/setup/test-applications.ts)
+  testScenario         String?
   /// Einarbeitung nach der Annahme: { [Punkt]: { at, by } }
   onboarding           Json      @default("{}")
   probationUntil       DateTime?

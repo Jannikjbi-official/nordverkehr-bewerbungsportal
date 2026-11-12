@@ -25,6 +25,7 @@ import { Tabs } from "@/components/Tabs";
 import { QuizPill } from "@/components/team/QuizPill";
 import { InterviewProtocol } from "@/components/team/InterviewProtocol";
 import { buildProtocol, protocolQuestions } from "@/lib/team/interview";
+import { testScenarioLabel } from "@/lib/setup/test-applications";
 import { RatingPanel } from "@/components/team/RatingPanel";
 import { OnboardingPanel } from "@/components/team/OnboardingPanel";
 import { onboardingItems, readOnboarding } from "@/lib/team/onboarding";
@@ -43,7 +44,7 @@ import { getSettings } from "@/lib/settings";
 import { getTemplateVarsFor } from "@/lib/team/service";
 import { FOLLOW_UP_DAYS, STATUS_LABEL, SUGGESTED_CATEGORIES, allowedTeamTargets, canFollowUp } from "@/lib/applications/status";
 import { formatAnswerForDisplay, type AnswerValue } from "@/lib/applications/form";
-import type { ApplicationFlag } from "@/lib/applications/flags";
+import { nameFlag, type ApplicationFlag } from "@/lib/applications/flags";
 import type { ApplicationStatus } from "@prisma/client";
 import { isAiConfigured } from "@/lib/ai/config";
 import { nowMs } from "@/lib/time";
@@ -108,7 +109,10 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
 
   const statusHint = typeof sp.status === "string" ? (sp.status as ApplicationStatus) : app.status;
   const suggested = SUGGESTED_CATEGORIES[statusHint] ?? SUGGESTED_CATEGORIES[app.status] ?? [];
-  const flags = app.flags as unknown as ApplicationFlag[];
+  // Gespeicherte Hinweise + Namens-Check mit dem aktuellen Namen (Name kann sich nach dem Absenden ändern)
+  const storedFlags = app.flags as unknown as ApplicationFlag[];
+  const liveName = nameFlag([app.user.globalName, app.user.username]);
+  const flags = liveName && !storedFlags.some((f) => f.message === liveName.message) ? [...storedFlags.filter((f) => f.code !== "inappropriate_name"), liveName] : storedFlags;
   const dmIssue = app.confirmationDmStatus === "DM_CLOSED" || app.confirmationDmStatus === "FAILED";
   // Bewerber nicht (mehr) auf dem Discord? (nur bei sicherer Antwort von Discord)
   const leftGuild = guildStateKnown(applicantAccess) && !applicantAccess!.inGuild && ["SUBMITTED", "IN_REVIEW", "INTERVIEW"].includes(app.status);
@@ -237,7 +241,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
       )}
 
       {app.isTest && (
-        <Notice tone="warn" icon={Flask} title="Testbewerbung">
+        <Notice tone="warn" icon={Flask} title={`Testbewerbung${testScenarioLabel(app.testScenario) ? ` · Szenario „${testScenarioLabel(app.testScenario)}“` : ""}`}>
           Kein echter Bewerber – Nachrichten erscheinen nur im Portal, DMs und Rollen werden nicht verschickt. Löschen unter Einstellungen → Testbewerbungen.
         </Notice>
       )}

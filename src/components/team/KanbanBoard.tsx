@@ -39,6 +39,7 @@ export interface BoardItem {
   tags: string[];
   quiz?: { correct: number | null; total: number; min: number | null } | null;
   isTest?: boolean;
+  testScenario?: string | null;
 }
 
 export function KanbanBoard({ items: initial }: { items: BoardItem[] }) {
@@ -178,7 +179,7 @@ function Card({ item, overlay }: { item: BoardItem; overlay?: boolean }) {
           <span className="text-[var(--tone-success)]">+{item.votes.pro}</span>{" "}
           <span className="text-[var(--tone-danger)]">−{item.votes.contra}</span>
         </span>
-        {item.isTest && <TestPill />}
+        {item.isTest && <TestPill scenario={item.testScenario} />}
         {item.quiz && <QuizPill correct={item.quiz.correct} total={item.quiz.total} min={item.quiz.min} />}
         {item.unread > 0 && (
           <span className="inline-flex items-center gap-1 text-red-text">
