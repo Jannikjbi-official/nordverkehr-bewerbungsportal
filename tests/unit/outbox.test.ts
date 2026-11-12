@@ -18,6 +18,8 @@ function fakeApi(over: Partial<DiscordApi> = {}): DiscordApi {
     deleteMessage: vi.fn(async () => {}),
     editMessage: vi.fn(async () => {}),
     addRole: vi.fn(async () => {}),
+    removeRole: vi.fn(async () => {}),
+    setNick: vi.fn(async () => {}),
     startThread: vi.fn(async () => "thread-1"),
     archiveThread: vi.fn(async () => {}),
     ...over,

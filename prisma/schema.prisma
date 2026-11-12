@@ -82,6 +82,8 @@ enum OutboxType {
   DM
   CHANNEL_MESSAGE
   ADD_ROLE
+  REMOVE_ROLE
+  SET_NICK
 }
 
 enum OutboxStatus {
@@ -237,6 +239,12 @@ model Position {
   requireAdminApproval Boolean @default(false)
   /// Zuständigkeit: nur Teammitglieder mit einer dieser Discord-Rollen sehen die Bewerbungen (leer = alle)
   teamRoleIds     String[]   @default([])
+  /// Eigener Bewertungsbogen: je Zeile „Kriterium | Hinweis“ (leer = Standard-Kriterien)
+  ratingCriteria  String[]   @default([])
+  /// Kontingent: so viele Plätze – sind sie mit Annahmen belegt, schließt die Stelle automatisch (null = unbegrenzt)
+  seats           Int?
+  /// Bei Annahme vor den Discord-Namen setzen, z. B. „[Support]“ (leer = Name bleibt)
+  nickPrefix      String?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
@@ -360,6 +368,10 @@ model Application {
   /// Einarbeitung nach der Annahme: { [Punkt]: { at, by } }
   onboarding           Json      @default("{}")
   probationUntil       DateTime?
+  /// Pings (Bot-Log/Thread) zu neuen Bewerber-Nachrichten bis dahin stumm
+  mutedUntil           DateTime?
+  /// Erinnerung an den Betreuer wegen liegengebliebenem Claim (einmal pro Claim)
+  claimRemindedAt      DateTime?
   rejectionReason      String?
   /// Feste Kategorie des Absagegrunds (lib/applications/rejection.ts) – für die Statistik
   rejectionCategory    String?

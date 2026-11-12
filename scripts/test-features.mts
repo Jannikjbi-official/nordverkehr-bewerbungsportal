@@ -303,6 +303,8 @@ try {
       editMessage: async () => {},
       deleteMessage: async () => {},
       addRole: async () => {},
+      removeRole: async () => {},
+      setNick: async () => {},
       startThread: async () => "t",
       archiveThread: async () => {},
     });
@@ -408,7 +410,7 @@ try {
     const { setDiscordApiForTests } = await import("../src/lib/discord/client");
     const { applyGuildState } = await import("../src/lib/applications/guild-watch");
     process.env.DISCORD_GUILD_ID = "1";
-    setDiscordApiForTests({ getMember: async () => null, openDm: async () => "d", postMessage: async () => "m", editMessage: async () => {}, deleteMessage: async () => {}, addRole: async () => {}, startThread: async () => "t", archiveThread: async () => {}, getBan: async () => ({ reason: "Spam" }) });
+    setDiscordApiForTests({ getMember: async () => null, openDm: async () => "d", postMessage: async () => "m", editMessage: async () => {}, deleteMessage: async () => {}, addRole: async () => {}, removeRole: async () => {}, setNick: async () => {}, startThread: async () => "t", archiveThread: async () => {}, getBan: async () => ({ reason: "Spam" }) });
     const ba = await mkApp("Bert", "100000000000000081");
     const rb = await applyGuildState(ba.id, false);
     const bApp = await db.application.findUnique({ where: { id: ba.id } });

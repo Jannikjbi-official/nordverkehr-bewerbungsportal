@@ -35,7 +35,21 @@ export type OutboxPayload =
       /** Art des Posts (Nachtruhe-Einstellung, lib/night.ts); ohne Angabe = Bot-Log */
       kind?: "botlog" | "applications" | "threads" | "summary" | "changelog";
     }
-  | { type: "ADD_ROLE"; guildId: string; discordUserId: string; roleId: string; reason?: string };
+  | { type: "ADD_ROLE"; guildId: string; discordUserId: string; roleId: string; reason?: string }
+  | { type: "REMOVE_ROLE"; guildId: string; discordUserId: string; roleId: string; reason?: string }
+  /** Präfix vor den Server-Namen setzen bzw. wieder entfernen (aktueller Name wird beim Ausführen gelesen) */
+  | { type: "SET_NICK"; guildId: string; discordUserId: string; prefix: string; mode: "add" | "remove"; fallbackName: string; reason?: string };
+
+/** Discord erlaubt höchstens 32 Zeichen im Server-Namen. */
+export function nickWithPrefix(current: string, prefix: string, mode: "add" | "remove"): string | null | undefined {
+  const p = prefix.trim();
+  if (!p) return undefined;
+  const has = current.startsWith(`${p} `) || current === p;
+  if (mode === "add") return has ? undefined : `${p} ${current}`.slice(0, 32);
+  if (!has) return undefined;
+  const rest = current.slice(p.length).trim();
+  return rest || null;
+}
 
 export interface OutboxJobLike {
   id: string;
@@ -97,6 +111,20 @@ export async function executeJob(
         if (isTestDiscordId(payload.discordUserId)) return { kind: "done", result: { skipped: "test" } };
         await api.addRole(payload.guildId, payload.discordUserId, payload.roleId, payload.reason);
         return { kind: "done", result: { roleId: payload.roleId } };
+      }
+      case "REMOVE_ROLE": {
+        if (isTestDiscordId(payload.discordUserId)) return { kind: "done", result: { skipped: "test" } };
+        await api.removeRole(payload.guildId, payload.discordUserId, payload.roleId, payload.reason);
+        return { kind: "done", result: { roleId: payload.roleId } };
+      }
+      case "SET_NICK": {
+        if (isTestDiscordId(payload.discordUserId)) return { kind: "done", result: { skipped: "test" } };
+        const member = await api.getMember(payload.guildId, payload.discordUserId);
+        if (!member) return { kind: "done", result: { skipped: "not_in_guild" } };
+        const next = nickWithPrefix(member.nick ?? payload.fallbackName, payload.prefix, payload.mode);
+        if (next === undefined) return { kind: "done", result: { skipped: "unchanged" } };
+        await api.setNick(payload.guildId, payload.discordUserId, next, payload.reason);
+        return { kind: "done", result: { nick: next ?? "" } };
       }
       default:
         return { kind: "failed", error: "Unbekannter Job-Typ", dmClosed: false };
