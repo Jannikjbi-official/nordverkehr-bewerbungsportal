@@ -45,6 +45,11 @@ export async function changeStatus(opts: {
     if (block) throw new UserFacingError(block);
   }
   const settings = await getSettings();
+  // Phase 2 (Bewerbungsgespräch) nur mit ausreichender Team-Bewertung
+  if (opts.to === "INTERVIEW") {
+    const block = await interviewBlockReason(app.id, settings["interview.minStars"]);
+    if (block) throw new UserFacingError(block);
+  }
   const now = new Date();
   const jobIds: string[] = [];
 
@@ -128,6 +133,25 @@ export function acceptRuleText(position: { minProVotes: number | null; requireAd
 }
 
 /** Warum die Annahme (noch) nicht geht – oder null. */
+/**
+ * Hürde für Phase 2: Team-Schnitt im Bewertungsbogen muss mindestens `minStars` sein.
+ * Ohne Bewertung geht es auch nicht weiter. 0 = keine Hürde.
+ */
+export async function interviewBlockReason(applicationId: string, minStars: number) {
+  if (!minStars) return null;
+  const { summarizeRatings, formatScore } = await import("@/lib/team/ratings");
+  const ratings = await db.rating.findMany({ where: { applicationId }, select: { scores: true } });
+  return interviewBlockText(summarizeRatings(ratings).overall, minStars, formatScore);
+}
+
+/** Text für die Hürde (rein, für Tests und die Anzeige in der Detailansicht). */
+export function interviewBlockText(overall: number | null, minStars: number, format: (n: number | null) => string = String) {
+  if (!minStars) return null;
+  if (overall === null) return `Phase 2 (Gespräch) erst nach der Bewertung: Bitte zuerst im Bewertungsbogen Sterne vergeben (mindestens ${format(minStars)} im Schnitt).`;
+  if (overall < minStars) return `Unter ${format(minStars)} Sternen geht es nicht ins Gespräch (Team-Schnitt ${format(overall)}). Bewertung prüfen oder absagen.`;
+  return null;
+}
+
 export async function acceptBlockReason(applicationId: string, position: { minProVotes: number | null; requireAdminApproval: boolean }, actorId: string) {
   if (position.requireAdminApproval) {
     const actor = await db.user.findUnique({ where: { id: actorId }, select: { isAdmin: true } });

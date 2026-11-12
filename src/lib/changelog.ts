@@ -89,6 +89,11 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: "1.1",
     date: "2026-11-12",
     items: [
+      { kind: "neu", text: "**Phase 2 erst ab 3 Sternen** – ins Bewerbungsgespräch geht es nur mit einem Team-Schnitt von mindestens 3 Sternen im Bewertungsbogen. Grenze im Admin-Bereich einstellbar." },
+      { kind: "neu", text: "**Gespräch absagen** – Bewerber sagen mit „Ich kann nicht“ direkt in der Erinnerungs-DM oder im Portal ab, das Team bekommt Bescheid." },
+      { kind: "neu", text: "**/offen und /claim** – offene Bewerbungen deiner Stellen sehen und übernehmen, direkt in Discord." },
+      { kind: "besser", text: "**Wiederbewerbung** – wer es nach einer Absage nochmal versucht, sieht den damaligen Grund und kann gezielt nachbessern." },
+      { kind: "besser", text: "**Einarbeitung sofort** – Haken in der Checkliste erscheinen ohne Wartezeit." },
       { kind: "neu", text: "**Bewertungsbogen** – pro Kriterium 1–5 Sterne (Kommunikation, Erfahrung, Szenarien, Motivation, Verfügbarkeit, Teamfit), mit Schnitt des Teams." },
       { kind: "neu", text: "**Discord-Pflicht** – absenden nur mit Mitgliedschaft auf dem Discord. Verlässt jemand den Server während der Bewerbung, schreibt ihm der Bot automatisch im Portal, das Team sieht es in der Bewerbung und in der Team-Übersicht." },
       { kind: "besser", text: "**Live-Aktualisierung** – neue Nachrichten, Status, Kommentare und Bewertungen erscheinen von selbst, ohne die Seite neu zu laden." },

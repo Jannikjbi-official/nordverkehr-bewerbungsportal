@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { CalendarCheck } from "@phosphor-icons/react/ssr";
 import { bookSlotAction } from "@/app/actions/application";
 import { confirmDialog } from "@/components/ConfirmDialog";
+import { CancelInterviewButton } from "@/components/dashboard/CancelInterviewButton";
 
 export interface PickableSlot {
   id: string;
@@ -18,7 +19,20 @@ const day = (iso: string) => new Date(iso).toLocaleDateString("de-DE", { weekday
 const time = (iso: string) => new Date(iso).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" });
 
 /** Bewerber wählt einen freien Gesprächstermin (oder bucht um). */
-export function SlotPicker({ applicationId, slots, current, canChange }: { applicationId: string; slots: PickableSlot[]; current: PickableSlot | null; canChange: boolean }) {
+export function SlotPicker({
+  applicationId,
+  slots,
+  current,
+  canChange,
+  canCancel = false,
+}: {
+  applicationId: string;
+  slots: PickableSlot[];
+  current: PickableSlot | null;
+  canChange: boolean;
+  /** Termin liegt noch in der Zukunft → „Ich kann nicht“ anbieten */
+  canCancel?: boolean;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(!current);
   const [pending, run] = useTransition();
@@ -57,6 +71,7 @@ export function SlotPicker({ applicationId, slots, current, canChange }: { appli
           ) : (
             <p className="text-sm text-muted mt-0.5">Wir haben dich zum Gespräch eingeladen. Wähl einfach eine Zeit, die dir passt – am Tag selbst erinnern wir dich per DM.</p>
           )}
+          {current && canCancel && <CancelInterviewButton applicationId={applicationId} />}
         </div>
       </div>
 

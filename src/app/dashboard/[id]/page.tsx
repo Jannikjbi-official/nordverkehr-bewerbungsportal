@@ -17,6 +17,8 @@ import { ChatAvatar, ChatRoleBadge, personName } from "@/components/ChatParticip
 import { ReplyBox, WithdrawButton, MarkRead } from "@/components/dashboard/ApplicantActions";
 import { requireUser } from "@/lib/auth/session";
 import { SlotPicker } from "@/components/dashboard/SlotPicker";
+import { CancelInterviewButton } from "@/components/dashboard/CancelInterviewButton";
+import { nowMs } from "@/lib/time";
 import { FeedbackForm } from "@/components/dashboard/FeedbackForm";
 import { canRebook, listFreeSlots } from "@/lib/team/slots";
 import { db } from "@/lib/db";
@@ -168,6 +170,7 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
               slots={freeSlots.map(toPickable)}
               current={app.slot ? toPickable(app.slot) : null}
               canChange={canRebook(app.slot, new Date())}
+              canCancel={!!app.slot && app.slot.startsAt.getTime() > nowMs()}
             />
           )}
           {!selfBooking && app.status === "INTERVIEW" && app.interviewAt && (
@@ -177,6 +180,7 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
                 <p className="font-semibold">Gesprächstermin</p>
                 <p className="text-fg-2 mt-0.5">{formatDayTime(app.interviewAt)} Uhr · TeamSpeak</p>
                 {app.interviewNote && <p className="text-sm text-muted mt-1">{app.interviewNote}</p>}
+                {app.interviewAt.getTime() > nowMs() && <CancelInterviewButton applicationId={app.id} />}
               </div>
             </div>
           )}

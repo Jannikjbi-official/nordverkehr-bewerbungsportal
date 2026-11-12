@@ -90,6 +90,8 @@ export interface ApplicantEmbedInput {
   author?: { name: string; iconUrl?: string | null } | null;
   /** Beschriftung des Link-Knopfs (Standard: „Status ansehen“) */
   buttonLabel?: string;
+  /** Zusätzlicher Interaktions-Knopf (z. B. „Ich kann nicht“ in der Gesprächserinnerung) */
+  action?: { label: string; customId: string; emoji?: string } | null;
 }
 
 /** Kopfzeile: Team oder persönlich ("Jonas · Nordverkehr-Team"). */
@@ -111,8 +113,15 @@ export function buildApplicantMessage(input: ApplicantEmbedInput): RESTPostAPICh
     text(truncate(input.body || " ", BODY_LIMIT)),
     separator(false),
     text(`-# ${input.publicId ? `Bewerbung ${input.publicId}` : "Nordverkehr Roleplay"} · ${discordTime(at)}`),
-    linkButtons([{ label: input.buttonLabel ?? "Status ansehen", url: input.statusUrl }]),
+    input.action ? actionRow(input.action, { label: input.buttonLabel ?? "Status ansehen", url: input.statusUrl }) : linkButtons([{ label: input.buttonLabel ?? "Status ansehen", url: input.statusUrl }]),
   ]);
+}
+
+/** Interaktions-Knopf + Link-Knopf in einer Zeile. */
+function actionRow(action: { label: string; customId: string; emoji?: string }, link: { label: string; url: string | null | undefined }): APIActionRowComponent<APIButtonComponent> {
+  const components: APIButtonComponent[] = [{ type: 2, style: 2, label: action.label.slice(0, 80), custom_id: action.customId, ...(action.emoji ? { emoji: { name: action.emoji } } : {}) }];
+  if (link.url && /^https:\/\//.test(link.url)) components.push({ type: 2, style: 5, label: link.label.slice(0, 80), url: link.url });
+  return { type: 1, components };
 }
 
 // ─── Bewerbungs-Kanal ─────────────────────────────────────────

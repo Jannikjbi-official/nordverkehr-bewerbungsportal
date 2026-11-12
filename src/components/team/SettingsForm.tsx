@@ -337,6 +337,12 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
       {show("bewerbungen") && (
       <Card title="Gesprächstermine" desc="Was rund um einen festen oder gebuchten Gesprächstermin passiert.">
         <div className="space-y-3">
+          {num(
+            "interview.minStars",
+            "Phase 2 (Gespräch) erst ab … Sternen",
+            "Team-Schnitt im Bewertungsbogen. Darunter (oder ohne Bewertung) geht es nicht ins Gespräch – der Status „Gespräch“ und Termine sind dann gesperrt. 0 = keine Hürde.",
+            0.5,
+          )}
           {toggle(
             "interview.discordEvent",
             "Gespräch als Discord-Server-Event anlegen",

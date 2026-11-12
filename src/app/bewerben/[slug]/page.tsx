@@ -2,7 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ClockCountdown, Info, Prohibit } from "@phosphor-icons/react/ssr";
+import {
+  ArrowCounterClockwise,
+  ClockCountdown,
+  Info,
+  Prohibit,
+} from "@phosphor-icons/react/ssr";
 import { Container, Notice, formatDay } from "@/components/ui";
 import { ApplicationForm } from "@/components/apply/ApplicationForm";
 import { requireUser } from "@/lib/auth/session";
@@ -13,9 +18,16 @@ import { getEligibility } from "@/lib/applications/service";
 import { getSettings } from "@/lib/settings";
 import { effectiveMinAge } from "@/lib/applications/rules";
 import type { AnswerMap } from "@/lib/applications/form";
-import { generalComplete, prefillFromProfile, type ProfileAnswers } from "@/lib/applications/profile";
+import {
+  generalComplete,
+  prefillFromProfile,
+  type ProfileAnswers,
+} from "@/lib/applications/profile";
 
-export const metadata: Metadata = { title: "Bewerben", robots: { index: false } };
+export const metadata: Metadata = {
+  title: "Bewerben",
+  robots: { index: false },
+};
 
 export default function ApplyPage({ params }: PageProps<"/bewerben/[slug]">) {
   return (
@@ -29,7 +41,9 @@ export default function ApplyPage({ params }: PageProps<"/bewerben/[slug]">) {
   );
 }
 
-async function Apply({ params }: Pick<PageProps<"/bewerben/[slug]">, "params">) {
+async function Apply({
+  params,
+}: Pick<PageProps<"/bewerben/[slug]">, "params">) {
   const { slug } = await params;
   const user = await requireUser(`/bewerben/${slug}`);
   const position = await getPublicPosition(slug);
@@ -46,22 +60,30 @@ async function Apply({ params }: Pick<PageProps<"/bewerben/[slug]">, "params">) 
         </h1>
         {eligibility.code === "open_exists" && (
           <Notice tone="info" icon={Info} title={eligibility.message}>
-            <Link className="nv-link" href={`/dashboard/${eligibility.applicationId}`}>
+            <Link
+              className="nv-link"
+              href={`/dashboard/${eligibility.applicationId}`}
+            >
               Zum Stand deiner Bewerbung
             </Link>
           </Notice>
         )}
         {eligibility.code === "cooldown" && (
           <Notice tone="warn" icon={ClockCountdown} title={eligibility.message}>
-            Du kannst dich ab dem {formatDay(eligibility.until)} wieder bewerben.
+            Du kannst dich ab dem {formatDay(eligibility.until)} wieder
+            bewerben.
           </Notice>
         )}
         {eligibility.code === "banned" && (
           <Notice tone="danger" icon={Prohibit} title={eligibility.message}>
-            {eligibility.until ? `Die Sperre läuft bis ${formatDay(eligibility.until)}.` : "Bei Fragen melde dich im Support."}
+            {eligibility.until
+              ? `Die Sperre läuft bis ${formatDay(eligibility.until)}.`
+              : "Bei Fragen melde dich im Support."}
           </Notice>
         )}
-        {eligibility.code === "closed" && <Notice tone="info" icon={Info} title={eligibility.message} />}
+        {eligibility.code === "closed" && (
+          <Notice tone="info" icon={Info} title={eligibility.message} />
+        )}
         <Link href="/" className="nv-btn nv-btn-ghost">
           Andere Positionen ansehen
         </Link>
@@ -71,46 +93,125 @@ async function Apply({ params }: Pick<PageProps<"/bewerben/[slug]">, "params">) 
 
   const { getAccess } = await import("@/lib/auth/user-access");
   const access = await getAccess(user).catch(() => null);
-  const inGuild = !access || access.inGuild || access.source === "error" || access.source === "unconfigured";
+  const inGuild =
+    !access ||
+    access.inGuild ||
+    access.source === "error" ||
+    access.source === "unconfigured";
 
-  const [sections, draft, profile] = await Promise.all([
+  const [sections, draft, profile, previous] = await Promise.all([
     getFormDefinition(position),
-    eligibility.draftId ? db.application.findUnique({ where: { id: eligibility.draftId } }) : null,
-    db.applicantProfile.findUnique({ where: { userId: user.id }, select: { age: true, answers: true } }),
+    eligibility.draftId
+      ? db.application.findUnique({ where: { id: eligibility.draftId } })
+      : null,
+    db.applicantProfile.findUnique({
+      where: { userId: user.id },
+      select: { age: true, answers: true },
+    }),
+    // Wiederbewerbung: letzte Absage auf dieselbe Stelle (Rückblick mit mitgeteiltem Grund)
+    db.application.findFirst({
+      where: {
+        userId: user.id,
+        positionId: position.id,
+        status: "REJECTED",
+        isTest: { not: true },
+      },
+      orderBy: { decidedAt: "desc" },
+      select: {
+        id: true,
+        publicId: true,
+        decidedAt: true,
+        rejectionReason: true,
+      },
+    }),
   ]);
 
   // Allgemeine Antworten aus der letzten Bewerbung vorausfüllen (nur leere Felder)
   const data = profile
-    ? prefillFromProfile(sections, (draft?.draftData ?? {}) as AnswerMap, (profile.answers ?? {}) as ProfileAnswers).data
+    ? prefillFromProfile(
+        sections,
+        (draft?.draftData ?? {}) as AnswerMap,
+        (profile.answers ?? {}) as ProfileAnswers,
+      ).data
     : { ...((draft?.draftData ?? {}) as AnswerMap) };
-  const fileIds = Object.values(data).flatMap((v) => (Array.isArray(v) ? v : []));
+  const fileIds = Object.values(data).flatMap((v) =>
+    Array.isArray(v) ? v : [],
+  );
   const uploads = fileIds.length
-    ? await db.upload.findMany({ where: { id: { in: fileIds }, ownerId: user.id }, select: { id: true, fileName: true } })
+    ? await db.upload.findMany({
+        where: { id: { in: fileIds }, ownerId: user.id },
+        select: { id: true, fileName: true },
+      })
     : [];
   // Nicht mehr vorhandene Uploads aus dem Entwurf entfernen
   const valid = new Set(uploads.map((u) => u.id));
-  const fileQuestions = new Set(sections.flatMap((s) => s.questions.filter((q) => q.type === "FILE").map((q) => q.id)));
+  const fileQuestions = new Set(
+    sections.flatMap((s) =>
+      s.questions.filter((q) => q.type === "FILE").map((q) => q.id),
+    ),
+  );
   for (const [k, v] of Object.entries(data)) {
-    if (fileQuestions.has(k) && Array.isArray(v)) data[k] = v.filter((id) => valid.has(id));
+    if (fileQuestions.has(k) && Array.isArray(v))
+      data[k] = v.filter((id) => valid.has(id));
   }
 
   return (
-    <ApplicationForm
-      position={{ id: position.id, title: position.title, slug: position.slug }}
-      sections={sections}
-      minAge={effectiveMinAge(position, { minAge: settings["applications.minAge"] })}
-      displayName={user.globalName || user.username}
-      initial={{
-        draftId: draft?.id ?? null,
-        data,
-        step: draft?.draftStep ?? 0,
-        age: draft?.age ?? profile?.age ?? null,
-        fromProfile: !!profile && generalComplete(sections, data),
-      }}
-      initialUploads={Object.fromEntries(uploads.map((u) => [u.id, u]))}
-      inGuild={inGuild}
-      discordInvite={publicEnv.discordInvite}
-    />
+    <>
+      {previous && (
+        <div className="mx-auto max-w-3xl mb-6">
+          <Notice
+            tone="info"
+            icon={ArrowCounterClockwise}
+            title={`Schön, dass du es nochmal versuchst!`}
+          >
+            <p>
+              Du hattest dich{" "}
+              {previous.decidedAt
+                ? `bis ${formatDay(previous.decidedAt)} `
+                : ""}
+              schon einmal als {position.title} beworben ({previous.publicId}).
+              {previous.rejectionReason
+                ? " Damals hat es aus diesem Grund nicht gepasst:"
+                : " Damals hat es leider nicht gepasst."}
+            </p>
+            {previous.rejectionReason && (
+              <blockquote className="mt-2 border-l-2 border-line-strong pl-3 text-fg-2 whitespace-pre-line">
+                {previous.rejectionReason}
+              </blockquote>
+            )}
+            <p className="mt-2">
+              Nimm dir die Punkte diesmal besonders vor – ausführliche, ehrliche
+              Antworten helfen dem Team am meisten.{" "}
+              <Link className="nv-link" href={`/dashboard/${previous.id}`}>
+                Alte Bewerbung ansehen
+              </Link>
+            </p>
+          </Notice>
+        </div>
+      )}
+      <ApplicationForm
+        position={{
+          id: position.id,
+          title: position.title,
+          slug: position.slug,
+        }}
+        sections={sections}
+        minAge={effectiveMinAge(position, {
+          minAge: settings["applications.minAge"],
+        })}
+        displayName={user.globalName || user.username}
+        initial={{
+          draftId: draft?.id ?? null,
+          data,
+          step: draft?.draftStep ?? 0,
+          age: draft?.age ?? profile?.age ?? null,
+          fromProfile: !!profile && generalComplete(sections, data),
+        }}
+        initialUploads={Object.fromEntries(uploads.map((u) => [u.id, u]))}
+        inGuild={inGuild}
+        discordInvite={publicEnv.discordInvite}
+      />
+    </>
   );
 }
 

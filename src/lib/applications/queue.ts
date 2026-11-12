@@ -25,15 +25,20 @@ export async function getQueueInfo(db: PrismaClient, app: { id: string; position
   const [ahead, total, reviewed, decided] = await Promise.all([
     db.application.count({ where: { ...open, submittedAt: { not: null, lt: app.submittedAt }, NOT: { id: app.id } } }),
     db.application.count({ where: open }),
-    db.application.findMany({ where: { isTest: { not: true }, firstReviewedAt: { gte: since } }, select: { submittedAt: true, firstReviewedAt: true }, take: 300 }),
-    db.application.findMany({ where: { isTest: { not: true }, status: { in: ["ACCEPTED", "REJECTED"] }, decidedAt: { gte: since } }, select: { submittedAt: true, decidedAt: true }, take: 300 }),
+    db.application.findMany({ where: { isTest: { not: true }, firstReviewedAt: { gte: since } }, select: { positionId: true, submittedAt: true, firstReviewedAt: true }, take: 500 }),
+    db.application.findMany({ where: { isTest: { not: true }, status: { in: ["ACCEPTED", "REJECTED"] }, decidedAt: { gte: since } }, select: { positionId: true, submittedAt: true, decidedAt: true }, take: 500 }),
   ]);
   const days = (a: Date | null, b: Date | null) => (a && b ? (b.getTime() - a.getTime()) / DAY : null);
+  /** Erst die Werte dieser Stelle, bei zu wenig Daten alle Stellen */
+  const estimate = (rows: { positionId: string; from: Date | null; to: Date | null }[]) => {
+    const vals = (xs: typeof rows) => xs.map((r) => days(r.from, r.to)).filter((d): d is number => d !== null && d >= 0);
+    return avg(vals(rows.filter((r) => r.positionId === app.positionId))) ?? avg(vals(rows));
+  };
   return {
     place: ahead + 1,
     total: Math.max(total, ahead + 1),
-    firstReviewDays: avg(reviewed.map((r) => days(r.submittedAt, r.firstReviewedAt)).filter((d): d is number => d !== null && d >= 0)),
-    decisionDays: avg(decided.map((r) => days(r.submittedAt, r.decidedAt)).filter((d): d is number => d !== null && d >= 0)),
+    firstReviewDays: estimate(reviewed.map((r) => ({ positionId: r.positionId, from: r.submittedAt, to: r.firstReviewedAt }))),
+    decisionDays: estimate(decided.map((r) => ({ positionId: r.positionId, from: r.submittedAt, to: r.decidedAt }))),
   };
 }
 

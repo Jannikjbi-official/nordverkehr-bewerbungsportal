@@ -7,7 +7,7 @@ import { requireAdmin, requireTeam } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 import { rateLimit } from "@/lib/rate-limit";
 import { deliverNow } from "@/lib/discord/outbox-db";
-import { acknowledgeWithdrawal, changeStatus, sendTeamMessage, setClaim } from "@/lib/team/service";
+import { acknowledgeWithdrawal, changeStatus, interviewBlockReason, sendTeamMessage, setClaim } from "@/lib/team/service";
 import { UserFacingError } from "@/lib/applications/service";
 import { REJECTION_KEYS } from "@/lib/applications/rejection";
 import type { ActionResult } from "@/app/actions/application";
@@ -73,6 +73,12 @@ export async function setInterviewAction(input: z.input<typeof interviewSchema>)
   const app = await db.application.findUnique({ where: { id: p.data.applicationId } });
   if (!app || app.status === "DRAFT") return { ok: false, error: "Bewerbung nicht gefunden." };
   const at = p.data.at ? new Date(p.data.at) : null;
+  // Termin setzen heißt Phase 2 – vorher die Sterne-Hürde prüfen, damit nichts halb gespeichert wird
+  if (at && ["SUBMITTED", "IN_REVIEW"].includes(app.status)) {
+    const { getSettings } = await import("@/lib/settings");
+    const block = await interviewBlockReason(app.id, (await getSettings())["interview.minStars"]);
+    if (block) return { ok: false, error: block };
+  }
   await db.application.update({
     where: { id: app.id },
     data: { interviewAt: at, interviewNote: p.data.note || null },

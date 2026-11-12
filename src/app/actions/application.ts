@@ -162,6 +162,19 @@ export async function bookSlotAction(applicationId: string, slotId: string): Pro
   return { ok: true };
 }
 
+/** Bewerber sagt sein Gespräch ab (Termin wird frei, Team bekommt Bescheid). */
+export async function cancelInterviewAction(applicationId: string): Promise<ActionResult> {
+  const user = await requireUser();
+  if (!idSchema.safeParse(applicationId).success) return { ok: false, error: "Ungültig." };
+  const rl = await rateLimit(`slot:${user.id}`, 10, 3600);
+  if (!rl.ok) return { ok: false, error: "Zu viele Versuche. Probier es später nochmal." };
+  const { cancelInterviewByApplicant } = await import("@/lib/team/slots");
+  const r = await cancelInterviewByApplicant(db, { applicationId, userId: user.id });
+  if (!r.ok) return { ok: false, error: r.error };
+  revalidatePath(`/dashboard/${applicationId}`);
+  return { ok: true };
+}
+
 const feedbackSchema = z.object({ applicationId: idSchema, rating: z.number().int().min(1).max(5), comment: z.string().trim().max(1000).optional() });
 
 /** Freiwillige Rückmeldung zum Bewerbungsablauf (einmal pro Bewerbung, nach der Entscheidung). */

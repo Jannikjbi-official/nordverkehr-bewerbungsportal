@@ -14,6 +14,7 @@ import { buildApplicantMessage, discordTime } from "@/lib/messages/embed";
 import { endOfBerlinDay } from "@/lib/team/daily-summary";
 import { getSettings } from "@/lib/settings";
 import { nightEndsAt } from "@/lib/night";
+import { cancelCustomId } from "@/lib/discord/interactions";
 
 /** Termine müssen mindestens so weit in der Zukunft liegen, um buchbar zu sein */
 export const BOOK_MIN_LEAD_HOURS = 2;
@@ -131,9 +132,11 @@ export async function sendInterviewReminders(db: PrismaClient, now = new Date())
         ignoreNight: a.interviewAt < nightEndsAt(settings, now),
         message: buildApplicantMessage({
           title: "Heute ist dein Gespräch",
-          body: `Moin ${a.user.globalName || a.user.username}, kurze Erinnerung: Dein Gespräch für **${a.position.title}** ist **heute um ${discordTime(a.interviewAt, "t")} Uhr** auf TeamSpeak.${a.interviewNote ? `\n\n${a.interviewNote}` : ""}\n\nKommst du nicht? Sag bitte im Portal Bescheid.`,
+          body: `Moin ${a.user.globalName || a.user.username}, kurze Erinnerung: Dein Gespräch für **${a.position.title}** ist **heute um ${discordTime(a.interviewAt, "t")} Uhr** auf TeamSpeak.${a.interviewNote ? `\n\n${a.interviewNote}` : ""}\n\nKommst du nicht? Sag unten mit „Ich kann nicht“ ab.`,
           publicId: a.publicId,
           statusUrl: `${publicEnv.appUrl}/dashboard/${a.id}`,
+          // Absagen direkt aus der DM (fragt vorher nach)
+          action: { label: "Ich kann nicht", customId: cancelCustomId(a.id), emoji: "🚫" },
         }),
       },
       { applicationId: a.id },
@@ -142,4 +145,57 @@ export async function sendInterviewReminders(db: PrismaClient, now = new Date())
   }
   if (ids.length) await runOutbox({ ids }).catch((e) => console.error("[reminder]", e));
   return ids.length;
+}
+
+/**
+ * Bewerber sagt sein Gespräch selbst ab (Knopf in der Erinnerungs-DM oder im Portal).
+ * Termin wird frei (gebuchter Slot und feste Zeit), Status bleibt „Gespräch“, damit
+ * ein neuer Termin gebucht bzw. ausgemacht werden kann. Team: Bot-Log + Systemnachricht.
+ * Prüft, dass die Bewerbung der Person gehört (Discord-ID bzw. User-ID).
+ */
+export async function cancelInterviewByApplicant(
+  db: PrismaClient,
+  opts: { applicationId: string; discordId?: string; userId?: string; now?: Date },
+): Promise<{ ok: true; at: Date } | { ok: false; error: string }> {
+  const now = opts.now ?? new Date();
+  if (!opts.discordId && !opts.userId) return { ok: false, error: "Unbekannt." };
+  const app = await db.application.findFirst({
+    where: { id: opts.applicationId, ...(opts.userId ? { userId: opts.userId } : { user: { discordId: opts.discordId } }) },
+    include: { user: { select: { globalName: true, username: true } }, position: { select: { title: true } } },
+  });
+  if (!app) return { ok: false, error: "Bewerbung nicht gefunden." };
+  if (app.status !== "INTERVIEW" || !app.interviewAt) return { ok: false, error: "Du hast gerade keinen Gesprächstermin." };
+  if (app.interviewAt.getTime() <= now.getTime()) return { ok: false, error: "Der Termin hat schon angefangen – schreib dem Team bitte direkt." };
+  const at = app.interviewAt;
+  const name = app.user.globalName || app.user.username;
+
+  const res = await db.$transaction(async (tx) => {
+    // Nur wenn der Termin noch derselbe ist (kein doppelter Klick)
+    const upd = await tx.application.updateMany({ where: { id: app.id, status: "INTERVIEW", interviewAt: at }, data: { interviewAt: null, interviewRemindedFor: null } });
+    if (!upd.count) return false;
+    await tx.interviewSlot.updateMany({ where: { applicationId: app.id, startsAt: { gt: now } }, data: { applicationId: null, bookedAt: null } });
+    await tx.message.create({
+      data: { applicationId: app.id, direction: "SYSTEM", body: `Du hast dein Gespräch am ${formatBerlin(at)} abgesagt. Such dir im Portal einen neuen Termin aus oder schreib dem Team.`, deliveryStatus: "NOT_SENT" },
+    });
+    await tx.auditLog.create({ data: { actorId: app.userId, action: "application.interview_cancelled", targetType: "application", targetId: app.id, meta: { at: at.toISOString() } } });
+    return true;
+  });
+  if (!res) return { ok: false, error: "Der Termin wurde schon geändert." };
+
+  const { syncInterviewLater } = await import("@/lib/team/interview-sync");
+  await syncInterviewLater(app.id);
+  const job = await botLog(`🚫 ${esc(name)} hat das Gespräch für **${app.publicId}** (${app.position.title}) am ${discordTime(at, "f")} abgesagt`, {
+    applicationId: app.id,
+    tone: "warn",
+    url: `${publicEnv.appUrl}/team/bewerbungen/${app.id}`,
+  });
+  if (job) await runOutbox({ ids: [job] }).catch(() => {});
+  return { ok: true, at };
+}
+
+/** „Mo., 17.11. um 19:00 Uhr“ (deutsche Zeit) */
+export function formatBerlin(d: Date) {
+  const day = d.toLocaleDateString("de-DE", { timeZone: "Europe/Berlin", weekday: "short", day: "2-digit", month: "2-digit" });
+  const time = d.toLocaleTimeString("de-DE", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit" });
+  return `${day} um ${time} Uhr`;
 }

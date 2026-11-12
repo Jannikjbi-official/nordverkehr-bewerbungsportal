@@ -17,6 +17,7 @@ export type AuditAction =
   | "application.ai_override"
   | "application.print"
   | "application.slot_booked"
+  | "application.interview_cancelled"
   | "application.onboarding"
   | "application.protocol"
   | "application.feedback"
@@ -95,6 +96,7 @@ export const AUDIT_LABELS: Record<string, string> = {
   "application.ai_override": "KI-Punkte für alte Bewerbung freigegeben",
   "application.print": "Bewerbung gedruckt",
   "application.slot_booked": "Termin gebucht",
+  "application.interview_cancelled": "Gespräch abgesagt (Bewerber)",
   "application.onboarding": "Einarbeitung",
   "application.protocol": "Gesprächsprotokoll",
   "application.feedback": "Feedback abgegeben",

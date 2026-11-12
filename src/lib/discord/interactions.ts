@@ -5,6 +5,8 @@
  *
  * Knöpfe (custom_id):
  *  - nv:claim:<applicationId>  → Bewerbung übernehmen (nur Team-Rolle)
+ *  - nv:cancel:<applicationId> → Bewerber: Gespräch absagen (fragt nach)
+ *  - nv:cancelok:<applicationId> → Bewerber: Absage bestätigt
  * Slash-Befehle:
  *  - /bewerbung                → eigener Bewerbungsstand (nur für die Person sichtbar)
  *
@@ -43,12 +45,37 @@ export async function getDiscordPublicKey(): Promise<string | null> {
 export const CLAIM_PREFIX = "nv:claim:";
 export const claimCustomId = (applicationId: string) => `${CLAIM_PREFIX}${applicationId}`;
 
-export function parseCustomId(customId: string): { kind: "claim"; applicationId: string } | null {
-  if (customId.startsWith(CLAIM_PREFIX)) {
-    const id = customId.slice(CLAIM_PREFIX.length);
-    if (/^[a-z0-9]{10,40}$/i.test(id)) return { kind: "claim", applicationId: id };
+export const CANCEL_PREFIX = "nv:cancel:";
+export const CANCEL_OK_PREFIX = "nv:cancelok:";
+export const cancelCustomId = (applicationId: string) => `${CANCEL_PREFIX}${applicationId}`;
+
+export type CustomAction = { kind: "claim" | "cancelInterview" | "cancelInterviewConfirmed"; applicationId: string };
+
+export function parseCustomId(customId: string): CustomAction | null {
+  const kinds: [string, CustomAction["kind"]][] = [
+    [CLAIM_PREFIX, "claim"],
+    [CANCEL_OK_PREFIX, "cancelInterviewConfirmed"],
+    [CANCEL_PREFIX, "cancelInterview"],
+  ];
+  for (const [prefix, kind] of kinds) {
+    if (!customId.startsWith(prefix)) continue;
+    const id = customId.slice(prefix.length);
+    return /^[a-z0-9]{10,40}$/i.test(id) ? { kind, applicationId: id } : null;
   }
   return null;
+}
+
+/** Rückfrage vor dem Absagen (nur für die Person sichtbar). */
+export function cancelConfirmReply(applicationId: string, when: string) {
+  return {
+    type: 4,
+    data: {
+      content: `Willst du dein Gespräch ${when} wirklich absagen? Das Team bekommt Bescheid, und du kannst im Portal einen neuen Termin aussuchen (falls freie Termine da sind).`,
+      flags: 64,
+      allowed_mentions: { parse: [] },
+      components: [{ type: 1, components: [{ type: 2, style: 4, label: "Ja, absagen", custom_id: `${CANCEL_OK_PREFIX}${applicationId}` }] }],
+    },
+  };
 }
 
 /** Interaktions-Antwort: nur für die klickende Person sichtbar. */
@@ -61,6 +88,58 @@ export const STATUS_COMMAND = {
   description: "Zeigt dir den Stand deiner Bewerbung bei Nordverkehr (nur für dich sichtbar)",
   dm_permission: false,
 } as const;
+
+/** Team-Befehle (Prüfung der Team-Rolle im Handler; Discord kennt die Rolle nicht) */
+export const OPEN_COMMAND = {
+  name: "offen",
+  type: 1,
+  description: "Team: offene Bewerbungen deiner Stellen (nur für dich sichtbar)",
+  dm_permission: false,
+} as const;
+
+export const CLAIM_COMMAND = {
+  name: "claim",
+  type: 1,
+  description: "Team: Bewerbung übernehmen",
+  dm_permission: false,
+  options: [{ type: 3, name: "id", description: "Bewerbungs-ID, z. B. NV-2026-0012 oder 12", required: true, max_length: 40 }],
+} as const;
+
+export const ALL_COMMANDS = [STATUS_COMMAND, OPEN_COMMAND, CLAIM_COMMAND] as const;
+
+/**
+ * Eingabe von /claim in eine Bewerbungs-ID übersetzen: „NV-2026-0012“, „nv-2026-12“,
+ * „0012“ oder „12“ (dann aktuelles Jahr). Gibt die normalisierte publicId zurück.
+ */
+export function normalizePublicId(input: string, year: number, prefix = "NV"): string | null {
+  const s = input.trim().toUpperCase().replace(/\s+/g, "");
+  const p = prefix.toUpperCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  let m = s.match(new RegExp(`^${p}-?(\\d{4})-?(\\d{1,5})$`));
+  if (m) return `${prefix.toUpperCase()}-${m[1]}-${m[2].padStart(4, "0")}`;
+  m = s.match(/^#?(\d{1,5})$/);
+  if (m) return `${prefix.toUpperCase()}-${year}-${m[1].padStart(4, "0")}`;
+  return null;
+}
+
+export interface OpenListApp {
+  id: string;
+  publicId: string | null;
+  statusLabel: string;
+  position: string;
+  submittedAt: Date | null;
+  claimedBy: string | null;
+}
+
+/** Antwort für /offen: kompakte Liste mit Links. */
+export function openListReply(apps: OpenListApp[], total: number, appUrl: string): string {
+  if (!apps.length) return "Keine offenen Bewerbungen für deine Stellen. 🎉";
+  const lines = apps.map(
+    (a) =>
+      `- **${a.publicId ?? "?"}** · ${md(a.position)} · ${a.statusLabel}${a.submittedAt ? ` · ${ts(a.submittedAt, "R")}` : ""} · ${a.claimedBy ? `betreut von ${md(a.claimedBy)}` : "**frei**"}\n  -# ${appUrl}/team/bewerbungen/${a.id}`,
+  );
+  const more = total > apps.length ? `\n-# … und ${total - apps.length} weitere: ${appUrl}/team/bewerbungen` : "";
+  return `**Offene Bewerbungen (${total})**\n${lines.join("\n")}${more}\n-# Übernehmen: \`/claim id:NV-…\``;
+}
 
 export interface StatusReplyApp {
   id: string;

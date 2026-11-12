@@ -32,7 +32,7 @@ import { canSeePosition, viewerOf } from "@/lib/team/visibility";
 import { RatingPanel } from "@/components/team/RatingPanel";
 import { OnboardingPanel } from "@/components/team/OnboardingPanel";
 import { onboardingItems, readOnboarding } from "@/lib/team/onboarding";
-import { cleanScores, summarizeRatings } from "@/lib/team/ratings";
+import { cleanScores, formatScore, summarizeRatings } from "@/lib/team/ratings";
 import { claimAndScore, isScoringPending, readAiRating, scoringBlockedReason } from "@/lib/ai/scoring";
 import { after } from "next/server";
 import { applyGuildState, guildStateKnown } from "@/lib/applications/guild-watch";
@@ -44,7 +44,7 @@ import { requireTeam, getAccess } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { getBotProfile } from "@/lib/discord/bot-profile";
 import { getSettings } from "@/lib/settings";
-import { acceptRuleText, getTemplateVarsFor } from "@/lib/team/service";
+import { acceptRuleText, getTemplateVarsFor, interviewBlockText } from "@/lib/team/service";
 import { FOLLOW_UP_DAYS, STATUS_LABEL, SUGGESTED_CATEGORIES, allowedTeamTargets, canFollowUp } from "@/lib/applications/status";
 import { formatAnswerForDisplay, type AnswerValue } from "@/lib/applications/form";
 import { nameFlag, type ApplicationFlag } from "@/lib/applications/flags";
@@ -133,6 +133,9 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
   const aiEnabled = settings["ai.enabled"] && isAiConfigured();
   const myRating = app.ratings.find((r) => r.userId === me.id);
   const ratingSummary = summarizeRatings(app.ratings);
+  // Phase 2 (Gespräch) erst ab X Sternen Team-Schnitt
+  const interviewBlock = ["SUBMITTED", "IN_REVIEW"].includes(app.status) ? interviewBlockText(ratingSummary.overall, settings["interview.minStars"], formatScore) : null;
+  const statusTargets = allowedTeamTargets(app.status).filter((s) => !(s === "INTERVIEW" && interviewBlock));
   // Noch keine KI-Punkte? Dann jetzt im Hintergrund nachholen (einmal, gesperrt gegen Doppelaufrufe)
   const wantsAutoScore = aiEnabled && settings["ai.autoScoreEnabled"] && app.status !== "WITHDRAWN" && !readAiRating(app.aiRating) && aiScoreAllowed(app);
   // Budget aufgebraucht o. Ä.? Dann nicht „bewertet gerade …“ anzeigen, sondern den Grund
@@ -444,7 +447,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
                 templates={templates.map((t) => ({ id: t.id, category: t.category, title: t.title, body: t.body }))}
                 vars={vars ?? {}}
                 suggested={suggested}
-                statusTargets={allowedTeamTargets(app.status)}
+                statusTargets={statusTargets}
                 sender={{ name: me.globalName || me.username, avatarUrl: avatarUrl(me.discordId, me.avatar, 128), claimedByMe: app.claimedById === me.id }}
                 followUp={{ reminderDays: settings["followup.reminderDays"], closeDays: settings["followup.closeDays"] }}
               />
@@ -471,7 +474,8 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
 
         <aside className="space-y-4 min-w-0">
           <div className="nv-card p-5 space-y-5">
-            <StatusControl applicationId={app.id} current={app.status} targets={allowedTeamTargets(app.status)} />
+            <StatusControl applicationId={app.id} current={app.status} targets={statusTargets} />
+            {interviewBlock && <p className="text-xs text-[var(--tone-warn)]">⭐ {interviewBlock}</p>}
             {acceptRuleText(app.position) && app.status !== "ACCEPTED" && (
               <p className="text-xs text-muted">
                 👀 Vier-Augen-Prinzip: {acceptRuleText(app.position)} Bisher {app.votes.filter((v) => v.value === "PRO").length} Pro-Stimme(n).

@@ -54,6 +54,15 @@ try {
   const appR = await db.application.create({ data: { userId: a1.id, positionId: pos.id, status: "INTERVIEW", publicId: "NV-F-R", submittedAt: new Date() } });
   await bookSlot(db, { userId: a1.id, applicationId: appR.id, slotId: s1.id });
   await changeStatus({ applicationId: appR.id, to: "IN_REVIEW", actorId: team.id });
+  // Phase-2-Hürde: ohne Bewertung bzw. unter 3 Sternen nicht ins Gespräch
+  let gateErr = "";
+  try { await changeStatus({ applicationId: appR.id, to: "INTERVIEW", actorId: team.id }); } catch (e) { gateErr = (e as Error).message; }
+  check(gateErr.includes("erst nach der Bewertung"), "Ohne Bewertung kein Gespräch (Phase 2)");
+  const low = await db.rating.create({ data: { applicationId: appR.id, userId: team.id, scores: { kommunikation: 2, motivation: 3 } } });
+  gateErr = "";
+  try { await changeStatus({ applicationId: appR.id, to: "INTERVIEW", actorId: team.id }); } catch (e) { gateErr = (e as Error).message; }
+  check(gateErr.includes("Unter 3"), "Team-Schnitt 2,5 → kein Gespräch");
+  await db.rating.update({ where: { id: low.id }, data: { scores: { kommunikation: 3, motivation: 4 } } });
   const r1 = await db.application.findUnique({ where: { id: appR.id } });
   check(!r1!.interviewAt && !r1!.interviewRemindedFor && !(await db.interviewSlot.findUnique({ where: { id: s1.id } }))!.applicationId, "Verlassen von „Gespräch“ leert interviewAt und gibt Slot frei");
   await changeStatus({ applicationId: appR.id, to: "INTERVIEW", actorId: team.id });
@@ -71,6 +80,21 @@ try {
   await changeStatus({ applicationId: appR.id, to: "INTERVIEW", actorId: team.id });
   const r2 = await db.application.findUnique({ where: { id: appR.id }, include: { slot: true } });
   check(!r2!.interviewAt && !r2!.slot, "Erneut „Gespräch“: vergangener Termin wird gelöst");
+  // Bewerber sagt selbst ab (Knopf in der DM / im Portal)
+  {
+    const { cancelInterviewByApplicant } = await import("../src/lib/team/slots");
+    const cs = await db.interviewSlot.create({ data: { startsAt: new Date(Date.now() + 72 * H) } });
+    await bookSlot(db, { userId: a1.id, applicationId: appR.id, slotId: cs.id });
+    const foreign = await cancelInterviewByApplicant(db, { applicationId: appR.id, userId: a2.id });
+    check(!foreign.ok, "Fremde Person kann den Termin nicht absagen");
+    const c1 = await cancelInterviewByApplicant(db, { applicationId: appR.id, discordId: a1.discordId });
+    const after1 = await db.application.findUniqueOrThrow({ where: { id: appR.id } });
+    check(c1.ok && !after1.interviewAt && after1.status === "INTERVIEW", "Absage: Termin leer, Status bleibt Gespräch");
+    check(!(await db.interviewSlot.findUniqueOrThrow({ where: { id: cs.id } })).applicationId, "Absage: Slot wieder frei");
+    check(!!(await db.message.findFirst({ where: { applicationId: appR.id, direction: "SYSTEM", body: { contains: "abgesagt" } } })), "Absage: Hinweis im Portal");
+    const c2 = await cancelInterviewByApplicant(db, { applicationId: appR.id, discordId: a1.discordId });
+    check(!c2.ok, "Zweite Absage ohne Termin wird abgelehnt");
+  }
   await changeStatus({ applicationId: appR.id, to: "REJECTED", actorId: team.id });
   await db.application.delete({ where: { id: appR.id } });
 

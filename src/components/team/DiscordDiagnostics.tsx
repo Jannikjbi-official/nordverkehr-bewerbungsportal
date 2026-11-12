@@ -96,8 +96,8 @@ export function DiscordDiagnostics({ failed, pending }: { failed: FailedJob[]; p
         <button type="button" className="nv-btn nv-btn-ghost nv-btn-sm" disabled={busy} onClick={() => run("Wochenbericht", () => postWeeklyNowAction())}>
           Wochenbericht jetzt senden
         </button>
-        <button type="button" className="nv-btn nv-btn-ghost nv-btn-sm" disabled={busy} onClick={() => run("Befehl /bewerbung", () => registerCommandsAction())}>
-          Befehl /bewerbung registrieren
+        <button type="button" className="nv-btn nv-btn-ghost nv-btn-sm" disabled={busy} onClick={() => run("Discord-Befehle", () => registerCommandsAction())}>
+          Befehle /bewerbung, /offen, /claim registrieren
         </button>
         <button type="button" className="nv-btn nv-btn-ghost nv-btn-sm" disabled={busy} onClick={() => run("Discord-Prüfung", () => scanGuildNowAction())} data-testid="guild-scan">
           Bewerber auf dem Discord prüfen
