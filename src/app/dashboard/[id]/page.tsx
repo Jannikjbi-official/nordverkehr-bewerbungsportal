@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { LiveRefresh } from "@/components/LiveRefresh";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -83,6 +84,7 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
 
   return (
     <div className="space-y-8">
+      <LiveRefresh scope="my-app" id={app.id} />
       {unread && <MarkRead applicationId={app.id} />}
       <Link href="/dashboard" className="nv-btn nv-btn-quiet nv-btn-sm -ml-3">
         <ArrowLeft size={14} aria-hidden /> Alle Bewerbungen

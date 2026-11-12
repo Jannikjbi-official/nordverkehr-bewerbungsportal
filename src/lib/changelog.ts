@@ -66,6 +66,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     items: [
       { kind: "neu", text: "**Bewertungsbogen** – pro Kriterium 1–5 Sterne (Kommunikation, Erfahrung, Szenarien, Motivation, Verfügbarkeit, Teamfit), mit Schnitt des Teams." },
       { kind: "neu", text: "**Discord-Pflicht** – absenden nur mit Mitgliedschaft auf dem Discord. Verlässt jemand den Server während der Bewerbung, schreibt ihm der Bot automatisch im Portal, das Team sieht es in der Bewerbung und in der Team-Übersicht." },
+      { kind: "besser", text: "**Live-Aktualisierung** – neue Nachrichten, Status, Kommentare und Bewertungen erscheinen von selbst, ohne die Seite neu zu laden." },
       { kind: "besser", text: "**Schnellere Nachrichten** – DMs und Bot-Logs gehen sofort und gleichzeitig raus, der Zustellstatus steht direkt nach dem Senden." },
       { kind: "besser", text: "**Sperrfristen pro Stelle** – Support & Eventteam 30 Tage, Media & Mapper 45, Entwickler & Moderator 60. Steht auf jeder Stellenseite und in den Absage-Bausteinen ({sperrfrist_tage} und {sperrfrist})." },
       { kind: "neu", text: "**KI-Punkte** – die KI bewertet neue Bewerbungen nach denselben Kriterien, mit Begründung. Getrennt vom Team-Schnitt, entscheiden tut das Team." },

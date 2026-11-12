@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LiveRefresh } from "@/components/LiveRefresh";
 import { Suspense } from "react";
 import { ArrowRight, ArrowUUpLeft, CalendarCheck, Megaphone, ChatCircleDots, DiscordLogo, HandPointing, ShieldWarning } from "@phosphor-icons/react/ssr";
 import { Avatar, Notice, Stat, StatusBadge, formatDay, formatDayTime, formatRelative } from "@/components/ui";
@@ -74,6 +75,7 @@ async function Overview({ searchParams }: Pick<PageProps<"/team">, "searchParams
 
   return (
     <div className="space-y-8">
+      <LiveRefresh scope="team-list" intervalMs={8000} />
       <header>
         <p className="nv-label">NORDVERKEHR // TEAM</p>
         <h1 className="nv-headline text-4xl sm:text-5xl mt-2 break-words">

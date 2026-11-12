@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { LiveRefresh } from "@/components/LiveRefresh";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -145,6 +146,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
 
   return (
     <div className="space-y-6">
+      <LiveRefresh scope="team-app" id={app.id} />
       <Link href="/team/bewerbungen" className="nv-btn nv-btn-quiet nv-btn-sm -ml-3">
         <ArrowLeft size={14} aria-hidden /> Alle Bewerbungen
       </Link>

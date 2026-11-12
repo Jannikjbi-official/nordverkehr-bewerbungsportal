@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { LiveRefresh } from "@/components/LiveRefresh";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ArrowRight, ClipboardText, WarningCircle } from "@phosphor-icons/react/ssr";
@@ -58,6 +59,7 @@ async function ApplicationList() {
 
   return (
     <ul className="grid gap-4">
+      <LiveRefresh scope="my-list" intervalMs={8000} />
       {apps.map((a, i) => {
         const isDraft = a.status === "DRAFT";
         const dmIssue = a.confirmationDmStatus === "DM_CLOSED" || a.confirmationDmStatus === "FAILED";

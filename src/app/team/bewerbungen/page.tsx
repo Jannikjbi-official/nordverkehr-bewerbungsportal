@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { LiveRefresh } from "@/components/LiveRefresh";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ChatCircleDots, DownloadSimple, Kanban, Table, WarningCircle } from "@phosphor-icons/react/ssr";
@@ -32,6 +33,7 @@ async function Content({ searchParams }: Pick<PageProps<"/team/bewerbungen">, "s
 
   return (
     <div className="space-y-6">
+      <LiveRefresh scope="team-list" intervalMs={8000} />
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="nv-label">Team // Bewerbungen</p>
