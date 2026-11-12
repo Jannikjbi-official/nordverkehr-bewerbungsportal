@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { CaretDown, Check } from "@phosphor-icons/react/ssr";
 import { STATUS_LABEL, STATUS_TONE } from "@/lib/applications/status";
 import type { ApplicationStatus } from "@prisma/client";
@@ -23,7 +24,12 @@ const DOT: Record<string, string> = {
 };
 
 export function StatusDot({ status }: { status: ApplicationStatus }) {
-  return <span className={`h-2 w-2 rounded-full shrink-0 ${DOT[STATUS_TONE[status]]}`} aria-hidden />;
+  return (
+    <span
+      className={`h-2 w-2 rounded-full shrink-0 ${DOT[STATUS_TONE[status]]}`}
+      aria-hidden
+    />
+  );
 }
 
 interface Props {
@@ -39,23 +45,82 @@ interface Props {
 }
 
 /** Eigenes Dropdown (Listbox) im Nordverkehr-Stil – voll per Tastatur bedienbar. */
-export function StatusSelect({ options, value, onChange, placeholder, allowNone, label, disabled }: Props) {
+export function StatusSelect({
+  options,
+  value,
+  onChange,
+  placeholder,
+  allowNone,
+  label,
+  disabled,
+}: Props) {
   const [open, setOpen] = useState(false);
-  const items: (ApplicationStatus | null)[] = allowNone ? [null, ...options] : options;
+  const items: (ApplicationStatus | null)[] = allowNone
+    ? [null, ...options]
+    : options;
   const [active, setActive] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
+  const list = useRef<HTMLUListElement>(null);
+  // Liste liegt im Portal (body), damit Karten mit overflow:hidden sie nicht abschneiden
+  const [pos, setPos] = useState<{
+    left: number;
+    width: number;
+    top?: number;
+    bottom?: number;
+    maxHeight: number;
+  } | null>(null);
   const listId = useId();
   const labelId = useId();
 
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (ref.current && !ref.current.contains(t) && !list.current?.contains(t))
+        setOpen(false);
     };
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, [open]);
+
+  // Position am Knopf ausrichten; nach oben öffnen, wenn unten kein Platz ist
+  useLayoutEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const r = button.current?.getBoundingClientRect();
+      if (!r) return;
+      const gap = 6;
+      const margin = 8;
+      const wanted = Math.min(items.length * 56 + 16, 420);
+      const below = window.innerHeight - r.bottom - gap - margin;
+      const above = r.top - gap - margin;
+      const up = below < wanted && above > below;
+      setPos({
+        left: r.left,
+        width: Math.max(r.width, 224),
+        maxHeight: Math.max(120, up ? above : below),
+        ...(up
+          ? { bottom: window.innerHeight - r.top + gap }
+          : { top: r.bottom + gap }),
+      });
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [open, items.length]);
+
+  // Aktiven Eintrag bei Tastaturbedienung sichtbar halten
+  useEffect(() => {
+    if (open)
+      list.current
+        ?.querySelector(`[data-i="${active}"]`)
+        ?.scrollIntoView({ block: "nearest" });
+  }, [open, active]);
 
   function openMenu() {
     if (disabled) return;
@@ -124,7 +189,9 @@ export function StatusSelect({ options, value, onChange, placeholder, allowNone,
         onClick={() => (open ? setOpen(false) : openMenu())}
         onKeyDown={onKeyDown}
         className={`w-full flex items-center gap-2.5 rounded-[10px] border px-3.5 py-2.5 text-sm text-left transition-colors bg-input ${
-          open ? "border-red-line shadow-[0_0_0_3px_var(--nv-red-soft)]" : "border-line hover:border-line-strong"
+          open
+            ? "border-red-line shadow-[0_0_0_3px_var(--nv-red-soft)]"
+            : "border-line hover:border-line-strong"
         } disabled:opacity-50`}
       >
         {value ? (
@@ -135,43 +202,77 @@ export function StatusSelect({ options, value, onChange, placeholder, allowNone,
         ) : (
           <span className="flex-1 text-muted">{placeholder}</span>
         )}
-        <CaretDown size={14} className={`text-muted transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
+        <CaretDown
+          size={14}
+          className={`text-muted transition-transform ${open ? "rotate-180" : ""}`}
+          aria-hidden
+        />
       </button>
 
-      {open && (
-        <ul
-          id={listId}
-          role="listbox"
-          aria-labelledby={labelId}
-          tabIndex={-1}
-          className="absolute z-40 mt-1.5 w-full min-w-56 rounded-xl border border-line bg-surface p-1.5 shadow-[var(--nv-shadow)] nv-fade"
-        >
-          {items.map((s, i) => {
-            const selected = s === value;
-            return (
-              <li
-                key={s ?? "none"}
-                id={`${listId}-${i}`}
-                role="option"
-                aria-selected={selected}
-                onMouseEnter={() => setActive(i)}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => choose(i)}
-                className={`flex items-center gap-2.5 rounded-lg px-3 py-2 cursor-pointer text-sm ${
-                  i === active ? "bg-[color-mix(in_srgb,var(--nv-text)_6%,transparent)]" : ""
-                }`}
-              >
-                {s ? <StatusDot status={s} /> : <span className="h-2 w-2 rounded-full border border-line-strong shrink-0" aria-hidden />}
-                <span className="flex-1 min-w-0">
-                  <span className="block font-medium">{s ? STATUS_LABEL[s] : "Status nicht ändern"}</span>
-                  {s && HINT[s] && <span className="block text-xs text-muted">{HINT[s]}</span>}
-                </span>
-                {selected && <Check size={14} className="text-red-text" aria-hidden />}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      {open &&
+        pos &&
+        createPortal(
+          <ul
+            ref={list}
+            id={listId}
+            role="listbox"
+            aria-labelledby={labelId}
+            tabIndex={-1}
+            style={{
+              position: "fixed",
+              left: pos.left,
+              width: pos.width,
+              top: pos.top,
+              bottom: pos.bottom,
+              maxHeight: pos.maxHeight,
+            }}
+            className="z-[60] overflow-y-auto overscroll-contain rounded-xl border border-line bg-surface p-1.5 shadow-[var(--nv-shadow)] nv-fade"
+          >
+            {items.map((s, i) => {
+              const selected = s === value;
+              return (
+                <li
+                  key={s ?? "none"}
+                  id={`${listId}-${i}`}
+                  data-i={i}
+                  role="option"
+                  aria-selected={selected}
+                  onMouseEnter={() => setActive(i)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => choose(i)}
+                  className={`flex items-center gap-2.5 rounded-lg px-3 py-2 cursor-pointer text-sm ${
+                    i === active
+                      ? "bg-[color-mix(in_srgb,var(--nv-text)_6%,transparent)]"
+                      : ""
+                  }`}
+                >
+                  {s ? (
+                    <StatusDot status={s} />
+                  ) : (
+                    <span
+                      className="h-2 w-2 rounded-full border border-line-strong shrink-0"
+                      aria-hidden
+                    />
+                  )}
+                  <span className="flex-1 min-w-0">
+                    <span className="block font-medium">
+                      {s ? STATUS_LABEL[s] : "Status nicht ändern"}
+                    </span>
+                    {s && HINT[s] && (
+                      <span className="block text-xs text-muted">
+                        {HINT[s]}
+                      </span>
+                    )}
+                  </span>
+                  {selected && (
+                    <Check size={14} className="text-red-text" aria-hidden />
+                  )}
+                </li>
+              );
+            })}
+          </ul>,
+          document.body,
+        )}
     </div>
   );
 }
