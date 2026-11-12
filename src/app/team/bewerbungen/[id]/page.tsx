@@ -21,12 +21,14 @@ import { AckWithdrawalButton } from "@/components/team/AckWithdrawalButton";
 import { avatarUrl } from "@/lib/discord/snowflake";
 import { AiPanel } from "@/components/team/AiPanel";
 import { RatingPanel } from "@/components/team/RatingPanel";
+import { TextCheckCard } from "@/components/team/TextCheckCard";
+import { readTextCheck } from "@/lib/ai/textcheck-rules";
 import { OnboardingPanel } from "@/components/team/OnboardingPanel";
 import { onboardingItems, readOnboarding } from "@/lib/team/onboarding";
 import { cleanScores, summarizeRatings } from "@/lib/team/ratings";
 import { claimForScoring, isScoringPending, readAiRating, scoreApplication } from "@/lib/ai/scoring";
 import { after } from "next/server";
-import { allowsAiScore } from "@/lib/applications/form";
+import { aiScoreAllowed } from "@/lib/applications/form";
 import type { AiRatingView } from "@/components/team/RatingPanel";
 import { TagPills } from "@/components/team/TagPills";
 import { RetagButton } from "@/components/team/RetagButton";
@@ -107,7 +109,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
   const myRating = app.ratings.find((r) => r.userId === me.id);
   const ratingSummary = summarizeRatings(app.ratings);
   // Noch keine KI-Punkte? Dann jetzt im Hintergrund nachholen (einmal, gesperrt gegen Doppelaufrufe)
-  if (aiEnabled && settings["ai.autoScoreEnabled"] && app.status !== "WITHDRAWN" && !readAiRating(app.aiRating) && !isScoringPending(app) && allowsAiScore(app.consentVersion)) {
+  if (aiEnabled && settings["ai.autoScoreEnabled"] && app.status !== "WITHDRAWN" && !readAiRating(app.aiRating) && !isScoringPending(app) && aiScoreAllowed(app)) {
     after(async () => {
       if (await claimForScoring(app.id)) await scoreApplication(app.id).catch((e) => console.error("[ai-score]", e));
     });
@@ -115,7 +117,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
   const storedAi = readAiRating(app.aiRating);
   const aiView: AiRatingView = !aiEnabled
     ? { kind: "off" }
-    : !allowsAiScore(app.consentVersion)
+    : !aiScoreAllowed(app)
       ? { kind: "notAllowed" }
       : !storedAi
         ? isScoringPending(app)
@@ -226,6 +228,8 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[1fr_340px]">
         <div className="space-y-6 min-w-0">
+          <TextCheckCard applicationId={app.id} result={readTextCheck(app.aiTextCheck)} checkedAt={app.aiTextCheckedAt?.toISOString() ?? null} />
+
           {aiEnabled && <AiPanel applicationId={app.id} cachedSummary={app.aiSummary} cachedAt={app.aiSummaryAt?.toISOString() ?? null} />}
 
           <section className="nv-card" aria-labelledby="answers">
@@ -395,6 +399,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
               summary={ratingSummary}
               ai={aiView}
               bot={bot}
+              isAdmin={access.isAdmin}
               raters={app.ratings
                 .filter((r) => r.userId !== me.id || Object.keys(cleanScores(r.scores)).length)
                 .map((r) => ({ name: r.user.globalName || r.user.username, avg: summarizeRatings([r]).overall }))}

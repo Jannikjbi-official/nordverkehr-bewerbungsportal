@@ -81,6 +81,8 @@ const submitSchema = z.object({
   age: z.number().int(),
   confirmations: z.record(z.string(), z.boolean()),
   website: z.string().max(200).optional(), // Honeypot
+  /** Eingefügte Zeichen pro Frage (nur Anzahl) – für den KI-Text-Check */
+  pastes: z.record(z.string().max(40), z.number().int().min(0).max(100_000)).optional(),
 });
 
 export async function submitApplicationAction(
@@ -113,6 +115,9 @@ export async function submitApplicationAction(
       // KI-Einordnung (Tags) – optional, blockiert nichts
       const { tagApplication } = await import("@/lib/ai/tagging");
       await tagApplication(res.applicationId).catch((e) => console.error("[ai-tags]", e));
+      // KI-Text-Check (Hinweis, ob Antworten mit KI geschrieben wirken)
+      const { checkApplicationText } = await import("@/lib/ai/textcheck");
+      await checkApplicationText(res.applicationId, { pastes: parsed.data.pastes ?? {} }).catch((e) => console.error("[ai-textcheck]", e));
       // KI-Punkte für den Bewertungsbogen (nur Einschätzung)
       const { scoreApplication } = await import("@/lib/ai/scoring");
       await scoreApplication(res.applicationId).catch((e) => console.error("[ai-score]", e));

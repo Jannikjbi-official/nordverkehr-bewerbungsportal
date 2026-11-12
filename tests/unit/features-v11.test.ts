@@ -136,3 +136,50 @@ describe("KI-Punkte", () => {
     expect(readAiRating({ foo: 1 })).toBeNull();
   });
 });
+
+import { combineLevels, levelFromScore, parseAiTextCheck, readTextCheck, ruleSignals } from "@/lib/ai/textcheck-rules";
+
+describe("KI-Text-Check", () => {
+  const human = [{ questionId: "q1", label: "Über dich", text: "bin 19, zocke seit 3 jahren gta rp, war mal bei nem kleinen server supporter, hat spaß gemacht aber der server ging dann down" }];
+  const botty = [
+    {
+      questionId: "q1",
+      label: "Über dich",
+      text: "**Über mich**\nAls engagierter Spieler bin ich fest davon überzeugt, dass ich eine Bereicherung für Ihr Team wäre — darüber hinaus bringe ich Erfahrung mit. Des Weiteren ist mir Teamarbeit von entscheidender Bedeutung — nicht zuletzt wegen meiner Leidenschaft — und **Motivation**.",
+    },
+  ];
+  it("menschliche Antwort ohne Einfügen bleibt niedrig", () => {
+    const r = ruleSignals(human, {});
+    expect(r.signals).toEqual([]);
+    expect(levelFromScore(r.score)).toBe("niedrig");
+  });
+  it("Einfügen langer Antworten ist ein hartes Signal", () => {
+    const long = [{ questionId: "q1", label: "Szenario", text: "x".repeat(400) }];
+    const r = ruleSignals(long, { q1: 400 });
+    expect(r.signals[0].source).toBe("einfuegen");
+    expect(levelFromScore(r.score)).toBe("mittel");
+    expect(levelFromScore(ruleSignals([...long, { ...long[0], questionId: "q2", label: "B" }], { q1: 400, q2: 400 }).score)).toBe("hoch");
+    // kurz eingefügt (z. B. Discord-Name) zählt nicht
+    expect(ruleSignals([{ questionId: "q1", label: "Name", text: "jannik" }], { q1: 6 }).signals).toEqual([]);
+  });
+  it("Chatbot-Floskeln, Markdown und Gedankenstriche", () => {
+    const r = ruleSignals(botty, {});
+    const texts = r.signals.map((s) => s.text).join(" ");
+    expect(texts).toContain("Chatbot-Formulierungen");
+    expect(texts).toContain("Markdown");
+    expect(texts).toContain("Gedankenstriche");
+    expect(levelFromScore(r.score)).toBe("hoch");
+  });
+  it("KI allein ergibt höchstens „mittel“", () => {
+    expect(combineLevels("niedrig", "hoch")).toBe("mittel");
+    expect(combineLevels("mittel", "hoch")).toBe("hoch");
+    expect(combineLevels("hoch", "niedrig")).toBe("hoch");
+    expect(combineLevels("mittel", null)).toBe("mittel");
+  });
+  it("liest KI-Antwort und gespeicherte Ergebnisse", () => {
+    expect(parseAiTextCheck('{"stufe":"mittel","gruende":["Sehr glatt",""]}')).toEqual({ level: "mittel", reasons: ["Sehr glatt"] });
+    expect(parseAiTextCheck('{"stufe":"vielleicht"}')).toBeNull();
+    expect(readTextCheck({ level: "hoch", signals: [], aiUsed: true })?.level).toBe("hoch");
+    expect(readTextCheck({ level: "x" })).toBeNull();
+  });
+});

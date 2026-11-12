@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { Robot, Star } from "@phosphor-icons/react/ssr";
-import { rateAction, rescoreAction } from "@/app/actions/team";
+import { overrideAiConsentAction, rateAction, rescoreAction } from "@/app/actions/team";
+import { confirmDialog } from "@/components/ConfirmDialog";
 import { RATING_CRITERIA, formatScore, summarizeRatings, type CriterionKey, type RatingSummary, type Scores } from "@/lib/team/ratings";
 
 export type AiRatingView =
@@ -25,6 +26,7 @@ export function RatingPanel({
   raters,
   ai = { kind: "off" },
   bot,
+  isAdmin = false,
 }: {
   applicationId: string;
   mine: Scores;
@@ -33,6 +35,7 @@ export function RatingPanel({
   raters: { name: string; avg: number | null }[];
   ai?: AiRatingView;
   bot?: { name: string; avatarUrl: string };
+  isAdmin?: boolean;
 }) {
   const aiScores = ai.kind === "scores" ? ai.scores : null;
   const aiOverall = aiScores ? summarizeRatings([{ scores: aiScores }]).overall : null;
@@ -102,7 +105,7 @@ export function RatingPanel({
           );
         })}
       </ul>
-      <AiBlock applicationId={applicationId} ai={ai} overall={aiOverall} bot={bot} />
+      <AiBlock applicationId={applicationId} ai={ai} overall={aiOverall} bot={bot} isAdmin={isAdmin} />
       <textarea
         className="nv-input text-sm !min-h-16"
         placeholder="Kurze Begründung (nur intern, optional)"
@@ -131,7 +134,19 @@ export function RatingPanel({
 }
 
 /** KI-Einschätzung: Schnitt, Begründungen, Neu-Berechnen. Zählt nicht zum Team-Schnitt. */
-function AiBlock({ applicationId, ai, overall, bot }: { applicationId: string; ai: AiRatingView; overall: number | null; bot?: { name: string; avatarUrl: string } }) {
+function AiBlock({
+  applicationId,
+  ai,
+  overall,
+  bot,
+  isAdmin,
+}: {
+  applicationId: string;
+  ai: AiRatingView;
+  overall: number | null;
+  bot?: { name: string; avatarUrl: string };
+  isAdmin: boolean;
+}) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -143,7 +158,31 @@ function AiBlock({ applicationId, ai, overall, bot }: { applicationId: string; a
   }, [ai.kind, router]);
   if (ai.kind === "off") return null;
   if (ai.kind === "notAllowed") {
-    return <p className="text-[0.7rem] text-faint">KI-Punkte gibt es nur für Bewerbungen ab dem 12.11.2026 (Datenschutz-Einwilligung).</p>;
+    const override = async () => {
+      const ok = await confirmDialog({
+        title: "KI-Punkte trotzdem berechnen?",
+        body: "Diese Bewerbung wurde vor Einführung der KI-Punkte abgeschickt. Ihre Antworten gehen dann zur Bewertung an die KI (Anthropic).\n\nNur fortfahren, wenn der Bewerber zugestimmt hat (z. B. per Nachricht). Die Freigabe wird mit deinem Namen im Audit-Log gespeichert.",
+        confirmLabel: "Bewerber hat zugestimmt",
+      });
+      if (!ok) return;
+      start(async () => {
+        setError(null);
+        const r = await overrideAiConsentAction(applicationId);
+        if (!r.ok) setError(r.error);
+        else router.refresh();
+      });
+    };
+    return (
+      <div className="space-y-1.5">
+        <p className="text-[0.7rem] text-faint">KI-Punkte gibt es automatisch nur für Bewerbungen ab dem 12.11.2026 (Datenschutz-Einwilligung).</p>
+        {isAdmin && (
+          <button type="button" className="nv-btn nv-btn-quiet nv-btn-sm !px-2" disabled={pending} onClick={override} data-testid="ai-override">
+            {pending ? "Berechne …" : "KI-Punkte trotzdem berechnen (Admin)"}
+          </button>
+        )}
+        {error && <p className="nv-error text-xs">{error}</p>}
+      </div>
+    );
   }
   const run = () =>
     start(async () => {

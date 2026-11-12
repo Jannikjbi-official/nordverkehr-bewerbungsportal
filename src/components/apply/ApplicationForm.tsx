@@ -85,6 +85,16 @@ export function ApplicationForm({ position, sections, minAge, displayName, initi
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, startSubmit] = useTransition();
   const honeypot = useRef<HTMLInputElement>(null);
+  // Eingefügte Zeichen pro Frage (für den KI-Text-Check – nur Anzahl, kein Inhalt)
+  const pastes = useRef<Record<string, number>>({});
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(`nv-pastes:${position.slug}`);
+      if (saved) pastes.current = JSON.parse(saved) as Record<string, number>;
+    } catch {
+      /* egal */
+    }
+  }, [position.slug]);
   const dirty = useRef(false);
   const saving = useRef<Promise<string | null> | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -220,9 +230,15 @@ export function ApplicationForm({ position, sections, minAge, displayName, initi
         age: age ?? 0,
         confirmations: confirm,
         website: honeypot.current?.value || undefined,
+        pastes: pastes.current,
       });
       if (res.ok) {
         dirty.current = false;
+        try {
+          sessionStorage.removeItem(`nv-pastes:${position.slug}`);
+        } catch {
+          /* egal */
+        }
         router.push(`/dashboard/${res.data.applicationId}?neu=1`);
       } else {
         setSubmitError(res.error);
@@ -296,6 +312,17 @@ export function ApplicationForm({ position, sections, minAge, displayName, initi
       <div className="min-w-0">
         <form
           noValidate
+          onPasteCapture={(e) => {
+            const qid = (e.target as HTMLElement).closest<HTMLElement>("[data-q]")?.dataset.q;
+            const len = e.clipboardData.getData("text").length;
+            if (!qid || !len) return;
+            pastes.current[qid] = Math.min(100_000, (pastes.current[qid] ?? 0) + len);
+            try {
+              sessionStorage.setItem(`nv-pastes:${position.slug}`, JSON.stringify(pastes.current));
+            } catch {
+              /* egal */
+            }
+          }}
           onSubmit={(e) => {
             e.preventDefault();
             if (step === last) submit();

@@ -65,6 +65,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: "2026-11-12",
     items: [
       { kind: "neu", text: "**Bewertungsbogen** – pro Kriterium 1–5 Sterne (Kommunikation, Erfahrung, Szenarien, Motivation, Verfügbarkeit, Teamfit), mit Schnitt des Teams." },
+      { kind: "neu", text: "**KI-Text-Check** – jede neue Bewerbung wird geprüft, ob die Antworten mit KI geschrieben wirken (eingefügt statt getippt, Chatbot-Floskeln, KI-Einschätzung). Nur ein Hinweis, kein Beweis." },
       { kind: "neu", text: "**KI-Punkte** – die KI bewertet neue Bewerbungen nach denselben Kriterien, mit Begründung. Getrennt vom Team-Schnitt, entscheiden tut das Team." },
       { kind: "neu", text: "**Gesprächstermine** – das Team legt freie Zeiten an, Bewerber buchen selbst und bekommen am Tag morgens eine Erinnerung per DM." },
       { kind: "neu", text: "**Übernehmen in Discord** – Knopf 📌 an neuen Bewerbungen im Bewerbungs-Kanal." },

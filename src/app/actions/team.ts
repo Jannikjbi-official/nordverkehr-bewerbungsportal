@@ -416,6 +416,35 @@ export async function retagAction(applicationId: string): Promise<ActionResult<{
   }
 }
 
+/**
+ * Admin-Freigabe: KI-Punkte auch für Bewerbungen mit älterer Einwilligung –
+ * nur, wenn der Bewerber zugestimmt hat (Admin bestätigt das, Audit-Log).
+ */
+export async function overrideAiConsentAction(applicationId: string): Promise<ActionResult> {
+  const { user } = await requireAdmin();
+  if (!id.safeParse(applicationId).success) return { ok: false, error: "Ungültig." };
+  const app = await db.application.findUnique({ where: { id: applicationId }, select: { status: true, publicId: true } });
+  if (!app || app.status === "DRAFT") return { ok: false, error: "Bewerbung nicht gefunden." };
+  await db.application.update({ where: { id: applicationId }, data: { aiConsentOverrideAt: new Date(), aiConsentOverrideById: user.id } });
+  await audit("application.ai_override", { actorId: user.id, targetType: "application", targetId: applicationId, meta: { publicId: app.publicId } });
+  return rescoreAction(applicationId);
+}
+
+/** KI-Text-Check (neu) ausführen – Regeln immer, KI nur mit Einwilligung. */
+export async function textCheckAction(applicationId: string): Promise<ActionResult> {
+  const { user } = await requireTeam();
+  if (!id.safeParse(applicationId).success) return { ok: false, error: "Ungültig." };
+  const { checkApplicationText } = await import("@/lib/ai/textcheck");
+  try {
+    const r = await checkApplicationText(applicationId, { actorId: user.id });
+    if (!r) return { ok: false, error: "Bewerbung nicht gefunden." };
+    revalidatePath(`/team/bewerbungen/${applicationId}`);
+    return { ok: true };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
 /** KI-Punkte (neu) berechnen. */
 export async function rescoreAction(applicationId: string): Promise<ActionResult> {
   const { user } = await requireTeam();

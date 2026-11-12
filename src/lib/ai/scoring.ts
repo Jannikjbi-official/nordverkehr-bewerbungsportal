@@ -11,7 +11,7 @@ import { getSettings } from "@/lib/settings";
 import { isAiConfigured } from "@/lib/ai/config";
 import { budgetLeft, callAi, loadApplicationContext } from "@/lib/ai/service";
 import { SCORE_RULES, buildScorePrompt, parseAiRating, type AiRating } from "@/lib/ai/prompts";
-import { allowsAiScore } from "@/lib/applications/form";
+import { aiScoreAllowed } from "@/lib/applications/form";
 
 export type StoredAiRating = AiRating | { blocked: "manipulation" | "unreadable" };
 
@@ -27,8 +27,8 @@ export async function scoreApplication(applicationId: string, opts: { actorId?: 
   const settings = await getSettings();
   if (!settings["ai.enabled"] || !isAiConfigured()) return null;
   if (!opts.force && !settings["ai.autoScoreEnabled"]) return null;
-  const app = await db.application.findUnique({ where: { id: applicationId }, select: { consentVersion: true, status: true } });
-  if (!app || app.status === "DRAFT" || !allowsAiScore(app.consentVersion)) return null;
+  const app = await db.application.findUnique({ where: { id: applicationId }, select: { consentVersion: true, status: true, aiConsentOverrideAt: true } });
+  if (!app || app.status === "DRAFT" || !aiScoreAllowed(app)) return null;
   if (!(await budgetLeft(settings))) return null;
 
   const ctx = await loadApplicationContext(applicationId, settings);
@@ -59,8 +59,8 @@ export function isScoringPending(app: { aiRating: unknown; aiRatedAt: Date | nul
 
 /** Bewerbung zum Bewerten reservieren. true = diese Instanz darf bewerten. */
 export async function claimForScoring(applicationId: string, now = new Date()) {
-  const app = await db.application.findUnique({ where: { id: applicationId }, select: { aiRating: true, consentVersion: true } });
-  if (!app || readAiRating(app.aiRating) || !allowsAiScore(app.consentVersion)) return false;
+  const app = await db.application.findUnique({ where: { id: applicationId }, select: { aiRating: true, consentVersion: true, aiConsentOverrideAt: true } });
+  if (!app || readAiRating(app.aiRating) || !aiScoreAllowed(app)) return false;
   const res = await db.application.updateMany({
     where: { id: applicationId, OR: [{ aiRatedAt: null }, { aiRatedAt: { isSet: false } }, { aiRatedAt: { lt: new Date(now.getTime() - LOCK_MS) } }] },
     data: { aiRatedAt: now },
@@ -75,14 +75,14 @@ export async function scoreMissing(limit = 2) {
   const { ACTIVE_STATUSES } = await import("@/lib/applications/status");
   const candidates = await db.application.findMany({
     where: { status: { in: ACTIVE_STATUSES } },
-    select: { id: true, aiRating: true, consentVersion: true },
+    select: { id: true, aiRating: true, consentVersion: true, aiConsentOverrideAt: true },
     orderBy: { submittedAt: "asc" },
     take: 200,
   });
   let done = 0;
   for (const c of candidates) {
     if (done >= limit) break;
-    if (readAiRating(c.aiRating) || !allowsAiScore(c.consentVersion)) continue;
+    if (readAiRating(c.aiRating) || !aiScoreAllowed(c)) continue;
     if (!(await claimForScoring(c.id))) continue;
     if (await scoreApplication(c.id).catch((e) => (console.error("[ai-score]", e), null))) done++;
   }

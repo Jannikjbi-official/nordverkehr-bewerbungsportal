@@ -325,6 +325,12 @@ model Application {
   /// KI-Punkte für den Bewertungsbogen: { scores, reasons, fazit } oder { blocked } – nur Einschätzung
   aiRating             Json?
   aiRatedAt            DateTime?
+  /// Admin hat KI-Punkte trotz älterer Einwilligung freigegeben (Bewerber hat zugestimmt)
+  aiConsentOverrideAt   DateTime?
+  aiConsentOverrideById String?
+  /// KI-Text-Check: { level, signals[] } – nur Hinweis, kein Beweis
+  aiTextCheck          Json?
+  aiTextCheckedAt      DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

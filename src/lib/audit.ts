@@ -13,6 +13,8 @@ export type AuditAction =
   | "application.interview"
   | "application.vote"
   | "application.rating"
+  | "application.ai_override"
+  | "application.textcheck"
   | "application.print"
   | "application.slot_booked"
   | "application.onboarding"
@@ -82,6 +84,8 @@ export const AUDIT_LABELS: Record<string, string> = {
   "application.interview": "Gesprächstermin gesetzt",
   "application.vote": "Abgestimmt",
   "application.rating": "Bewertet",
+  "application.ai_override": "KI-Punkte für alte Bewerbung freigegeben",
+  "application.textcheck": "KI-Text-Check",
   "application.print": "Bewerbung gedruckt",
   "application.slot_booked": "Termin gebucht",
   "application.onboarding": "Einarbeitung",
