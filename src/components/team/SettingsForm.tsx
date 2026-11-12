@@ -144,7 +144,25 @@ export function SettingsForm({ settings, env, spend, spendMicro }: Props) {
             {num("team.staleDays", "„Liegengeblieben“ ab (Tagen)", "So lange ohne Statuswechsel, Nachricht oder Kommentar vom Team.")}
             {num("team.escalateDays", "Leitung informieren ab (Tagen)", "Dann kommt zusätzlich ein Hinweis in den Leitungs-Chat (leere Kanal-ID = aus).")}
           </div>
+          {toggle(
+            "discord.claimButton",
+            "Knopf „Übernehmen“ an neuen Bewerbungen",
+            "Teammitglieder claimen direkt in Discord. Einmalig oben unter „Discord-Zustellung prüfen“ mit „Knopf ‚Übernehmen‘ einrichten“ freischalten.",
+          )}
           {toggle("discord.autoRoleOnAccept", "Bei Annahme automatisch die Rolle der Position vergeben", "Rolle pro Position unter „Positionen & Fragen“ eintragen. Der Bot braucht „Rollen verwalten“ und muss über der Rolle stehen.")}
+        </div>
+      </Card>
+
+      <Card title="Einarbeitung" desc="Checkliste und Probezeit für angenommene Bewerbungen.">
+        <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
+          <div>
+            <label htmlFor="onb-items" className="nv-field-label">
+              Checkliste (ein Punkt pro Zeile)
+            </label>
+            <textarea id="onb-items" className="nv-input text-sm !min-h-40" maxLength={2000} value={s["onboarding.items"]} onChange={(e) => set("onboarding.items", e.target.value)} />
+            <p className="nv-help mt-1">Häkchen hängen am Text – benennst du einen Punkt um, gilt er bei bestehenden Teammitgliedern als offen.</p>
+          </div>
+          {num("onboarding.probationDays", "Probezeit (Tage)", "0 = keine Probezeit.")}
         </div>
       </Card>
 

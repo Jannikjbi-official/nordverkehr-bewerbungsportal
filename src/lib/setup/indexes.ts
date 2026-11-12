@@ -57,6 +57,13 @@ export const INDEXES: Record<string, IndexSpec[]> = {
   StatusChange: [idx(["applicationId"], "StatusChange")],
   Vote: [idx(["applicationId", "userId"], "Vote", true)],
   Comment: [idx(["applicationId"], "Comment")],
+  Rating: [idx(["applicationId", "userId"], "Rating", true)],
+  // Ein Termin pro Bewerbung (nur gebuchte Slots haben eine applicationId)
+  InterviewSlot: [
+    idx(["startsAt"], "InterviewSlot"),
+    { key: { applicationId: 1 }, name: "slot_application_unique_when_set", unique: true, partialFilterExpression: { applicationId: { $type: "string" } } },
+  ],
+  Feedback: [idx(["applicationId"], "Feedback", true)],
   Message: [idx(["applicationId", "createdAt"], "Message")],
   MessageTemplate: [idx(["category", "sortOrder"], "MessageTemplate")],
   AuditLog: [idx(["createdAt"], "AuditLog"), idx(["targetType", "targetId"], "AuditLog"), idx(["actorId"], "AuditLog")],
@@ -67,7 +74,11 @@ export const INDEXES: Record<string, IndexSpec[]> = {
 };
 
 /** Alte, fehlerhafte Indizes entfernen (vollständiges @unique auf optionaler publicId). */
-const OBSOLETE: [string, string][] = [["Application", "Application_publicId_key"]];
+const OBSOLETE: [string, string][] = [
+  ["Application", "Application_publicId_key"],
+  // von `prisma db push` für das optionale @unique angelegt – würde mehrere freie Slots blockieren
+  ["InterviewSlot", "InterviewSlot_applicationId_key"],
+];
 
 export async function ensureIndexes(db: PrismaClient) {
   for (const [collection, name] of OBSOLETE) {

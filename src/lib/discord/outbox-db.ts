@@ -52,7 +52,7 @@ export const prismaOutboxStore: OutboxStore = {
     });
     // Nur DM-Fehler protokollieren (ein fehlgeschlagener Log-Post erzeugt keinen weiteren Log)
     const p = job.payload as OutboxPayload;
-    if (p.type === "DM") {
+    if (p.type === "DM" && p.purpose !== "notify") {
       const { botLog } = await import("@/lib/discord/botlog");
       const app = job.applicationId ? await db.application.findUnique({ where: { id: job.applicationId }, select: { publicId: true } }) : null;
       await botLog(

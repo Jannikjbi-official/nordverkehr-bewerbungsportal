@@ -104,6 +104,12 @@ export async function submitApplicationAction(
     // Bestätigungs-DM + Log-Post direkt nach der Antwort zustellen (Worker = Fallback)
     after(async () => {
       await runOutbox({ ids: res.jobIds }).catch((e) => console.error("[outbox]", e));
+      // Höchstzahl erreicht? Dann Stelle automatisch schließen
+      const app = await db.application.findUnique({ where: { id: res.applicationId }, select: { positionId: true } });
+      if (app) {
+        const { closeIfFull } = await import("@/lib/positions/schedule");
+        await closeIfFull(db, app.positionId).catch((e) => console.error("[positions]", e));
+      }
       // KI-Einordnung (Tags) – optional, blockiert nichts
       const { tagApplication } = await import("@/lib/ai/tagging");
       await tagApplication(res.applicationId).catch((e) => console.error("[ai-tags]", e));
@@ -115,6 +121,53 @@ export async function submitApplicationAction(
     console.error("[submit]", err);
     return { ok: false, error: "Beim Absenden ist etwas schiefgelaufen. Dein Entwurf ist gespeichert." };
   }
+}
+
+/** Gesprächstermin selbst buchen oder umbuchen. */
+export async function bookSlotAction(applicationId: string, slotId: string): Promise<ActionResult> {
+  const user = await requireUser();
+  if (!idSchema.safeParse(applicationId).success || !idSchema.safeParse(slotId).success) return { ok: false, error: "Ungültig." };
+  const rl = await rateLimit(`slot:${user.id}`, 10, 3600);
+  if (!rl.ok) return { ok: false, error: "Zu viele Versuche. Probier es später nochmal." };
+  const { bookSlot, SlotError } = await import("@/lib/team/slots");
+  try {
+    await bookSlot(db, { userId: user.id, applicationId, slotId });
+  } catch (e) {
+    if (e instanceof SlotError) return { ok: false, error: e.message };
+    console.error("[slot]", e);
+    return { ok: false, error: "Buchen hat nicht geklappt. Versuch es nochmal." };
+  }
+  revalidatePath(`/dashboard/${applicationId}`);
+  return { ok: true };
+}
+
+const feedbackSchema = z.object({ applicationId: idSchema, rating: z.number().int().min(1).max(5), comment: z.string().trim().max(1000).optional() });
+
+/** Freiwillige Rückmeldung zum Bewerbungsablauf (einmal pro Bewerbung, nach der Entscheidung). */
+export async function submitFeedbackAction(input: z.input<typeof feedbackSchema>): Promise<ActionResult> {
+  const user = await requireUser();
+  const p = feedbackSchema.safeParse(input);
+  if (!p.success) return { ok: false, error: "Bitte 1 bis 5 Sterne wählen." };
+  const app = await db.application.findFirst({ where: { id: p.data.applicationId, userId: user.id }, select: { id: true, status: true } });
+  if (!app || !["ACCEPTED", "REJECTED", "WITHDRAWN"].includes(app.status)) return { ok: false, error: "Feedback geht erst nach der Entscheidung." };
+  try {
+    await db.feedback.create({ data: { applicationId: app.id, rating: p.data.rating, comment: p.data.comment || null } });
+  } catch {
+    return { ok: false, error: "Du hast für diese Bewerbung schon Feedback gegeben. Danke!" };
+  }
+  await audit("application.feedback", { actorId: user.id, targetType: "application", targetId: app.id, meta: { rating: p.data.rating } });
+  revalidatePath(`/dashboard/${app.id}`);
+  return { ok: true };
+}
+
+/** Bei neuen Stellen per DM benachrichtigen (an/aus). */
+export async function setNotifyPositionsAction(on: boolean): Promise<ActionResult> {
+  const user = await requireUser();
+  await db.user.update({ where: { id: user.id }, data: { notifyNewPositions: on === true } });
+  await audit("user.notify", { actorId: user.id, targetType: "user", targetId: user.id, meta: { on: on === true } });
+  revalidatePath("/konto");
+  revalidatePath("/dashboard");
+  return { ok: true };
 }
 
 export async function deleteDraftAction(draftId: string): Promise<ActionResult> {
@@ -150,6 +203,8 @@ export async function withdrawApplicationAction(applicationId: string, reason?: 
     }),
     db.statusChange.create({ data: { applicationId: app.id, from: app.status, to: "WITHDRAWN", actorId: user.id, note: inReview ? why : null } }),
   ]);
+  const { releaseFutureSlot } = await import("@/lib/team/slots");
+  await releaseFutureSlot(db, app.id);
   await audit("application.withdraw", { actorId: user.id, targetType: "application", targetId: app.id, meta: { inReview } });
   const job = await botLog(
     inReview

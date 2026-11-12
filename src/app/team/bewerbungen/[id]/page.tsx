@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ArrowLeft, ArrowSquareOut, CalendarCheck, DiscordLogo, WarningCircle } from "@phosphor-icons/react/ssr";
+import { ArrowLeft, ArrowSquareOut, CalendarCheck, DiscordLogo, Printer, WarningCircle } from "@phosphor-icons/react/ssr";
 import { Avatar, DeliveryBadge, Notice, StatusBadge, cn, formatDay, formatDayTime, formatRelative } from "@/components/ui";
 import { DiscordMarkdown } from "@/components/DiscordMarkdown";
 import { ChatAvatar, ChatRoleBadge, personName } from "@/components/ChatParticipant";
@@ -20,6 +20,10 @@ import { HelpLink } from "@/components/team/HelpLink";
 import { AckWithdrawalButton } from "@/components/team/AckWithdrawalButton";
 import { avatarUrl } from "@/lib/discord/snowflake";
 import { AiPanel } from "@/components/team/AiPanel";
+import { RatingPanel } from "@/components/team/RatingPanel";
+import { OnboardingPanel } from "@/components/team/OnboardingPanel";
+import { onboardingItems, readOnboarding } from "@/lib/team/onboarding";
+import { cleanScores, summarizeRatings } from "@/lib/team/ratings";
 import { TagPills } from "@/components/team/TagPills";
 import { RetagButton } from "@/components/team/RetagButton";
 import { requireTeam, getAccess } from "@/lib/auth/session";
@@ -57,6 +61,9 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
       claimedBy: { select: { id: true, globalName: true, username: true, discordId: true, avatar: true } },
       answers: { orderBy: { sortOrder: "asc" } },
       votes: { include: { user: { select: { globalName: true, username: true } } }, orderBy: { createdAt: "asc" } },
+      slot: { select: { id: true } },
+      feedback: true,
+      ratings: { include: { user: { select: { globalName: true, username: true } } }, orderBy: { createdAt: "asc" } },
       comments: { include: { author: { select: { globalName: true, username: true, discordId: true, avatar: true } } }, orderBy: { createdAt: "asc" } },
       messages: { include: { author: { select: { globalName: true, username: true, discordId: true, avatar: true, isAdmin: true, isTeam: true } } }, orderBy: { createdAt: "asc" } },
       statusChanges: { include: { actor: { select: { globalName: true, username: true } } }, orderBy: { createdAt: "asc" } },
@@ -91,6 +98,8 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
   const accountAgeDays = Math.floor((nowMs() - app.user.discordCreatedAt.getTime()) / 86_400_000);
   const myVote = app.votes.find((v) => v.userId === me.id)?.value ?? null;
   const aiEnabled = settings["ai.enabled"] && isAiConfigured();
+  const myRating = app.ratings.find((r) => r.userId === me.id);
+  const ratingSummary = summarizeRatings(app.ratings);
 
   const sections = new Map<string, typeof app.answers>();
   for (const a of app.answers) {
@@ -126,7 +135,12 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
             </div>
           )}
         </div>
-        <StatusBadge status={app.status} className="!text-sm !px-3.5 !py-1.5 self-start sm:self-center" />
+        <div className="flex items-center gap-2 self-start sm:self-center">
+          <Link href={`/team/bewerbungen/${app.id}/druck`} className="nv-btn nv-btn-ghost nv-btn-sm" title="Druckansicht / als PDF speichern">
+            <Printer size={14} aria-hidden /> PDF
+          </Link>
+          <StatusBadge status={app.status} className="!text-sm !px-3.5 !py-1.5" />
+        </div>
       </header>
 
       <ClaimBox
@@ -303,7 +317,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
             <InterviewForm applicationId={app.id} at={app.interviewAt?.toISOString() ?? null} note={app.interviewNote} />
             {app.interviewAt && (
               <p className="flex items-center gap-1.5 text-xs text-muted">
-                <CalendarCheck size={14} aria-hidden /> {formatDayTime(app.interviewAt)} Uhr
+                <CalendarCheck size={14} aria-hidden /> {formatDayTime(app.interviewAt)} Uhr{app.slot ? " · vom Bewerber gebucht" : ""}
               </p>
             )}
           </div>
@@ -316,6 +330,46 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
               applicationId={app.id}
               mine={myVote}
               votes={app.votes.map((v) => ({ value: v.value, name: v.user.globalName || v.user.username }))}
+            />
+          </div>
+
+          {app.status === "ACCEPTED" && (
+            <div className="nv-card p-5">
+              <p className="nv-mono mb-3 flex items-center justify-between gap-2">
+                Einarbeitung <HelpLink id="einarbeitung" label="Was ist das?" />
+              </p>
+              <OnboardingPanel
+                applicationId={app.id}
+                items={onboardingItems(settings["onboarding.items"])}
+                state={readOnboarding(app.onboarding)}
+                probationUntil={app.probationUntil?.toISOString() ?? null}
+              />
+            </div>
+          )}
+
+          {app.feedback && (
+            <div className="nv-card p-5">
+              <p className="nv-mono mb-2">Feedback des Bewerbers</p>
+              <p className="text-lg tracking-wider text-[var(--tone-warn)]" aria-label={`${app.feedback.rating} von 5`}>
+                {"★".repeat(app.feedback.rating)}
+                <span className="text-faint">{"★".repeat(5 - app.feedback.rating)}</span>
+              </p>
+              {app.feedback.comment && <p className="mt-1 text-sm text-fg-2 whitespace-pre-wrap">„{app.feedback.comment}“</p>}
+            </div>
+          )}
+
+          <div className="nv-card p-5">
+            <p className="nv-mono mb-3 flex items-center justify-between gap-2">
+              Bewertungsbogen <HelpLink id="bewertungsbogen" label="Wie?" />
+            </p>
+            <RatingPanel
+              applicationId={app.id}
+              mine={cleanScores(myRating?.scores)}
+              myNote={myRating?.note ?? null}
+              summary={ratingSummary}
+              raters={app.ratings
+                .filter((r) => r.userId !== me.id || Object.keys(cleanScores(r.scores)).length)
+                .map((r) => ({ name: r.user.globalName || r.user.username, avg: summarizeRatings([r]).overall }))}
             />
           </div>
 

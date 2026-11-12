@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { HelpLink } from "@/components/team/HelpLink";
 import { Suspense } from "react";
 import { Stat, cn } from "@/components/ui";
 import { requireTeam } from "@/lib/auth/session";
@@ -42,14 +43,22 @@ async function Stats({ searchParams }: Pick<PageProps<"/team/statistiken">, "sea
   const range = RANGES.find((r) => r.key === zeitraum) ?? RANGES[1];
   const since = range.days ? daysAgo(range.days) : null;
 
-  const [apps, positions, aiMonth] = await Promise.all([
+  const [apps, positions, aiMonth, feedback] = await Promise.all([
     db.application.findMany({
       where: { status: { not: "DRAFT" }, ...(since ? { submittedAt: { gte: since } } : {}) },
       select: { status: true, positionId: true, submittedAt: true, decidedAt: true, firstReviewedAt: true },
     }),
     db.position.findMany({ orderBy: { sortOrder: "asc" }, select: { id: true, title: true } }),
     db.aiUsage.aggregate({ _sum: { costMicroUsd: true, inputTokens: true, outputTokens: true }, _count: true, where: { createdAt: { gte: monthStart() } } }),
+    db.feedback.findMany({
+      where: since ? { createdAt: { gte: since } } : {},
+      include: { application: { select: { id: true, publicId: true, status: true, position: { select: { title: true } } } } },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    }),
   ]);
+  const fbAvg = feedback.length ? Math.round((feedback.reduce((n, f) => n + f.rating, 0) / feedback.length) * 10) / 10 : null;
+  const fbDist = [5, 4, 3, 2, 1].map((n) => ({ n, count: feedback.filter((f) => f.rating === n).length }));
 
   const decided = apps.filter((a) => a.status === "ACCEPTED" || a.status === "REJECTED");
   const accepted = apps.filter((a) => a.status === "ACCEPTED").length;
@@ -186,6 +195,53 @@ async function Stats({ searchParams }: Pick<PageProps<"/team/statistiken">, "sea
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section className="nv-card p-5" aria-labelledby="fb">
+        <h2 id="fb" className="font-semibold">
+          Feedback der Bewerber <HelpLink id="feedback" className="ml-1" />
+        </h2>
+        {feedback.length === 0 ? (
+          <p className="mt-2 text-sm text-muted">Im gewählten Zeitraum hat noch niemand Feedback gegeben.</p>
+        ) : (
+          <div className="mt-3 grid gap-6 md:grid-cols-[220px_1fr]">
+            <div>
+              <p className="text-4xl font-display tabular-nums">
+                {fbAvg?.toLocaleString("de-DE")}
+                <span className="text-base text-muted"> / 5</span>
+              </p>
+              <p className="text-sm text-muted">aus {feedback.length} Rückmeldung(en)</p>
+              <ul className="mt-3 space-y-1">
+                {fbDist.map((d) => (
+                  <li key={d.n} className="flex items-center gap-2 text-xs">
+                    <span className="w-6 tabular-nums text-muted">{d.n} ★</span>
+                    <span className="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden" aria-hidden>
+                      <span className="block h-full bg-[var(--tone-warn)]" style={{ width: `${(d.count / feedback.length) * 100}%` }} />
+                    </span>
+                    <span className="w-6 text-right tabular-nums">{d.count}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <ul className="space-y-3 text-sm max-h-80 overflow-y-auto pr-1">
+              {feedback
+                .filter((f) => f.comment)
+                .slice(0, 30)
+                .map((f) => (
+                  <li key={f.id} className="border-b border-line pb-2">
+                    <p className="text-xs text-muted">
+                      <span className="text-[var(--tone-warn)]">{"★".repeat(f.rating)}</span> · {f.application.position.title} ·{" "}
+                      <Link href={`/team/bewerbungen/${f.application.id}`} className="nv-link">
+                        {f.application.publicId}
+                      </Link>
+                    </p>
+                    <p className="mt-0.5 whitespace-pre-wrap text-fg-2">{f.comment}</p>
+                  </li>
+                ))}
+              {!feedback.some((f) => f.comment) && <li className="text-muted">Bisher nur Sterne, keine Kommentare.</li>}
+            </ul>
+          </div>
+        )}
       </section>
 
       <section className="nv-card p-5">

@@ -6,6 +6,7 @@
  */
 import type {
   APIActionRowComponent,
+  APIButtonComponent,
   APIButtonComponentWithURL,
   APIComponentInContainer,
   APISectionComponent,
@@ -87,6 +88,8 @@ export interface ApplicantEmbedInput {
   timestamp?: Date;
   /** Persönlicher Absender (Teammitglied); ohne Angabe "NORDVERKEHR // TEAM" */
   author?: { name: string; iconUrl?: string | null } | null;
+  /** Beschriftung des Link-Knopfs (Standard: „Status ansehen“) */
+  buttonLabel?: string;
 }
 
 /** Kopfzeile: Team oder persönlich ("Jonas · Nordverkehr-Team"). */
@@ -108,7 +111,7 @@ export function buildApplicantMessage(input: ApplicantEmbedInput): RESTPostAPICh
     text(truncate(input.body || " ", BODY_LIMIT)),
     separator(false),
     text(`-# ${input.publicId ? `Bewerbung ${input.publicId}` : "Nordverkehr Roleplay"} · ${discordTime(at)}`),
-    linkButtons([{ label: "Status ansehen", url: input.statusUrl }]),
+    linkButtons([{ label: input.buttonLabel ?? "Status ansehen", url: input.statusUrl }]),
   ]);
 }
 
@@ -123,6 +126,8 @@ export interface LogEmbedInput {
   age: number | null;
   teamUrl: string;
   flags: string[];
+  /** Knopf „Übernehmen“ direkt in Discord (custom_id), sonst nur der Link */
+  claimCustomId?: string | null;
 }
 
 /** Post für neue Bewerbungen im Bewerbungs-Kanal. */
@@ -138,8 +143,15 @@ export function buildLogMessage(input: LogEmbedInput): RESTPostAPIChannelMessage
     input.flags.length > 0 && text(truncate(`**Hinweise** (keine Bewertung)\n${input.flags.map((f) => `• ${f}`).join("\n")}`, 1000)),
     separator(false),
     text(`-# Eingegangen ${discordTime(new Date(), "R")}`),
-    linkButtons([{ label: "Im Team-Bereich öffnen", url: input.teamUrl }]),
+    input.claimCustomId ? claimRow(input.teamUrl, input.claimCustomId) : linkButtons([{ label: "Im Team-Bereich öffnen", url: input.teamUrl }]),
   ]);
+}
+
+/** Link „Öffnen“ + Knopf „Übernehmen“ (Interaktion, siehe lib/discord/interactions.ts). */
+function claimRow(url: string, customId: string): APIActionRowComponent<APIButtonComponent> {
+  const components: APIButtonComponent[] = [{ type: 2, style: 1, label: "Übernehmen", custom_id: customId, emoji: { name: "📌" } }];
+  if (/^https:\/\//.test(url)) components.push({ type: 2, style: 5, label: "Im Team-Bereich öffnen", url });
+  return { type: 1, components };
 }
 
 // ─── Bot-Log & Changelog ──────────────────────────────────────

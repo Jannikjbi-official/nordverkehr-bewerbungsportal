@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ArrowRight, ClipboardText, WarningCircle } from "@phosphor-icons/react/ssr";
+import { NotifyToggle } from "@/components/NotifyToggle";
 import { Container, EmptyState, IconTile, PageHero, StatusBadge, formatDay, formatRelative } from "@/components/ui";
 import { requireUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
@@ -48,6 +49,9 @@ async function ApplicationList() {
         }
       >
         Such dir eine Position aus – dein Entwurf wird automatisch gespeichert.
+        <div className="mt-5 max-w-sm mx-auto">
+          <NotifyToggle on={!!user.notifyNewPositions} compact />
+        </div>
       </EmptyState>
     );
   }

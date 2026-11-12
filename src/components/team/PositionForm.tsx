@@ -22,7 +22,20 @@ interface PositionData {
   minAge: number | null;
   cooldownDays: number | null;
   acceptRoleId: string | null;
+  /** ISO-Zeitpunkte oder null */
+  opensAt: string | null;
+  closesAt: string | null;
+  maxApplications: number | null;
 }
+
+/** ISO → Wert für <input type="datetime-local"> (lokale Zeit des Browsers) */
+const toLocalInput = (iso: string | null) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+const fromLocalInput = (v: string) => (v ? new Date(v).toISOString() : null);
 
 const EMPTY: PositionData = {
   slug: "",
@@ -36,6 +49,9 @@ const EMPTY: PositionData = {
   minAge: null,
   cooldownDays: null,
   acceptRoleId: null,
+  opensAt: null,
+  closesAt: null,
+  maxApplications: null,
 };
 
 const slugify = (s: string) =>
@@ -49,7 +65,7 @@ const slugify = (s: string) =>
     .replace(/^-|-$/g, "")
     .slice(0, 60);
 
-export function PositionForm({ position }: { position: PositionData | null }) {
+export function PositionForm({ position, applicationCount = 0 }: { position: PositionData | null; applicationCount?: number }) {
   const router = useRouter();
   const [p, setP] = useState<PositionData>(position ?? EMPTY);
   const [tasks, setTasks] = useState((position?.tasks ?? []).join("\n"));
@@ -169,6 +185,38 @@ export function PositionForm({ position }: { position: PositionData | null }) {
           <input id="p-role" className="nv-input font-mono text-sm" inputMode="numeric" placeholder="Rollen-ID (optional)" value={p.acceptRoleId ?? ""} onChange={(e) => set("acceptRoleId", e.target.value.trim() || null)} />
         </div>
       </div>
+
+      <fieldset className="rounded-xl border border-line p-4 space-y-3">
+        <legend className="px-1 text-sm font-medium">Automatisch öffnen &amp; schließen</legend>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div>
+            <label htmlFor="p-open" className="nv-field-label">
+              Öffnet am
+            </label>
+            <input id="p-open" type="datetime-local" className="nv-input" value={toLocalInput(p.opensAt)} onChange={(e) => set("opensAt", fromLocalInput(e.target.value))} />
+          </div>
+          <div>
+            <label htmlFor="p-close" className="nv-field-label">
+              Schließt am
+            </label>
+            <input id="p-close" type="datetime-local" className="nv-input" value={toLocalInput(p.closesAt)} onChange={(e) => set("closesAt", fromLocalInput(e.target.value))} />
+          </div>
+          <div>
+            <label htmlFor="p-max" className="nv-field-label">
+              Höchstzahl Bewerbungen
+            </label>
+            <input id="p-max" type="number" min={1} className="nv-input" placeholder="unbegrenzt" value={p.maxApplications ?? ""} onChange={(e) => set("maxApplications", optNum(e.target.value))} />
+            {p.maxApplications ? (
+              <p className="nv-help mt-1">
+                Bisher {applicationCount} von {p.maxApplications}.
+              </p>
+            ) : null}
+          </div>
+        </div>
+        <p className="nv-help">
+          Der Bot prüft die Daten jede Nacht um 0 Uhr (und morgens noch einmal) – also am besten ganze Tage wählen. „Öffnet am“ wirkt nur bei geschlossenen Stellen. Ist die Höchstzahl erreicht, schließt die Stelle sofort. Bei jeder Öffnung bekommen Vorgemerkte eine DM, der Stellenaufruf in Discord aktualisiert sich selbst.
+        </p>
+      </fieldset>
 
       {error && <p className="nv-error">{error}</p>}
       <div className="flex flex-wrap items-center justify-between gap-3">

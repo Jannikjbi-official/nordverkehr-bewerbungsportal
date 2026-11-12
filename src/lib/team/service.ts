@@ -45,11 +45,17 @@ export async function changeStatus(opts: {
         decidedAt: FINAL.includes(opts.to) ? now : null,
         decidedById: FINAL.includes(opts.to) ? opts.actorId : null,
         rejectionReason: opts.to === "REJECTED" ? (opts.reason ?? app.rejectionReason) : null,
+        // Angenommen → Probezeit startet (Einarbeitung siehe lib/team/onboarding.ts)
+        ...(opts.to === "ACCEPTED" && settings["onboarding.probationDays"] > 0
+          ? { probationUntil: new Date(now.getTime() + settings["onboarding.probationDays"] * 86_400_000) }
+          : {}),
       },
     });
     await tx.statusChange.create({
       data: { applicationId: app.id, from: app.status, to: opts.to, actorId: opts.actorId, note: opts.note ?? null },
     });
+    // Nicht mehr im Gespräch → künftigen Selbstbucher-Termin wieder freigeben
+    if (opts.to !== "INTERVIEW") await tx.interviewSlot.updateMany({ where: { applicationId: app.id, startsAt: { gt: now } }, data: { applicationId: null, bookedAt: null } });
     const actor = await tx.user.findUnique({ where: { id: opts.actorId }, select: { globalName: true, username: true } });
     const logJob = await botLog(
       `🔁 **${app.publicId}** (${app.position.title}): ${STATUS_LABEL[app.status]} → **${STATUS_LABEL[opts.to]}** – von ${esc(actor ? actorName(actor) : "Team")}`,

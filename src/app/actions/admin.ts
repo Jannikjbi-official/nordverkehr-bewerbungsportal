@@ -55,13 +55,27 @@ const positionSchema = z.object({
   minAge: z.number().int().min(12).max(99).nullable(),
   cooldownDays: z.number().int().min(0).max(365).nullable(),
   acceptRoleId: snowflake,
+  opensAt: z.coerce.date().nullable().optional(),
+  closesAt: z.coerce.date().nullable().optional(),
+  maxApplications: z.number().int().min(1).max(10000).nullable().optional(),
 });
+
+/** Stelle wurde (wieder) geöffnet → Vorgemerkte per DM informieren (nach der Antwort). */
+function notifyOpenedAfter(position: { id: string; title: string; slug: string }) {
+  after(async () => {
+    const { notifyPositionOpened } = await import("@/lib/positions/schedule");
+    await notifyPositionOpened(db, position).catch((e) => console.error("[positions] Benachrichtigung", e));
+  });
+}
 
 export async function savePositionAction(input: z.input<typeof positionSchema>): Promise<ActionResult<{ id: string }>> {
   const { user } = await requireAdmin();
   const p = positionSchema.safeParse(input);
   if (!p.success) return { ok: false, error: p.error.issues[0].message };
-  const { id: pid, ...data } = p.data;
+  const { id: pid, ...rest } = p.data;
+  const data = { ...rest, opensAt: rest.opensAt ?? null, closesAt: rest.closesAt ?? null, maxApplications: rest.maxApplications ?? null };
+  if (data.opensAt && data.closesAt && data.opensAt >= data.closesAt) return { ok: false, error: "Das Enddatum muss nach dem Startdatum liegen." };
+  const before = pid ? await db.position.findUnique({ where: { id: pid }, select: { status: true } }) : null;
   const clash = await db.position.findFirst({ where: { slug: data.slug, NOT: pid ? { id: pid } : undefined } });
   if (clash) return { ok: false, error: "Dieser Slug ist schon vergeben." };
   let saved;
@@ -77,13 +91,16 @@ export async function savePositionAction(input: z.input<typeof positionSchema>):
   revalidatePath("/team/positionen");
   revalidatePath("/");
   refreshJobsAfter();
+  if (saved.status === "OPEN" && before && before.status !== "OPEN") notifyOpenedAfter(saved);
   return { ok: true, data: { id: saved.id } };
 }
 
 export async function setPositionStatusAction(positionId: string, status: "OPEN" | "CLOSED" | "HIDDEN"): Promise<ActionResult> {
   const { user } = await requireAdmin();
   if (!["OPEN", "CLOSED", "HIDDEN"].includes(status)) return { ok: false, error: "Ungültig." };
-  await db.position.update({ where: { id: positionId }, data: { status } });
+  const before = await db.position.findUnique({ where: { id: positionId }, select: { status: true } });
+  const saved = await db.position.update({ where: { id: positionId }, data: { status } });
+  if (status === "OPEN" && before && before.status !== "OPEN") notifyOpenedAfter(saved);
   await audit("position.status", { actorId: user.id, targetType: "position", targetId: positionId, meta: { status } });
   revalidatePath("/team/positionen");
   revalidatePath("/");
@@ -322,6 +339,33 @@ export async function postSummaryNowAction(): Promise<ActionResult<{ message: st
     ok: true,
     data: { message: `Übersicht gepostet${r.escalated ? " – plus Hinweis an die Leitung" : ""}.` },
   };
+}
+
+/**
+ * Knöpfe in Discord einrichten: trägt die Interaktions-URL des Portals bei der
+ * Discord-App ein (Discord prüft die URL dabei sofort mit einem Test-Ping) und
+ * schaltet den Knopf „Übernehmen“ an neuen Bewerbungen ein.
+ */
+export async function setupInteractionsAction(): Promise<ActionResult<{ message: string }>> {
+  const { user } = await requireAdmin();
+  const token = process.env.DISCORD_BOT_TOKEN;
+  if (!token) return { ok: false, error: "DISCORD_BOT_TOKEN fehlt." };
+  const { publicEnv } = await import("@/lib/env");
+  if (!/^https:\/\//.test(publicEnv.appUrl)) return { ok: false, error: "Geht nur auf der Live-Seite (https)." };
+  const url = `${publicEnv.appUrl}/api/discord/interactions`;
+  const res = await fetch("https://discord.com/api/v10/applications/@me", {
+    method: "PATCH",
+    headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ interactions_endpoint_url: url }),
+  });
+  if (!res.ok) {
+    const err = (await res.json().catch(() => null)) as { message?: string; errors?: unknown } | null;
+    return { ok: false, error: `Discord hat die URL abgelehnt (${res.status}): ${err?.message ?? "unbekannt"}. ${JSON.stringify(err?.errors ?? "").slice(0, 200)}` };
+  }
+  await saveSettings({ "discord.claimButton": true }, user.id);
+  await audit("settings.update", { actorId: user.id, meta: { interactionsEndpoint: url } });
+  revalidatePath("/team/einstellungen");
+  return { ok: true, data: { message: `Eingerichtet: ${url}. Neue Bewerbungen bekommen jetzt den Knopf „Übernehmen“.` } };
 }
 
 /** Ausstehende Zustellungen jetzt senden. */

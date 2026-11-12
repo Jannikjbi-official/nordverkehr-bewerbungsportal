@@ -12,6 +12,15 @@ export type AuditAction =
   | "application.status"
   | "application.interview"
   | "application.vote"
+  | "application.rating"
+  | "application.print"
+  | "application.slot_booked"
+  | "application.onboarding"
+  | "application.feedback"
+  | "slot.create"
+  | "slot.delete"
+  | "position.auto"
+  | "user.notify"
   | "application.comment"
   | "application.message"
   | "application.delete"
@@ -72,6 +81,15 @@ export const AUDIT_LABELS: Record<string, string> = {
   "application.status": "Status geändert",
   "application.interview": "Gesprächstermin gesetzt",
   "application.vote": "Abgestimmt",
+  "application.rating": "Bewertet",
+  "application.print": "Bewerbung gedruckt",
+  "application.slot_booked": "Termin gebucht",
+  "application.onboarding": "Einarbeitung",
+  "application.feedback": "Feedback abgegeben",
+  "slot.create": "Gesprächstermine angelegt",
+  "slot.delete": "Gesprächstermin gelöscht",
+  "position.auto": "Position automatisch geöffnet/geschlossen",
+  "user.notify": "Stellen-Benachrichtigung",
   "application.comment": "Kommentar",
   "application.message": "Nachricht gesendet",
   "application.delete": "Bewerbung gelöscht",

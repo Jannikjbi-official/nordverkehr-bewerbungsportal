@@ -510,3 +510,39 @@
   .nv-pulse-dot, .nv-skeleton { animation: none; }
   .nv-card-hover:hover, .nv-btn:hover { transform: none !important; }
 }
+
+/* Druckansicht einer Bewerbung: nur der Inhalt, hell und ohne Navigation */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .nv-print,
+  .nv-print * {
+    visibility: visible;
+  }
+  .nv-print {
+    position: absolute;
+    inset: 0 0 auto 0;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    color: #111 !important;
+    padding: 0 !important;
+  }
+  .nv-print .text-muted,
+  .nv-print .nv-mono {
+    color: #555 !important;
+  }
+  .nv-print .border-line,
+  .nv-print .border-b,
+  .nv-print .border-t {
+    border-color: #ddd !important;
+  }
+  .nv-print-avoid {
+    break-inside: avoid;
+  }
+  html,
+  body {
+    background: #fff !important;
+  }
+}

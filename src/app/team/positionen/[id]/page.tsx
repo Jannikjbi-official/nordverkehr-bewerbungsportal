@@ -42,6 +42,9 @@ async function Editor({ params }: Pick<PageProps<"/team/positionen/[id]">, "para
   const position = isGeneral ? null : await db.position.findUnique({ where: { id } });
   if (!isGeneral && !position) notFound();
 
+  const applicationCount = position
+    ? await db.application.count({ where: { positionId: position.id, submittedAt: { not: null }, status: { not: "WITHDRAWN" } } })
+    : 0;
   const sections = await db.formSection.findMany({
     where: { positionId: isGeneral ? null : position!.id, NOT: { archived: true } },
     orderBy: { sortOrder: "asc" },
@@ -81,7 +84,11 @@ async function Editor({ params }: Pick<PageProps<"/team/positionen/[id]">, "para
             minAge: position.minAge,
             cooldownDays: position.cooldownDays,
             acceptRoleId: position.acceptRoleId,
+            opensAt: position.opensAt?.toISOString() ?? null,
+            closesAt: position.closesAt?.toISOString() ?? null,
+            maxApplications: position.maxApplications ?? null,
           }}
+          applicationCount={applicationCount}
         />
       )}
       <section className="space-y-3">

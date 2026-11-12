@@ -94,45 +94,49 @@ enum OutboxStatus {
 // ─────────────────────────────────────────────────────────────
 
 model User {
-  id               String    @id @default(cuid()) @map("_id")
-  discordId        String    @unique
+  id               String   @id @default(cuid()) @map("_id")
+  discordId        String   @unique
   username         String
   globalName       String?
   avatar           String?
   discordCreatedAt DateTime
   // Erhöhen = alle Sitzungen dieses Nutzers sofort ungültig
-  sessionVersion   Int       @default(0)
+  sessionVersion   Int      @default(0)
 
   // Rollen-Cache (kurzlebig, siehe src/lib/auth/access.ts)
-  inGuild          Boolean   @default(false)
-  isTeam           Boolean   @default(false)
-  isAdmin          Boolean   @default(false)
-  guildJoinedAt    DateTime?
-  roleCheckedAt    DateTime?
+  inGuild       Boolean   @default(false)
+  isTeam        Boolean   @default(false)
+  isAdmin       Boolean   @default(false)
+  guildJoinedAt DateTime?
+  roleCheckedAt DateTime?
 
-  lastLoginAt      DateTime?
+  lastLoginAt        DateTime?
   /// Letzte Aktivität im Team-Bereich (für "Team online?")
-  lastTeamActiveAt DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  lastTeamActiveAt   DateTime?
+  /// Möchte per DM Bescheid bekommen, wenn eine Stelle (wieder) öffnet
+  notifyNewPositions Boolean   @default(false)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
-  applications     Application[]   @relation("Applicant")
-  decisions        Application[]   @relation("Decider")
-  claims           Application[]   @relation("Claimer")
-  votes            Vote[]
-  comments         Comment[]
-  messages         Message[]
-  statusChanges    StatusChange[]
-  uploads          Upload[]
-  notesAbout       UserNote[]      @relation("NoteSubject")
-  notesWritten     UserNote[]      @relation("NoteAuthor")
-  bansAbout        UserBan[]       @relation("BanSubject")
-  bansCreated      UserBan[]       @relation("BanCreator")
-  bansLifted       UserBan[]       @relation("BanLifter")
-  templates        MessageTemplate[]
-  auditLogs        AuditLog[]
-  aiUsage          AiUsage[]
-  profile          ApplicantProfile?
+  applications  Application[]     @relation("Applicant")
+  decisions     Application[]     @relation("Decider")
+  claims        Application[]     @relation("Claimer")
+  votes         Vote[]
+  comments      Comment[]
+  messages      Message[]
+  statusChanges StatusChange[]
+  uploads       Upload[]
+  notesAbout    UserNote[]        @relation("NoteSubject")
+  notesWritten  UserNote[]        @relation("NoteAuthor")
+  bansAbout     UserBan[]         @relation("BanSubject")
+  bansCreated   UserBan[]         @relation("BanCreator")
+  bansLifted    UserBan[]         @relation("BanLifter")
+  templates     MessageTemplate[]
+  auditLogs     AuditLog[]
+  aiUsage       AiUsage[]
+  profile       ApplicantProfile?
+  ratings       Rating[]
+  slotsCreated  InterviewSlot[]   @relation("SlotCreator")
 }
 
 /// Allgemeine Angaben eines Bewerbers (einmal ausgefüllt, für weitere Bewerbungen wiederverwendet).
@@ -192,26 +196,30 @@ model ApplicationType {
 }
 
 model Position {
-  id            String          @id @default(cuid()) @map("_id")
-  typeId        String
-  type          ApplicationType @relation(fields: [typeId], references: [id], onDelete: Restrict)
-  slug          String          @unique
-  title         String
-  tagline       String
-  description   String
-  tasks         String[]
-  requirements  String[]
-  icon          String          @default("users")
-  status        PositionStatus  @default(OPEN)
-  sortOrder     Int             @default(0)
-  minAge        Int?
-  cooldownDays  Int?
-  acceptRoleId  String?
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  id              String          @id @default(cuid()) @map("_id")
+  typeId          String
+  type            ApplicationType @relation(fields: [typeId], references: [id], onDelete: Restrict)
+  slug            String          @unique
+  title           String
+  tagline         String
+  description     String
+  tasks           String[]
+  requirements    String[]
+  icon            String          @default("users")
+  status          PositionStatus  @default(OPEN)
+  sortOrder       Int             @default(0)
+  minAge          Int?
+  cooldownDays    Int?
+  acceptRoleId    String?
+  /// Automatisch öffnen/schließen (täglicher Cron) und Höchstzahl an Bewerbungen
+  opensAt         DateTime?
+  closesAt        DateTime?
+  maxApplications Int?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
-  sections      FormSection[]
-  applications  Application[]
+  sections     FormSection[]
+  applications Application[]
 
   @@index([typeId, status])
 }
@@ -264,61 +272,69 @@ model Question {
 // ─────────────────────────────────────────────────────────────
 
 model Application {
-  id                   String            @id @default(cuid()) @map("_id")
+  id         String            @id @default(cuid()) @map("_id")
   /// Eindeutig, sobald gesetzt – partieller Unique-Index in scripts/mongo-indexes.ts
   /// (ein normales @unique würde in MongoDB mehrere Entwürfe ohne ID blockieren)
-  publicId             String?
-  userId               String
-  user                 User              @relation("Applicant", fields: [userId], references: [id], onDelete: Cascade)
-  positionId           String
-  position             Position          @relation(fields: [positionId], references: [id], onDelete: Restrict)
-  status               ApplicationStatus @default(DRAFT)
+  publicId   String?
+  userId     String
+  user       User              @relation("Applicant", fields: [userId], references: [id], onDelete: Cascade)
+  positionId String
+  position   Position          @relation(fields: [positionId], references: [id], onDelete: Restrict)
+  status     ApplicationStatus @default(DRAFT)
 
-  age                  Int?
+  age            Int?
   /// Entwurfsdaten (Autosave): { [questionId]: value }
-  draftData            Json              @default("{}")
-  draftStep            Int               @default(0)
-  confirmations        Json?
-  consentVersion       String?
-  consentAt            DateTime?
+  draftData      Json      @default("{}")
+  draftStep      Int       @default(0)
+  confirmations  Json?
+  consentVersion String?
+  consentAt      DateTime?
 
   submittedAt          DateTime?
   firstReviewedAt      DateTime?
   decidedAt            DateTime?
   decidedById          String?
-  decidedBy            User?             @relation("Decider", fields: [decidedById], references: [id], onDelete: SetNull)
+  decidedBy            User?     @relation("Decider", fields: [decidedById], references: [id], onDelete: SetNull)
   /// Teammitglied, das die Bewerbung betreut ("geclaimt")
   claimedById          String?
-  claimedBy            User?             @relation("Claimer", fields: [claimedById], references: [id], onDelete: SetNull)
+  claimedBy            User?     @relation("Claimer", fields: [claimedById], references: [id], onDelete: SetNull)
   claimedAt            DateTime?
   /// Rückzug während der Bearbeitung: Grund des Bewerbers, Team kann noch nachfragen
   withdrawReason       String?
-  withdrawnInReview    Boolean           @default(false)
+  withdrawnInReview    Boolean   @default(false)
   /// Team hat den Rückzug bestätigt (danach keine Rückfragen mehr, raus aus dem Dashboard)
   withdrawAckAt        DateTime?
   withdrawAckById      String?
   interviewAt          DateTime?
   interviewNote        String?
+  /// Für diesen Termin wurde die Erinnerungs-DM schon verschickt
+  interviewRemindedFor DateTime?
+  /// Einarbeitung nach der Annahme: { [Punkt]: { at, by } }
+  onboarding           Json      @default("{}")
+  probationUntil       DateTime?
   rejectionReason      String?
 
   confirmationDmStatus DeliveryStatus?
   /// Automatische Hinweise (kein Score!): [{ code, message }]
-  flags                Json              @default("[]")
+  flags                Json            @default("[]")
   aiSummary            String?
   aiSummaryAt          DateTime?
   /// KI-Einordnung (beschreibende Kategorien, kein Ranking)
-  aiTags               String[]          @default([])
+  aiTags               String[]        @default([])
   aiTaggedAt           DateTime?
 
-  createdAt            DateTime          @default(now())
-  updatedAt            DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  answers              Answer[]
-  uploads              Upload[]
-  statusChanges        StatusChange[]
-  votes                Vote[]
-  comments             Comment[]
-  messages             Message[]
+  answers       Answer[]
+  uploads       Upload[]
+  statusChanges StatusChange[]
+  votes         Vote[]
+  comments      Comment[]
+  messages      Message[]
+  ratings       Rating[]
+  slot          InterviewSlot?
+  feedback      Feedback?
 
   @@index([publicId])
   @@index([status])
@@ -388,6 +404,48 @@ model Vote {
   updatedAt     DateTime    @updatedAt
 
   @@unique([applicationId, userId])
+}
+
+/// Bewertungsbogen: Punkte 1–5 pro Kriterium, eine Bewertung pro Teammitglied und Bewerbung
+model Rating {
+  id            String      @id @default(cuid()) @map("_id")
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// { [Kriterium]: 1..5 }
+  scores        Json        @default("{}")
+  note          String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([applicationId, userId])
+}
+
+/// Freier Gesprächstermin, den Bewerber im Status „Gespräch“ selbst buchen
+model InterviewSlot {
+  id            String       @id @default(cuid()) @map("_id")
+  startsAt      DateTime
+  durationMin   Int          @default(30)
+  note          String?
+  createdById   String?
+  createdBy     User?        @relation("SlotCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  applicationId String?      @unique
+  application   Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  bookedAt      DateTime?
+  createdAt     DateTime     @default(now())
+
+  @@index([startsAt])
+}
+
+/// Rückmeldung des Bewerbers zum Ablauf (nach der Entscheidung, freiwillig)
+model Feedback {
+  id            String      @id @default(cuid()) @map("_id")
+  applicationId String      @unique
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  rating        Int
+  comment       String?
+  createdAt     DateTime    @default(now())
 }
 
 model Comment {

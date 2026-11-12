@@ -64,6 +64,13 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: "1.1",
     date: "2026-11-12",
     items: [
+      { kind: "neu", text: "**Bewertungsbogen** – pro Kriterium 1–5 Sterne (Kommunikation, Erfahrung, Szenarien, Motivation, Verfügbarkeit, Teamfit), mit Schnitt des Teams." },
+      { kind: "neu", text: "**Gesprächstermine** – das Team legt freie Zeiten an, Bewerber buchen selbst und bekommen am Tag morgens eine Erinnerung per DM." },
+      { kind: "neu", text: "**Übernehmen in Discord** – Knopf 📌 an neuen Bewerbungen im Bewerbungs-Kanal." },
+      { kind: "neu", text: "**Stellen automatisch öffnen & schließen** – nach Datum oder Höchstzahl an Bewerbungen. Wer möchte, bekommt bei neuen Stellen eine DM." },
+      { kind: "neu", text: "**Einarbeitung** – Checkliste und Probezeit für neue Teammitglieder, Ende der Probezeit steht in der Team-Übersicht." },
+      { kind: "neu", text: "**Feedback** – Bewerber bewerten nach der Entscheidung den Ablauf, gesammelt unter Statistiken." },
+      { kind: "neu", text: "**PDF** – Druckansicht jeder Bewerbung, mit oder ohne interne Infos." },
       {
         kind: "neu",
         text: "**Team-Übersicht** – jeden Morgen im Teamchat: Gespräche heute, unbeantwortete Nachrichten, liegengebliebene Bewerbungen und offene Rückzüge. Liegt etwas über eine Woche, bekommt die Leitung einen Hinweis.",

@@ -9,7 +9,8 @@
 import type { RESTPostAPIChannelMessageJSONBody } from "discord-api-types/v10";
 import { classifyDiscordError, type DiscordApi } from "@/lib/discord/client";
 
-export type DmPurpose = "confirmation" | "team_message" | "status";
+/** "notify" = Rundmail (z. B. neue Stelle) – Fehler werden nicht einzeln geloggt */
+export type DmPurpose = "confirmation" | "team_message" | "status" | "reminder" | "notify";
 
 export type OutboxPayload =
   | { type: "DM"; discordUserId: string; message: RESTPostAPIChannelMessageJSONBody; purpose: DmPurpose }

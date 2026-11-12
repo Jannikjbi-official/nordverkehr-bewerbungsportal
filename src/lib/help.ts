@@ -112,6 +112,26 @@ export const HELP: HelpSection[] = [
         text: "Pro, Contra oder Enthaltung – nur intern als Meinungsbild. Die Abstimmung entscheidet nichts automatisch, den Status setzt immer ein Mensch.",
       },
       {
+        id: "bewertungsbogen",
+        term: "Bewertungsbogen",
+        text: "Jedes Teammitglied vergibt pro Kriterium 1–5 Sterne (Kommunikation, Erfahrung, Szenarien, Motivation, Verfügbarkeit, Teamfit). Ein Kriterium darf offen bleiben, ein zweiter Klick auf denselben Stern nimmt ihn zurück. Oben steht der **Schnitt des Teams**, unten der Schnitt jedes Einzelnen. Die Punkte sind eine Orientierung – entschieden wird im Gespräch und in der Abstimmung.",
+      },
+      {
+        id: "termine",
+        term: "Gesprächstermine",
+        text: "Unter **Termine** legt das Team freie Zeiten an (z. B. Donnerstag ab 19 Uhr, 4 × 30 Minuten). Steht eine Bewerbung auf „Gespräch“ und hat noch keinen festen Termin, sucht sich der Bewerber im Portal selbst einen aus – umbuchen geht bis 12 Stunden vorher. Am Tag des Gesprächs bekommt er morgens eine Erinnerung per DM. Trägst du in der Bewerbung selbst eine Uhrzeit ein, gilt die – ein gebuchter Termin wird dann wieder frei. Geht die Bewerbung aus dem Status „Gespräch“ raus, wird ihr künftiger Termin ebenfalls frei.",
+      },
+      {
+        id: "einarbeitung",
+        term: "Einarbeitung & Probezeit",
+        text: "Bei angenommenen Bewerbungen erscheint rechts eine **Checkliste** (Regelwerk, Rolle, TeamSpeak-Rechte …) – wer etwas erledigt, hakt es ab, Name und Datum werden gespeichert. Mit der Annahme startet außerdem die **Probezeit** (Standard 14 Tage, das Ende lässt sich pro Person ändern). Endet sie in den nächsten Tagen, steht die Person in der Team-Übersicht im Teamchat. Die Punkte der Checkliste und die Länge der Probezeit stellen Admins in den Einstellungen ein.",
+      },
+      {
+        id: "feedback",
+        term: "Feedback der Bewerber",
+        text: "Nach der Entscheidung können Bewerber freiwillig 1–5 Sterne und einen Kommentar zum Ablauf abgeben. Das Feedback steht in der Bewerbung und gesammelt unter „Statistiken“ – es fließt nicht in Entscheidungen ein.",
+      },
+      {
         id: "kommentare",
         term: "Kommentare & Notizen",
         text: "**Kommentare** gehören zu einer Bewerbung, **Notizen** zu einer Person (unter „Nutzer & Sperren“). Beides ist intern. Fordert ein Bewerber seine Daten an, sind sie im Export enthalten – ohne den Namen des Teammitglieds. Also sachlich formulieren.",
@@ -165,6 +185,16 @@ export const HELP: HelpSection[] = [
         id: "discord-kanaele",
         term: "Discord-Kanäle",
         text: "**Bewerbungs-Kanal:** ein Post pro neuer Bewerbung. **Bot-Log:** Status, Claims, Nachrichten, Antworten von Bewerbern, Zustellfehler. **Changelog:** einmal am Tag um 0 Uhr alle Änderungen des Vortags als neue Version (gleichzeitig unter „Changelog“ im Team-Bereich). **Teamchat:** jeden Morgen die Team-Übersicht. **Leitungs-Chat:** Hinweis, wenn Bewerbungen zu lange liegen. Admins ändern die Kanäle in den Einstellungen und können dort mit „Discord-Zustellung prüfen“ eine Testnachricht schicken.",
+      },
+      {
+        id: "discord-knoepfe",
+        term: "Übernehmen in Discord",
+        text: "An jeder neuen Bewerbung im Bewerbungs-Kanal hängt (wenn eingeschaltet) der Knopf **📌 Übernehmen**. Wer die Team-Rolle hat und schon einmal im Portal eingeloggt war, claimt die Bewerbung damit direkt – die Antwort sieht nur er selbst. Betreut schon jemand die Bewerbung, sagt der Bot wer; übernehmen geht dann nur im Portal. Einmalig einrichten: Einstellungen → „Knopf ‚Übernehmen‘ einrichten“.",
+      },
+      {
+        id: "stellen-automatisch",
+        term: "Stellen automatisch öffnen & schließen",
+        text: "Pro Stelle lassen sich ein **Startdatum**, ein **Enddatum** und eine **Höchstzahl** an Bewerbungen eintragen. Der Bot prüft die Daten jede Nacht um 0 Uhr; ist die Höchstzahl erreicht, schließt die Stelle sofort nach der letzten Bewerbung. Bei jeder Öffnung bekommen alle eine DM, die „Bei neuen Stellen benachrichtigen“ eingeschaltet haben – und der Stellenaufruf im Discord aktualisiert sich selbst.",
       },
       {
         id: "team-uebersicht",

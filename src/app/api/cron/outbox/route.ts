@@ -15,6 +15,9 @@ export async function GET(req: Request) {
     console.error("[changelog]", e);
     return [];
   });
+  // Stellen mit Start-/Enddatum umschalten (0 Uhr)
+  const { applyPositionSchedule } = await import("@/lib/positions/schedule");
+  await applyPositionSchedule(db).catch((e) => console.error("[positions]", e));
   await releaseStuckJobs(5);
   let total = 0;
   for (let i = 0; i < 5; i++) {

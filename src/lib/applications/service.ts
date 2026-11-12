@@ -18,6 +18,7 @@ import { buildApplicantMessage, buildLogMessage } from "@/lib/messages/embed";
 import { buildTemplateVars, renderTemplate } from "@/lib/messages/placeholders";
 import { enqueue } from "@/lib/discord/outbox-db";
 import { botLog, channelIds, esc } from "@/lib/discord/botlog";
+import { claimCustomId } from "@/lib/discord/interactions";
 import { avatarUrl } from "@/lib/discord/snowflake";
 import type { Prisma } from "@prisma/client";
 
@@ -249,6 +250,7 @@ export async function submitApplication(
             age: input.age,
             teamUrl: `${publicEnv.appUrl}/team/bewerbungen/${draft.id}`,
             flags: flags.map((f) => f.message),
+            claimCustomId: settings["discord.claimButton"] ? claimCustomId(draft.id) : null,
           }),
         },
         { tx, applicationId: draft.id },

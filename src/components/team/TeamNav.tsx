@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  CalendarBlank,
   ChartBar,
   ChatsCircle,
   ClipboardText,
@@ -18,6 +19,7 @@ import {
 const ITEMS = [
   { href: "/team", label: "Übersicht", icon: House, exact: true },
   { href: "/team/bewerbungen", label: "Bewerbungen", icon: ClipboardText },
+  { href: "/team/termine", label: "Termine", icon: CalendarBlank },
   { href: "/team/bausteine", label: "Nachrichtenbausteine", icon: ChatsCircle },
   { href: "/team/nutzer", label: "Nutzer & Sperren", icon: Users },
   { href: "/team/statistiken", label: "Statistiken", icon: ChartBar },

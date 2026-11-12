@@ -62,9 +62,15 @@ export async function setInterviewAction(input: z.input<typeof interviewSchema>)
   if (!p.success) return { ok: false, error: "Bitte ein gültiges Datum wählen." };
   const app = await db.application.findUnique({ where: { id: p.data.applicationId } });
   if (!app || app.status === "DRAFT") return { ok: false, error: "Bewerbung nicht gefunden." };
+  const at = p.data.at ? new Date(p.data.at) : null;
   await db.application.update({
     where: { id: app.id },
-    data: { interviewAt: p.data.at ? new Date(p.data.at) : null, interviewNote: p.data.note || null },
+    data: { interviewAt: at, interviewNote: p.data.note || null },
+  });
+  // Selbst gebuchter Termin passt nicht mehr zur festen Uhrzeit → wieder freigeben
+  await db.interviewSlot.updateMany({
+    where: { applicationId: app.id, ...(at ? { NOT: { startsAt: at } } : {}) },
+    data: { applicationId: null, bookedAt: null },
   });
   if (p.data.at && ["SUBMITTED", "IN_REVIEW"].includes(app.status)) {
     await changeStatus({ applicationId: app.id, to: "INTERVIEW", actorId: user.id, note: "Gesprächstermin festgelegt" });
@@ -89,6 +95,98 @@ export async function voteAction(applicationId: string, value: "PRO" | "CONTRA" 
   }
   await audit("application.vote", { actorId: user.id, targetType: "application", targetId: applicationId, meta: { value } });
   revalidatePath(`/team/bewerbungen/${applicationId}`);
+  return { ok: true };
+}
+
+const slotSchema = z.object({
+  start: z.coerce.date(),
+  count: z.number().int().min(1).max(20),
+  durationMin: z.number().int().min(10).max(180),
+  gapMin: z.number().int().min(0).max(120).default(0),
+  note: z.string().trim().max(200).optional(),
+});
+
+/** Freie Gesprächstermine anlegen (mehrere am Stück). */
+export async function createSlotsAction(input: z.input<typeof slotSchema>): Promise<ActionResult<{ count: number }>> {
+  const { user } = await requireTeam();
+  const p = slotSchema.safeParse(input);
+  if (!p.success) return { ok: false, error: "Bitte Startzeit, Anzahl und Dauer prüfen." };
+  if (p.data.start.getTime() < Date.now()) return { ok: false, error: "Der Termin liegt in der Vergangenheit." };
+  const { slotTimes } = await import("@/lib/team/slots");
+  const times = slotTimes(p.data.start, p.data.count, p.data.durationMin, p.data.gapMin);
+  const clash = await db.interviewSlot.count({ where: { startsAt: { in: times } } });
+  if (clash) return { ok: false, error: "Zu mindestens einer dieser Uhrzeiten gibt es schon einen Termin." };
+  await db.interviewSlot.createMany({
+    data: times.map((startsAt) => ({ startsAt, durationMin: p.data.durationMin, note: p.data.note || null, createdById: user.id, applicationId: null, bookedAt: null })),
+  });
+  await audit("slot.create", { actorId: user.id, meta: { count: times.length, start: p.data.start.toISOString() } });
+  revalidatePath("/team/termine");
+  return { ok: true, data: { count: times.length } };
+}
+
+/** Freien Termin löschen (gebuchte nur, wenn sie vorbei sind). */
+export async function deleteSlotAction(slotId: string): Promise<ActionResult> {
+  const { user } = await requireTeam();
+  if (!id.safeParse(slotId).success) return { ok: false, error: "Ungültig." };
+  const slot = await db.interviewSlot.findUnique({ where: { id: slotId } });
+  if (!slot) return { ok: true };
+  if (slot.applicationId && slot.startsAt > new Date()) return { ok: false, error: "Der Termin ist gebucht. Klär das erst mit dem Bewerber (oder setz in der Bewerbung eine andere Zeit)." };
+  await db.interviewSlot.delete({ where: { id: slotId } });
+  await audit("slot.delete", { actorId: user.id, meta: { at: slot.startsAt.toISOString() } });
+  revalidatePath("/team/termine");
+  return { ok: true };
+}
+
+/** Einarbeitungs-Punkt abhaken / zurücknehmen. */
+export async function toggleOnboardingAction(applicationId: string, item: string, done: boolean): Promise<ActionResult> {
+  const { user } = await requireTeam();
+  if (!id.safeParse(applicationId).success || typeof item !== "string" || item.length > 200) return { ok: false, error: "Ungültig." };
+  const { readOnboarding } = await import("@/lib/team/onboarding");
+  const app = await db.application.findUnique({ where: { id: applicationId }, select: { status: true, onboarding: true } });
+  if (!app || app.status !== "ACCEPTED") return { ok: false, error: "Nur bei angenommenen Bewerbungen." };
+  const state = readOnboarding(app.onboarding);
+  if (done) state[item] = { at: new Date().toISOString(), by: user.globalName || user.username };
+  else delete state[item];
+  await db.application.update({ where: { id: applicationId }, data: { onboarding: state as object } });
+  await audit("application.onboarding", { actorId: user.id, targetType: "application", targetId: applicationId, meta: { item, done } });
+  revalidatePath(`/team/bewerbungen/${applicationId}`);
+  return { ok: true };
+}
+
+/** Probezeit-Ende setzen oder entfernen. */
+export async function setProbationAction(applicationId: string, until: string | null): Promise<ActionResult> {
+  const { user } = await requireTeam();
+  if (!id.safeParse(applicationId).success) return { ok: false, error: "Ungültig." };
+  const date = until ? new Date(until) : null;
+  if (date && Number.isNaN(date.getTime())) return { ok: false, error: "Ungültiges Datum." };
+  await db.application.update({ where: { id: applicationId }, data: { probationUntil: date } });
+  await audit("application.onboarding", { actorId: user.id, targetType: "application", targetId: applicationId, meta: { probationUntil: until } });
+  revalidatePath(`/team/bewerbungen/${applicationId}`);
+  return { ok: true };
+}
+
+const ratingSchema = z.object({ applicationId: id, scores: z.record(z.string(), z.number()), note: z.string().trim().max(1000).optional() });
+
+/** Bewertungsbogen speichern (leere Bewertung = löschen). */
+export async function rateAction(input: z.input<typeof ratingSchema>): Promise<ActionResult> {
+  const { user } = await requireTeam();
+  const p = ratingSchema.safeParse(input);
+  if (!p.success) return { ok: false, error: "Ungültige Bewertung." };
+  const { cleanScores } = await import("@/lib/team/ratings");
+  const scores = cleanScores(p.data.scores);
+  const note = p.data.note || null;
+  const where = { applicationId_userId: { applicationId: p.data.applicationId, userId: user.id } };
+  if (!Object.keys(scores).length && !note) {
+    await db.rating.deleteMany({ where: { applicationId: p.data.applicationId, userId: user.id } });
+  } else {
+    await db.rating.upsert({
+      where,
+      create: { applicationId: p.data.applicationId, userId: user.id, scores, note },
+      update: { scores, note },
+    });
+  }
+  await audit("application.rating", { actorId: user.id, targetType: "application", targetId: p.data.applicationId, meta: { scores } });
+  revalidatePath(`/team/bewerbungen/${p.data.applicationId}`);
   return { ok: true };
 }
 

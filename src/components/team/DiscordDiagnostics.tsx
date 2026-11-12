@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import { useState, useTransition } from "react";
 import { ArrowClockwise, CheckCircle, PaperPlaneTilt, WarningCircle } from "@phosphor-icons/react/ssr";
-import { deleteChangelogPostsAction, discordTestAction, flushOutboxAction, postChangelogNowAction, postSummaryNowAction } from "@/app/actions/admin";
+import { deleteChangelogPostsAction, discordTestAction, flushOutboxAction, postChangelogNowAction, postSummaryNowAction, setupInteractionsAction } from "@/app/actions/admin";
 
 export interface FailedJob {
   id: string;
@@ -78,6 +78,20 @@ export function DiscordDiagnostics({ failed, pending }: { failed: FailedJob[]; p
           }
         >
           Changelog-Posts im Kanal löschen
+        </button>
+        <button
+          type="button"
+          className="nv-btn nv-btn-ghost nv-btn-sm"
+          disabled={busy}
+          onClick={async () =>
+            (await confirmDialog({
+              title: "Knopf „Übernehmen“ einrichten?",
+              body: "Das Portal trägt seine Adresse als „Interactions Endpoint URL“ bei deiner Discord-App ein. Danach können Teammitglieder neue Bewerbungen direkt in Discord übernehmen.",
+              confirmLabel: "Einrichten",
+            })) && run("Discord-Knöpfe", () => setupInteractionsAction())
+          }
+        >
+          Knopf „Übernehmen“ einrichten
         </button>
         <button type="button" className="nv-btn nv-btn-quiet nv-btn-sm" disabled={busy} onClick={() => run("Warteschlange", () => flushOutboxAction())}>
           Ausstehende senden{pending ? ` (${pending})` : ""}

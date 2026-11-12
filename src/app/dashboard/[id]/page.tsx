@@ -15,6 +15,9 @@ import { DiscordMarkdown } from "@/components/DiscordMarkdown";
 import { ChatAvatar, ChatRoleBadge, personName } from "@/components/ChatParticipant";
 import { ReplyBox, WithdrawButton, MarkRead } from "@/components/dashboard/ApplicantActions";
 import { requireUser } from "@/lib/auth/session";
+import { SlotPicker } from "@/components/dashboard/SlotPicker";
+import { FeedbackForm } from "@/components/dashboard/FeedbackForm";
+import { canRebook, listFreeSlots } from "@/lib/team/slots";
 import { db } from "@/lib/db";
 import { ACTIVE_STATUSES, FOLLOW_UP_DAYS, STATUS_HINT, STATUS_LABEL, TIMELINE, canFollowUp, isInProcessing } from "@/lib/applications/status";
 import { formatAnswerForDisplay, type AnswerValue } from "@/lib/applications/form";
@@ -44,6 +47,8 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
       position: true,
       answers: { orderBy: { sortOrder: "asc" } },
       statusChanges: { orderBy: { createdAt: "asc" } },
+      slot: true,
+      feedback: true,
       messages: { include: { author: { select: { globalName: true, username: true, discordId: true, avatar: true, isAdmin: true, isTeam: true } } }, orderBy: { createdAt: "asc" } },
     },
   });
@@ -54,6 +59,15 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
   const followUp = canFollowUp(app);
   const dmIssue = app.confirmationDmStatus === "DM_CLOSED" || app.confirmationDmStatus === "FAILED";
   const unread = app.messages.some((m) => m.direction === "TEAM_TO_APPLICANT" && !m.readAt);
+  // Selbstbuchung: im Gespräch ohne festen Termin (oder mit selbst gebuchtem)
+  const selfBooking = app.status === "INTERVIEW" && (!app.interviewAt || !!app.slot);
+  const freeSlots = selfBooking ? await listFreeSlots(db) : [];
+  const toPickable = (s: { id: string; startsAt: Date; durationMin: number; note: string | null }) => ({
+    id: s.id,
+    startsAt: s.startsAt.toISOString(),
+    durationMin: s.durationMin,
+    note: s.note,
+  });
 
   return (
     <div className="space-y-8">
@@ -99,7 +113,21 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[1fr_340px]">
         <div className="space-y-6 min-w-0">
-          {app.status === "INTERVIEW" && app.interviewAt && (
+          {["ACCEPTED", "REJECTED"].includes(app.status) &&
+            (app.feedback ? (
+              <p className="nv-card p-4 text-sm text-muted">Danke für dein Feedback – das hilft uns wirklich weiter.</p>
+            ) : (
+              <FeedbackForm applicationId={app.id} />
+            ))}
+          {selfBooking && (
+            <SlotPicker
+              applicationId={app.id}
+              slots={freeSlots.map(toPickable)}
+              current={app.slot ? toPickable(app.slot) : null}
+              canChange={canRebook(app.slot, new Date())}
+            />
+          )}
+          {!selfBooking && app.status === "INTERVIEW" && app.interviewAt && (
             <div className="nv-card p-5 flex gap-4 border-red-line">
               <CalendarCheck size={28} className="text-red-text shrink-0" aria-hidden />
               <div>

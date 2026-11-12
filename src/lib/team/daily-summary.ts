@@ -37,7 +37,7 @@ export async function collectDailySummary(db: PrismaClient, opts: { now?: Date; 
   const user = { select: { globalName: true, username: true } } as const;
   const userAndPos = { user, position: { select: { title: true } }, claimedBy: user } as const;
 
-  const [active, withdrawn] = await Promise.all([
+  const [active, withdrawn, probation] = await Promise.all([
     db.application.findMany({
       where: { status: { in: ACTIVE_STATUSES } },
       include: {
@@ -63,6 +63,11 @@ export async function collectDailySummary(db: PrismaClient, opts: { now?: Date; 
       include: userAndPos,
       orderBy: { decidedAt: "asc" },
     }),
+    db.application.findMany({
+      where: { status: "ACCEPTED", probationUntil: { gte: now, lt: new Date(now.getTime() + 3 * DAY) } },
+      include: userAndPos,
+      orderBy: { probationUntil: "asc" },
+    }),
   ]);
 
   // Letzte Team-Nachricht separat (die letzte Nachricht insgesamt kann vom Bewerber sein)
@@ -76,7 +81,7 @@ export async function collectDailySummary(db: PrismaClient, opts: { now?: Date; 
   const lastTeamMsg = new Map<string, Date>();
   for (const m of teamMsgs) if (!lastTeamMsg.has(m.applicationId)) lastTeamMsg.set(m.applicationId, m.createdAt);
 
-  const item = (a: (typeof active)[number] | (typeof withdrawn)[number], at: Date): SummaryItem => ({
+  const item = (a: (typeof active)[number] | (typeof withdrawn)[number] | (typeof probation)[number], at: Date): SummaryItem => ({
     id: a.id,
     publicId: a.publicId ?? a.id.slice(-6),
     name: nameOf(a.user) ?? "Unbekannt",
@@ -125,6 +130,7 @@ export async function collectDailySummary(db: PrismaClient, opts: { now?: Date; 
     waiting,
     stale,
     withdrawals: withdrawn.map((a) => item(a, a.decidedAt ?? a.updatedAt)),
+    probation: probation.map((a) => item(a, a.probationUntil!)),
     escalations,
     staleDays: opts.staleDays,
     escalateDays: opts.escalateDays,

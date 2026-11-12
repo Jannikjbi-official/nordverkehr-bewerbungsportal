@@ -9,6 +9,8 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { getEligibility } from "@/lib/applications/service";
 import { getSettings } from "@/lib/settings";
 import { effectiveMinAge } from "@/lib/applications/rules";
+import { NotifyToggle } from "@/components/NotifyToggle";
+import { db } from "@/lib/db";
 
 export default function PositionPage({ params }: PageProps<"/positionen/[slug]">) {
   return (
@@ -77,6 +79,10 @@ async function PositionDetail({ params }: Pick<PageProps<"/positionen/[slug]">, 
                 <span className="nv-pill">Gerade geschlossen</span>
               )}
             </div>
+            {open && position.closesAt && (
+              <p className="mt-2 text-xs text-muted">Bewerbungen bis {formatDay(position.closesAt)} möglich.</p>
+            )}
+            {!open && position.opensAt && <p className="mt-2 text-xs text-muted">Öffnet voraussichtlich am {formatDay(position.opensAt)}.</p>}
             <dl className="mt-5 space-y-2 text-sm">
               <div className="flex justify-between gap-3">
                 <dt className="text-muted">Mindestalter</dt>
@@ -117,6 +123,15 @@ async function ApplyCta({ position }: { position: PublicPosition }) {
       </div>
     ) : (
       <p className="text-sm text-muted">Für diese Position nehmen wir gerade keine Bewerbungen an. Schau bald wieder vorbei.</p>
+    );
+  }
+  if (position.status !== "OPEN") {
+    const me = await db.user.findUnique({ where: { id: user.id }, select: { notifyNewPositions: true } });
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-muted">Für diese Position nehmen wir gerade keine Bewerbungen an.</p>
+        <NotifyToggle on={!!me?.notifyNewPositions} />
+      </div>
     );
   }
 

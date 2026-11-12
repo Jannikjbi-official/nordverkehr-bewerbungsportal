@@ -4,6 +4,7 @@ import { DownloadSimple } from "@phosphor-icons/react/ssr";
 import { Avatar, Container, PageHero, formatDay } from "@/components/ui";
 import { DeleteAccount, SignOutEverywhere } from "@/components/dashboard/AccountActions";
 import { requireUser } from "@/lib/auth/session";
+import { NotifyToggle } from "@/components/NotifyToggle";
 import { db } from "@/lib/db";
 
 export const metadata: Metadata = { title: "Konto & Daten", robots: { index: false } };
@@ -58,6 +59,12 @@ async function Account() {
           </div>
         </dl>
         <SignOutEverywhere />
+      </section>
+
+      <section className="nv-card p-6 space-y-4">
+        <h2 className="font-semibold">Benachrichtigungen</h2>
+        <p className="text-sm text-muted">Gerade keine passende Stelle offen? Wir sagen dir per Discord-DM Bescheid, sobald eine Stelle (wieder) öffnet.</p>
+        <NotifyToggle on={!!user.notifyNewPositions} />
       </section>
 
       <section className="nv-card p-6 space-y-4">
