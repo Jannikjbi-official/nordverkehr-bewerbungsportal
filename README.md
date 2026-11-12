@@ -193,3 +193,4 @@ git tag v1.1 && git push origin v1.1
 
 oder in GitHub unter *Actions → Release → Run workflow*. Der Workflow (`.github/workflows/release.yml`) legt ein GitHub-Release mit allen Changelog-Einträgen seit dem letzten Release an und veröffentlicht zwei Docker-Images unter *Packages*: `…-web` (Portal) und `…-worker` (Discord-Gateway, Zustellung, Löschfristen).
 
+# abonieren sie cisko
