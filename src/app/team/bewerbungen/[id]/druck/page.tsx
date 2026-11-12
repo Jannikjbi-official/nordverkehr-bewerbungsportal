@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { buildProtocol, protocolQuestions } from "@/lib/team/interview";
+import { getSettings } from "@/lib/settings";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -42,9 +44,17 @@ async function PrintView({ params, searchParams }: PageProps<"/team/bewerbungen/
       ratings: { include: { user: { select: { globalName: true, username: true } } } },
       comments: { include: { author: { select: { globalName: true, username: true } } }, orderBy: { createdAt: "asc" } },
       statusChanges: { include: { actor: { select: { globalName: true, username: true } } }, orderBy: { createdAt: "asc" } },
+      interviewNotes: { include: { author: { select: { globalName: true, username: true } } }, orderBy: { createdAt: "asc" } },
+      interviewChecks: { include: { checkedBy: { select: { globalName: true, username: true } } } },
     },
   });
   if (!app || app.status === "DRAFT") notFound();
+  const protocol = buildProtocol(
+    protocolQuestions(app.position.interviewQuestions, (await getSettings())["interview.defaultQuestions"], app.interviewExtraQuestions),
+    app.interviewExtraQuestions,
+    app.interviewChecks,
+    app.interviewNotes,
+  );
   await audit("application.print", { actorId: user.id, targetType: "application", targetId: app.id, meta: { internal } });
 
   const sections = new Map<string, typeof app.answers>();
@@ -83,6 +93,7 @@ async function PrintView({ params, searchParams }: PageProps<"/team/bewerbungen/
             Status: <strong className="text-fg">{STATUS_LABEL[app.status]}</strong>
             {app.claimedBy && <> · betreut von {who(app.claimedBy)}</>}
             {app.interviewAt && <> · Gespräch {formatDayTime(app.interviewAt)} Uhr</>}
+            {app.quizTotal ? <> · Regel-Quiz {app.quizCorrect} von {app.quizTotal} richtig</> : null}
           </p>
         </header>
 
@@ -133,6 +144,44 @@ async function PrintView({ params, searchParams }: PageProps<"/team/bewerbungen/
                 </ul>
               )}
             </section>
+
+            {protocol.started && (
+              <section className="border-t border-line pt-4">
+                <h2 className="font-semibold text-base mb-2">Gesprächsprotokoll (intern)</h2>
+                <ol className="space-y-2 list-decimal pl-5">
+                  {protocol.items
+                    .filter((it) => it.checked || it.notes.length)
+                    .map((it) => (
+                      <li key={it.question} className="nv-print-avoid">
+                        <p className="font-medium">
+                          {it.question} {it.checked ? <span className="text-muted font-normal">✓ ({it.checked.by})</span> : null}
+                        </p>
+                        {it.notes.map((n) => (
+                          <p key={n.id} className="whitespace-pre-wrap">
+                            <span className="text-muted">
+                              {n.by} · {formatDay(new Date(n.at))}:
+                            </span>{" "}
+                            {n.body}
+                          </p>
+                        ))}
+                      </li>
+                    ))}
+                </ol>
+                {protocol.conclusion.length > 0 && (
+                  <div className="mt-3 nv-print-avoid">
+                    <p className="font-medium">Gesamtfazit</p>
+                    {protocol.conclusion.map((n) => (
+                      <p key={n.id} className="whitespace-pre-wrap">
+                        <span className="text-muted">
+                          {n.by} · {formatDay(new Date(n.at))}:
+                        </span>{" "}
+                        {n.body}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
 
             {app.comments.length > 0 && (
               <section className="nv-print-avoid border-t border-line pt-4">

@@ -164,3 +164,52 @@ describe("Suche über Antworten", () => {
     expect(answerText(42)).toBe("42");
   });
 });
+
+import { scoreQuiz, validateAnswer, type FormQuestion } from "@/lib/applications/form";
+
+describe("Regel-Quiz", () => {
+  const q = (id: string, type: FormQuestion["type"] = "QUIZ"): FormQuestion => ({ id, key: null, label: id, helpText: null, placeholder: null, type, required: true, minLength: null, maxLength: null, minValue: null, maxValue: null, options: ["A", "B", "C"] });
+  it("wertet nur Quizfragen mit hinterlegter Lösung aus", () => {
+    const r = scoreQuiz([q("q1"), q("q2"), q("q3"), q("s1", "SELECT"), q("q4")], new Map([["q1", "A"], ["q2", "B"], ["q3", "C"], ["q4", null]]), { q1: "A", q2: "C", s1: "A" });
+    expect(r.total).toBe(3);
+    expect(r.correct).toBe(1);
+    expect(r.perQuestion.get("q2")).toBe(false);
+    expect(r.perQuestion.get("q3")).toBe(false); // nicht beantwortet
+  });
+  it("Antwort muss eine der Optionen sein", () => {
+    expect(validateAnswer(q("q1"), "A")).toBeNull();
+    expect(validateAnswer(q("q1"), "Z")).toBe("Bitte eine Option wählen.");
+  });
+});
+
+import { buildProtocol, protocolQuestions, splitLines } from "@/lib/team/interview";
+
+describe("Gesprächsprotokoll", () => {
+  it("Vorlage der Stelle vor Standard, eigene Fragen ohne Dubletten", () => {
+    expect(protocolQuestions([], "A\nB", ["b", "C"])).toEqual(["A", "B", "C"]);
+    expect(protocolQuestions(["X"], "A\nB", [])).toEqual(["X"]);
+  });
+  it("übernimmt KI-Fragen ohne Aufzählungszeichen", () => {
+    expect(splitLines("1. Erste Frage?\n- Zweite\n  • Dritte\n\n")).toEqual(["Erste Frage?", "Zweite", "Dritte"]);
+  });
+  it("ordnet Notizen und Haken zu, Fazit und verwaiste Notizen getrennt", () => {
+    const u = { globalName: "Jonas", username: "jonas" };
+    const p = buildProtocol(
+      ["A", "B"],
+      ["B"],
+      [{ question: "A", checkedAt: new Date("2026-11-12T10:00:00Z"), checkedBy: u }],
+      [
+        { id: "n2", question: "A", body: "zweite", authorId: "u1", author: u, createdAt: new Date("2026-11-12T10:05:00Z") },
+        { id: "n1", question: "A", body: "erste", authorId: "u1", author: u, createdAt: new Date("2026-11-12T10:01:00Z") },
+        { id: "n3", question: "", body: "Fazit", authorId: null, author: null, createdAt: new Date("2026-11-12T11:00:00Z") },
+        { id: "n4", question: "Alt", body: "weg?", authorId: "u1", author: u, createdAt: new Date("2026-11-12T09:00:00Z") },
+      ],
+    );
+    expect(p.items[0].checked?.by).toBe("Jonas");
+    expect(p.items[0].notes.map((n) => n.body)).toEqual(["erste", "zweite"]);
+    expect(p.items[1].extra).toBe(true);
+    expect(p.conclusion[0].by).toBe("Gelöscht");
+    expect(p.orphans.map((n) => n.question)).toEqual(["Alt"]);
+    expect(p.started).toBe(true);
+  });
+});

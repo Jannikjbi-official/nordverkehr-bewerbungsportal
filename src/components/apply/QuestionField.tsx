@@ -114,7 +114,8 @@ export function QuestionField({ q, value, error, onChange, uploads, onUploaded }
       );
     }
 
-    case "SELECT": {
+    case "SELECT":
+    case "QUIZ": {
       const opts = q.options;
       if (opts.length > 6) {
         return (

@@ -22,6 +22,9 @@ import { AckWithdrawalButton } from "@/components/team/AckWithdrawalButton";
 import { avatarUrl } from "@/lib/discord/snowflake";
 import { AiPanel } from "@/components/team/AiPanel";
 import { Tabs } from "@/components/Tabs";
+import { QuizPill } from "@/components/team/QuizPill";
+import { InterviewProtocol } from "@/components/team/InterviewProtocol";
+import { buildProtocol, protocolQuestions } from "@/lib/team/interview";
 import { RatingPanel } from "@/components/team/RatingPanel";
 import { OnboardingPanel } from "@/components/team/OnboardingPanel";
 import { onboardingItems, readOnboarding } from "@/lib/team/onboarding";
@@ -75,6 +78,8 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
       comments: { include: { author: { select: { globalName: true, username: true, discordId: true, avatar: true } } }, orderBy: { createdAt: "asc" } },
       messages: { include: { author: { select: { globalName: true, username: true, discordId: true, avatar: true, isAdmin: true, isTeam: true } } }, orderBy: { createdAt: "asc" } },
       statusChanges: { include: { actor: { select: { globalName: true, username: true } } }, orderBy: { createdAt: "asc" } },
+      interviewNotes: { include: { author: { select: { globalName: true, username: true } } }, orderBy: { createdAt: "asc" } },
+      interviewChecks: { include: { checkedBy: { select: { globalName: true, username: true } } } },
     },
   });
   if (!app || app.status === "DRAFT") notFound();
@@ -142,6 +147,15 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
         : "blocked" in storedAi
           ? { kind: "blocked", reason: storedAi.blocked, at: app.aiRatedAt?.toISOString() ?? "" }
           : { kind: "scores", scores: cleanScores(storedAi.scores), reasons: storedAi.reasons ?? {}, fazit: storedAi.fazit ?? null, at: app.aiRatedAt?.toISOString() ?? "" };
+
+  const protocol = buildProtocol(
+    protocolQuestions(app.position.interviewQuestions, settings["interview.defaultQuestions"], app.interviewExtraQuestions),
+    app.interviewExtraQuestions,
+    app.interviewChecks,
+    app.interviewNotes,
+  );
+  // Reiter „Gespräch“: ab Einladung zum Gespräch oder sobald schon etwas notiert ist
+  const showProtocol = protocol.started || ["INTERVIEW", "ACCEPTED", "REJECTED"].includes(app.status);
 
   const sections = new Map<string, typeof app.answers>();
   for (const a of app.answers) {
@@ -265,6 +279,20 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
               <dl className="px-5 py-4 grid gap-1 sm:grid-cols-[220px_1fr] sm:gap-4">
                 <dt className="text-xs text-muted">Alter</dt>
                 <dd className="text-sm">{app.age ?? "–"}</dd>
+                {app.quizTotal ? (
+                  <>
+                    <dt className="text-xs text-muted">Regel-Quiz</dt>
+                    <dd className="text-sm flex flex-wrap items-center gap-2">
+                      <span>
+                        {app.quizCorrect} von {app.quizTotal} richtig
+                      </span>
+                      <QuizPill correct={app.quizCorrect} total={app.quizTotal} min={app.position.quizMinScore} />
+                      {app.position.quizMinScore !== null && (app.quizCorrect ?? 0) < app.position.quizMinScore && (
+                        <span className="text-xs text-[var(--tone-danger)]">unter der Mindestpunktzahl ({app.position.quizMinScore}) – nur Hinweis</span>
+                      )}
+                    </dd>
+                  </>
+                ) : null}
               </dl>
               {[...sections.entries()].map(([title, answers]) => (
                 <div key={title} className="px-5 py-4">
@@ -287,6 +315,12 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
                             <a href={a.value} target="_blank" rel="noopener noreferrer nofollow" className="nv-link inline-flex items-center gap-1 break-all">
                               {a.value} <ArrowSquareOut size={13} aria-hidden />
                             </a>
+                          ) : a.type === "QUIZ" ? (
+                            <span className="inline-flex items-center gap-2">
+                              {formatAnswerForDisplay(a.type, a.value as AnswerValue)}
+                              {a.correct === true && <span className="text-[var(--tone-success)] text-xs">✓ richtig</span>}
+                              {a.correct === false && <span className="text-[var(--tone-danger)] text-xs">✗ falsch</span>}
+                            </span>
                           ) : (
                             formatAnswerForDisplay(a.type, a.value as AnswerValue)
                           )}
@@ -300,6 +334,16 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
           </section>
                 ),
               },
+              ...(showProtocol
+                ? [
+                    {
+                      key: "gespraech",
+                      label: "Gespräch",
+                      badge: protocol.items.filter((i) => i.checked).length || undefined,
+                      content: <InterviewProtocol applicationId={app.id} protocol={protocol} meId={me.id} isAdmin={!!access?.isAdmin} />,
+                    },
+                  ]
+                : []),
               {
                 key: "nachrichten",
                 label: "Nachrichten",

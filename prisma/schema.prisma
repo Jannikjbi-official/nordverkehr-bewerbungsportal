@@ -42,6 +42,8 @@ enum QuestionType {
   URL
   FILE
   SCENARIO
+  /// Regel-Quiz: eine Option ist richtig (nur serverseitig bekannt)
+  QUIZ
 }
 
 enum VoteValue {
@@ -139,6 +141,8 @@ model User {
   profile       ApplicantProfile?
   ratings       Rating[]
   slotsCreated  InterviewSlot[]   @relation("SlotCreator")
+  interviewNotes  InterviewNote[]  @relation("InterviewNoteAuthor")
+  interviewChecks InterviewCheck[] @relation("InterviewCheckAuthor")
 }
 
 /// Allgemeine Angaben eines Bewerbers (einmal ausgefüllt, für weitere Bewerbungen wiederverwendet).
@@ -217,6 +221,10 @@ model Position {
   opensAt         DateTime?
   closesAt        DateTime?
   maxApplications Int?
+  /// Regel-Quiz: Mindestpunktzahl (nur Hinweis fürs Team, kein Ausschluss)
+  quizMinScore    Int?
+  /// Vorlage fürs Gesprächsprotokoll (leer = Standard aus den Einstellungen)
+  interviewQuestions String[] @default([])
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
@@ -261,6 +269,8 @@ model Question {
   minValue    Int?
   maxValue    Int?
   options     String[]
+  /// Nur bei QUIZ: die richtige Option – wird NIE an Bewerber ausgeliefert
+  correctOption String?
   sortOrder   Int          @default(0)
   archived    Boolean      @default(false)
   createdAt   DateTime     @default(now())
@@ -323,6 +333,11 @@ model Application {
   rejectionReason      String?
   /// Feste Kategorie des Absagegrunds (lib/applications/rejection.ts) – für die Statistik
   rejectionCategory    String?
+  /// Regel-Quiz: richtige Antworten / Anzahl Quizfragen (beim Absenden ausgewertet)
+  quizCorrect          Int?
+  quizTotal            Int?
+  /// Zusätzliche Gesprächsfragen nur für diese Bewerbung (z. B. aus den KI-Gesprächsfragen)
+  interviewExtraQuestions String[] @default([])
 
   confirmationDmStatus DeliveryStatus?
   /// Automatische Hinweise (kein Score!): [{ code, message }]
@@ -351,6 +366,8 @@ model Application {
   ratings       Rating[]
   slot          InterviewSlot?
   feedback      Feedback?
+  interviewNotes  InterviewNote[]
+  interviewChecks InterviewCheck[]
 
   @@index([publicId])
   @@index([status])
@@ -369,6 +386,8 @@ model Answer {
   label         String
   type          QuestionType
   value         Json
+  /// Nur bei QUIZ: richtig beantwortet? (beim Absenden ausgewertet)
+  correct       Boolean?
   sortOrder     Int          @default(0)
 
   @@index([applicationId])
@@ -452,6 +471,33 @@ model InterviewSlot {
   createdAt     DateTime     @default(now())
 
   @@index([startsAt])
+}
+
+/// Gesprächsprotokoll: Notiz zu einer Frage (question = "" → Gesamtfazit). Mehrere Teammitglieder ergänzen, nichts wird überschrieben.
+model InterviewNote {
+  id            String      @id @default(cuid()) @map("_id")
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  question      String
+  body          String
+  authorId      String?
+  author        User?       @relation("InterviewNoteAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  createdAt     DateTime    @default(now())
+
+  @@index([applicationId])
+}
+
+/// Gesprächsprotokoll: Frage abgehakt (eine pro Bewerbung und Frage)
+model InterviewCheck {
+  id            String      @id @default(cuid()) @map("_id")
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  question      String
+  checkedById   String?
+  checkedBy     User?       @relation("InterviewCheckAuthor", fields: [checkedById], references: [id], onDelete: SetNull)
+  checkedAt     DateTime    @default(now())
+
+  @@unique([applicationId, question])
 }
 
 /// Rückmeldung des Bewerbers zum Ablauf (nach der Entscheidung, freiwillig)

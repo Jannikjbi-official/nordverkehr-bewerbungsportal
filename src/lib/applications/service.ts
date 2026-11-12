@@ -7,6 +7,7 @@ import {
   CONSENT_VERSION,
   confirmationsSchema,
   normalizeAnswers,
+  scoreQuiz,
   validateAll,
   type AnswerMap,
   type FormSectionDef,
@@ -145,6 +146,13 @@ export async function submitApplication(
     })),
   });
 
+  // Regel-Quiz auswerten – die Lösungen kommen nur aus der DB
+  const quizQuestions = sections.flatMap((s) => s.questions).filter((q) => q.type === "QUIZ");
+  const solutions = quizQuestions.length
+    ? new Map((await db.question.findMany({ where: { id: { in: quizQuestions.map((q) => q.id) } }, select: { id: true, correctOption: true } })).map((q) => [q.id, q.correctOption]))
+    : new Map<string, string | null>();
+  const quiz = scoreQuiz(quizQuestions, solutions, answers);
+
   const submittedAt = new Date();
   const dashboardUrl = `${publicEnv.appUrl}/dashboard/${draft.id}`;
   const channels = await channelIds();
@@ -165,6 +173,7 @@ export async function submitApplication(
           label: q.label,
           type: q.type,
           value: v as Prisma.InputJsonValue,
+          correct: quiz.perQuestion.has(q.id) ? quiz.perQuestion.get(q.id)! : null,
           sortOrder: order++,
         });
       }
@@ -187,6 +196,8 @@ export async function submitApplication(
         flags: flags as unknown as Prisma.InputJsonValue,
         draftData: {},
         confirmationDmStatus: "PENDING",
+        quizCorrect: quiz.total ? quiz.correct : null,
+        quizTotal: quiz.total || null,
       },
     });
     await tx.statusChange.create({ data: { applicationId: draft.id, to: "SUBMITTED", actorId: user.id } });

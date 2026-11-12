@@ -90,6 +90,20 @@ export const settingsSchema = z.object({
     .string()
     .max(2000)
     .default(["Regelwerk & Team-Regeln gelesen", "Discord-Rolle vergeben", "TeamSpeak-Rechte gesetzt", "In Team-Kanäle eingeladen", "Einweisung gemacht", "Ansprechpartner zugeteilt"].join("\n")),
+  /** Standard-Vorlage fürs Gesprächsprotokoll (eine Frage pro Zeile) – pro Stelle überschreibbar */
+  "interview.defaultQuestions": z
+    .string()
+    .max(3000)
+    .default(
+      [
+        "Stell dich kurz vor – wer bist du, wie bist du zu Nordverkehr gekommen?",
+        "Warum genau diese Stelle?",
+        "Wie viel Zeit kannst du realistisch pro Woche einbringen?",
+        "Erzähl von einer schwierigen Situation mit einem Spieler und wie du sie gelöst hast.",
+        "Wie gehst du mit Kritik vom Team um?",
+        "Hast du Fragen an uns?",
+      ].join("\n"),
+    ),
   /** Probezeit in Tagen ab Annahme (0 = keine) */
   "onboarding.probationDays": z.coerce.number().int().min(0).max(365).default(14),
 

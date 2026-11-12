@@ -14,7 +14,7 @@ export interface AnswerHit {
 }
 
 const CONTEXT = 60;
-const MAX_HITS_PER_APP = 3;
+const MAX_HITS_PER_APP = 2;
 
 export const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -43,7 +43,7 @@ export function snippet(text: string, query: string): Omit<AnswerHit, "label"> |
   };
 }
 
-/** Treffer pro Bewerbung (höchstens 3 Ausschnitte). */
+/** Treffer pro Bewerbung (höchstens 2 Ausschnitte). */
 export async function searchAnswers(db: PrismaClient, query: string, limit = 500): Promise<Map<string, AnswerHit[]>> {
   const q = query.trim();
   const out = new Map<string, AnswerHit[]>();

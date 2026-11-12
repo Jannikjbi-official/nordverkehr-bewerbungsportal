@@ -50,6 +50,8 @@ export async function resetAllApplications(db: PrismaClient, opts: { resetNumber
       // Bewertungen, Feedback, gebuchte Termine (Termine selbst bleiben, werden wieder frei)
       db.rating.deleteMany({}),
       db.feedback.deleteMany({}),
+      db.interviewNote.deleteMany({}),
+      db.interviewCheck.deleteMany({}),
       db.interviewSlot.updateMany({ where: { applicationId: { not: null } }, data: { applicationId: null, bookedAt: null } }),
   ]);
   const [answers, uploads, jobsA, jobsM, messages, votes, comments, statusChanges, applications, profiles, counters] = r.map((x) => x.count);

@@ -7,6 +7,7 @@ import { Avatar, EmptyState, StatusBadge, cn, formatDay, formatRelative } from "
 import { ApplicationFiltersBar } from "@/components/team/ApplicationFiltersBar";
 import { KanbanBoard } from "@/components/team/KanbanBoard";
 import { TagPills } from "@/components/team/TagPills";
+import { QuizPill } from "@/components/team/QuizPill";
 import { requireTeam } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { PAGE_SIZE, filtersToQuery, listApplications, parseFilters, voteSummary } from "@/lib/team/queries";
@@ -87,6 +88,7 @@ async function Content({ searchParams }: Pick<PageProps<"/team/bewerbungen">, "s
             flags: (r.flags as unknown as ApplicationFlag[]).length,
             unread: r._count.messages,
             tags: r.aiTags,
+            quiz: r.quizTotal ? { correct: r.quizCorrect, total: r.quizTotal, min: r.position.quizMinScore } : null,
           }))}
         />
       ) : (
@@ -129,7 +131,7 @@ async function Content({ searchParams }: Pick<PageProps<"/team/bewerbungen">, "s
                                 <span key={i} className="mt-1 block text-xs text-fg-2 max-w-[28rem] whitespace-normal">
                                   <span className="text-muted">{h.label}: </span>
                                   {h.before}
-                                  <mark className="bg-red-soft text-fg rounded px-0.5">{h.match}</mark>
+                                  <mark className="bg-red-soft text-fg rounded-sm">{h.match}</mark>
                                   {h.after}
                                 </span>
                               ))}
@@ -172,6 +174,7 @@ async function Content({ searchParams }: Pick<PageProps<"/team/bewerbungen">, "s
                                 DM
                               </span>
                             )}
+                            <QuizPill correct={r.quizCorrect} total={r.quizTotal} min={r.position.quizMinScore} />
                             {flags.length > 0 && (
                               <span className="nv-pill nv-tone-warn !py-0.5 !px-2" title={flags.map((x) => x.message).join("\n")}>
                                 <WarningCircle size={13} aria-hidden /> {flags.length}

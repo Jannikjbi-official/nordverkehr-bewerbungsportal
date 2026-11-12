@@ -483,3 +483,75 @@ export async function acknowledgeWithdrawalAction(applicationId: string): Promis
     return fail(err);
   }
 }
+
+// ─── Gesprächsprotokoll ───────────────────────────────────────
+
+const protocolQuestion = z.string().max(300);
+
+async function protocolApp(applicationId: string) {
+  if (!id.safeParse(applicationId).success) return null;
+  const app = await db.application.findUnique({ where: { id: applicationId }, select: { id: true, status: true } });
+  return app && app.status !== "DRAFT" ? app : null;
+}
+
+/** Frage im Protokoll abhaken / zurücknehmen. */
+export async function toggleInterviewCheckAction(applicationId: string, question: string, done: boolean): Promise<ActionResult> {
+  const { user } = await requireTeam();
+  if (!(await protocolApp(applicationId)) || !protocolQuestion.min(1).safeParse(question).success) return { ok: false, error: "Ungültig." };
+  if (done) {
+    await db.interviewCheck.upsert({
+      where: { applicationId_question: { applicationId, question } },
+      create: { applicationId, question, checkedById: user.id },
+      update: {},
+    });
+  } else {
+    await db.interviewCheck.deleteMany({ where: { applicationId, question } });
+  }
+  await audit("application.protocol", { actorId: user.id, targetType: "application", targetId: applicationId, meta: { check: question.slice(0, 80), done } });
+  revalidatePath(`/team/bewerbungen/${applicationId}`);
+  return { ok: true };
+}
+
+const noteSchema = z.object({ applicationId: id, question: protocolQuestion, body: z.string().trim().min(1).max(3000) });
+
+/** Notiz zu einer Frage (oder zum Gesamtfazit, question = "") hinzufügen. */
+export async function addInterviewNoteAction(input: z.input<typeof noteSchema>): Promise<ActionResult> {
+  const { user } = await requireTeam();
+  const p = noteSchema.safeParse(input);
+  if (!p.success || !(await protocolApp(p.data.applicationId))) return { ok: false, error: "Notiz ist leer oder zu lang." };
+  const note = await db.interviewNote.create({ data: { applicationId: p.data.applicationId, question: p.data.question, body: p.data.body, authorId: user.id } });
+  await audit("application.protocol", { actorId: user.id, targetType: "application", targetId: p.data.applicationId, meta: { note: note.id, fazit: p.data.question === "" } });
+  revalidatePath(`/team/bewerbungen/${p.data.applicationId}`);
+  return { ok: true };
+}
+
+/** Eigene Notiz löschen (Admins: jede). */
+export async function deleteInterviewNoteAction(noteId: string): Promise<ActionResult> {
+  const { user, access } = await requireTeam();
+  if (!id.safeParse(noteId).success) return { ok: false, error: "Ungültig." };
+  const note = await db.interviewNote.findUnique({ where: { id: noteId } });
+  if (!note) return { ok: true };
+  if (note.authorId !== user.id && !access?.isAdmin) return { ok: false, error: "Nur eigene Notizen (oder als Admin)." };
+  await db.interviewNote.delete({ where: { id: noteId } });
+  await audit("application.protocol", { actorId: user.id, targetType: "application", targetId: note.applicationId, meta: { deleted: noteId } });
+  revalidatePath(`/team/bewerbungen/${note.applicationId}`);
+  return { ok: true };
+}
+
+/** Eigene Fragen für diese Bewerbung ergänzen (eine pro Zeile, z. B. aus den KI-Gesprächsfragen). */
+export async function addInterviewQuestionsAction(applicationId: string, text: string): Promise<ActionResult<{ added: number }>> {
+  const { user } = await requireTeam();
+  if (typeof text !== "string" || text.length > 5000) return { ok: false, error: "Zu lang." };
+  const app = await protocolApp(applicationId);
+  if (!app) return { ok: false, error: "Bewerbung nicht gefunden." };
+  const { splitLines } = await import("@/lib/team/interview");
+  const current = await db.application.findUnique({ where: { id: applicationId }, select: { interviewExtraQuestions: true } });
+  const have = new Set((current?.interviewExtraQuestions ?? []).map((q) => q.toLowerCase()));
+  const lines = splitLines(text).filter((l) => !have.has(l.toLowerCase())).slice(0, 20);
+  if (!lines.length) return { ok: false, error: "Keine neuen Fragen gefunden (eine pro Zeile)." };
+  // push ist atomar – gleichzeitige Ergänzungen gehen nicht verloren
+  await db.application.update({ where: { id: applicationId }, data: { interviewExtraQuestions: { push: lines } } });
+  await audit("application.protocol", { actorId: user.id, targetType: "application", targetId: applicationId, meta: { questionsAdded: lines.length } });
+  revalidatePath(`/team/bewerbungen/${applicationId}`);
+  return { ok: true, data: { added: lines.length } };
+}

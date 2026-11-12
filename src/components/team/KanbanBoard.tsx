@@ -21,6 +21,7 @@ import { BOARD_STATUSES, STATUS_LABEL, STATUS_TONE, canTeamTransition } from "@/
 import { avatarUrl } from "@/lib/discord/snowflake";
 import type { ApplicationStatus } from "@prisma/client";
 import { TagPills } from "@/components/team/TagPills";
+import { QuizPill } from "@/components/team/QuizPill";
 
 export interface BoardItem {
   id: string;
@@ -35,6 +36,7 @@ export interface BoardItem {
   flags: number;
   unread: number;
   tags: string[];
+  quiz?: { correct: number | null; total: number; min: number | null } | null;
 }
 
 export function KanbanBoard({ items: initial }: { items: BoardItem[] }) {
@@ -174,6 +176,7 @@ function Card({ item, overlay }: { item: BoardItem; overlay?: boolean }) {
           <span className="text-[var(--tone-success)]">+{item.votes.pro}</span>{" "}
           <span className="text-[var(--tone-danger)]">−{item.votes.contra}</span>
         </span>
+        {item.quiz && <QuizPill correct={item.quiz.correct} total={item.quiz.total} min={item.quiz.min} />}
         {item.unread > 0 && (
           <span className="inline-flex items-center gap-1 text-red-text">
             <ChatCircleDots size={13} aria-hidden /> {item.unread}

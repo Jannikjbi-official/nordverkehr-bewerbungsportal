@@ -10,7 +10,7 @@ const isEmpty = (v: AnswerValue | undefined) => v === undefined || v === null ||
 
 /** Allgemeine Fragen mit Key, die sich für die Wiederverwendung eignen (keine Bilder). */
 function reusableQuestions(sections: FormSectionDef[]) {
-  return sections.filter((s) => s.general).flatMap((s) => s.questions.filter((q) => q.key && q.type !== "FILE"));
+  return sections.filter((s) => s.general).flatMap((s) => s.questions.filter((q) => q.key && q.type !== "FILE" && q.type !== "QUIZ"));
 }
 
 /** Antworten der allgemeinen Fragen als { key: Wert } – zum Speichern im Profil. */

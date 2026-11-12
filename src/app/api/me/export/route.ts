@@ -64,6 +64,7 @@ export async function GET() {
       bestaetigungen: a.confirmations,
       entwurf: a.status === "DRAFT" ? a.draftData : undefined,
       antworten: a.answers,
+      regelQuiz: a.quizTotal ? { richtig: a.quizCorrect, fragen: a.quizTotal } : undefined,
       statusverlauf: a.statusChanges,
       nachrichten: a.messages,
       bilder: a.uploads,

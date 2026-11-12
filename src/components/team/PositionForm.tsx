@@ -26,6 +26,8 @@ interface PositionData {
   opensAt: string | null;
   closesAt: string | null;
   maxApplications: number | null;
+  quizMinScore: number | null;
+  interviewQuestions: string[];
 }
 
 /** ISO → Wert für <input type="datetime-local"> (lokale Zeit des Browsers) */
@@ -52,6 +54,8 @@ const EMPTY: PositionData = {
   opensAt: null,
   closesAt: null,
   maxApplications: null,
+  quizMinScore: null,
+  interviewQuestions: [],
 };
 
 const slugify = (s: string) =>
@@ -69,6 +73,7 @@ export function PositionForm({ position, applicationCount = 0 }: { position: Pos
   const router = useRouter();
   const [p, setP] = useState<PositionData>(position ?? EMPTY);
   const [tasks, setTasks] = useState((position?.tasks ?? []).join("\n"));
+  const [ivq, setIvq] = useState((position?.interviewQuestions ?? []).join("\n"));
   const [reqs, setReqs] = useState((position?.requirements ?? []).join("\n"));
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -83,7 +88,7 @@ export function PositionForm({ position, applicationCount = 0 }: { position: Pos
   function save() {
     setError(null);
     start(async () => {
-      const res = await savePositionAction({ ...p, tasks: lines(tasks), requirements: lines(reqs), acceptRoleId: p.acceptRoleId || null });
+      const res = await savePositionAction({ ...p, tasks: lines(tasks), requirements: lines(reqs), interviewQuestions: lines(ivq), acceptRoleId: p.acceptRoleId || null });
       if (!res.ok) return setError(res.error);
       setSaved(true);
       if (!p.id) router.push(`/team/positionen/${res.data.id}`);
@@ -139,6 +144,13 @@ export function PositionForm({ position, applicationCount = 0 }: { position: Pos
           </label>
           <textarea id="p-reqs" className="nv-input text-sm" rows={5} value={reqs} onChange={(e) => { setReqs(e.target.value); setSaved(false); }} />
         </div>
+        <div className="sm:col-span-2">
+          <label htmlFor="p-ivq" className="nv-field-label">
+            Gesprächsfragen fürs Protokoll (eine pro Zeile)
+          </label>
+          <textarea id="p-ivq" className="nv-input text-sm" rows={4} placeholder="Leer = Standard-Fragen aus den Einstellungen" value={ivq} onChange={(e) => { setIvq(e.target.value); setSaved(false); }} />
+          <p className="nv-help mt-1">Nur für das Team: erscheinen im Reiter „Gespräch“ der Bewerbung zum Abhaken, mit Notizen pro Frage.</p>
+        </div>
       </div>
 
       <fieldset>
@@ -183,6 +195,13 @@ export function PositionForm({ position, applicationCount = 0 }: { position: Pos
             Discord-Rolle bei Annahme
           </label>
           <input id="p-role" className="nv-input font-mono text-sm" inputMode="numeric" placeholder="Rollen-ID (optional)" value={p.acceptRoleId ?? ""} onChange={(e) => set("acceptRoleId", e.target.value.trim() || null)} />
+        </div>
+        <div>
+          <label htmlFor="p-quiz" className="nv-field-label">
+            Regel-Quiz: Mindestpunkte
+          </label>
+          <input id="p-quiz" type="number" min={0} className="nv-input" placeholder="kein Minimum" value={p.quizMinScore ?? ""} onChange={(e) => set("quizMinScore", optNum(e.target.value))} />
+          <p className="nv-help mt-1">Nur Hinweis fürs Team (rote Pille), kein automatischer Ausschluss. Quizfragen legst du unten als Fragetyp „Quiz“ an.</p>
         </div>
       </div>
 

@@ -87,6 +87,8 @@ async function Editor({ params }: Pick<PageProps<"/team/positionen/[id]">, "para
             opensAt: position.opensAt?.toISOString() ?? null,
             closesAt: position.closesAt?.toISOString() ?? null,
             maxApplications: position.maxApplications ?? null,
+            quizMinScore: position.quizMinScore ?? null,
+            interviewQuestions: position.interviewQuestions ?? [],
           }}
           applicationCount={applicationCount}
         />
@@ -129,6 +131,7 @@ async function Editor({ params }: Pick<PageProps<"/team/positionen/[id]">, "para
               minValue: q.minValue,
               maxValue: q.maxValue,
               options: q.options,
+              correctOption: q.correctOption,
             })),
           }))}
         />

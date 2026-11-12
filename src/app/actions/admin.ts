@@ -20,7 +20,7 @@ function refreshJobsAfter() {
     await refreshJobsPostQuietly(db);
   });
 }
-const QTYPE = z.enum(["SHORT_TEXT", "LONG_TEXT", "NUMBER", "SELECT", "MULTI_SELECT", "CHECKBOX", "URL", "FILE", "SCENARIO"]);
+const QTYPE = z.enum(["SHORT_TEXT", "LONG_TEXT", "NUMBER", "SELECT", "MULTI_SELECT", "CHECKBOX", "URL", "FILE", "SCENARIO", "QUIZ"]);
 const snowflake = z.string().regex(/^\d{15,25}$/, "Ungültige Rollen-ID").nullable();
 
 // ─── Einstellungen ────────────────────────────────────────────
@@ -58,6 +58,8 @@ const positionSchema = z.object({
   opensAt: z.coerce.date().nullable().optional(),
   closesAt: z.coerce.date().nullable().optional(),
   maxApplications: z.number().int().min(1).max(10000).nullable().optional(),
+  quizMinScore: z.number().int().min(0).max(100).nullable().optional(),
+  interviewQuestions: z.array(z.string().trim().min(1).max(300)).max(30).optional(),
 });
 
 /** Stelle wurde (wieder) geöffnet → Vorgemerkte per DM informieren (nach der Antwort). */
@@ -73,7 +75,7 @@ export async function savePositionAction(input: z.input<typeof positionSchema>):
   const p = positionSchema.safeParse(input);
   if (!p.success) return { ok: false, error: p.error.issues[0].message };
   const { id: pid, ...rest } = p.data;
-  const data = { ...rest, opensAt: rest.opensAt ?? null, closesAt: rest.closesAt ?? null, maxApplications: rest.maxApplications ?? null };
+  const data = { ...rest, opensAt: rest.opensAt ?? null, closesAt: rest.closesAt ?? null, maxApplications: rest.maxApplications ?? null, quizMinScore: rest.quizMinScore ?? null, interviewQuestions: rest.interviewQuestions ?? [] };
   if (data.opensAt && data.closesAt && data.opensAt >= data.closesAt) return { ok: false, error: "Das Enddatum muss nach dem Startdatum liegen." };
   if (data.status === "OPEN" && data.closesAt && data.closesAt <= new Date()) {
     return { ok: false, error: "Das Enddatum liegt in der Vergangenheit – die Stelle würde sofort wieder geschlossen. Datum leeren oder anpassen." };
@@ -215,15 +217,20 @@ const questionSchema = z
     minValue: z.number().int().nullable(),
     maxValue: z.number().int().nullable(),
     options: z.array(z.string().trim().min(1).max(120)).max(30),
+    /** Nur QUIZ: richtige Option */
+    correctOption: z.string().trim().max(120).nullish(),
   })
-  .refine((q) => !["SELECT", "MULTI_SELECT"].includes(q.type) || q.options.length >= 2, "Auswahlfragen brauchen mindestens 2 Optionen.")
+  .refine((q) => !["SELECT", "MULTI_SELECT", "QUIZ"].includes(q.type) || q.options.length >= 2, "Auswahlfragen brauchen mindestens 2 Optionen.")
+  .refine((q) => q.type !== "QUIZ" || (!!q.correctOption && q.options.includes(q.correctOption)), "Quizfrage: bitte die richtige Antwort auswählen.")
   .refine((q) => q.minLength === null || q.maxLength === null || q.minLength <= q.maxLength, "Mindestlänge ist größer als Maximallänge.");
 
 export async function saveQuestionAction(input: z.input<typeof questionSchema>): Promise<ActionResult<{ id: string }>> {
   const { user } = await requireAdmin();
   const p = questionSchema.safeParse(input);
   if (!p.success) return { ok: false, error: p.error.issues[0].message };
-  const { id: qid, key: rawKey, confirmSimilar, ...data } = p.data;
+  const { id: qid, key: rawKey, confirmSimilar, correctOption, ...rest } = p.data;
+  // Lösung nur bei Quizfragen speichern (sonst leeren)
+  const data = { ...rest, correctOption: rest.type === "QUIZ" ? (correctOption ?? null) : null };
   const section = await db.formSection.findUnique({ where: { id: data.sectionId }, select: { position: { select: { slug: true } } } });
   if (!section) return { ok: false, error: "Schritt nicht gefunden." };
   const keyTaken = async (k: string) => !!(await db.question.findFirst({ where: { key: k, ...(qid ? { NOT: { id: qid } } : {}) }, select: { id: true } }));

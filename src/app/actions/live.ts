@@ -15,7 +15,7 @@ const ID = /^[a-z0-9]{10,40}$/i;
 const t = (d: Date | null | undefined) => (d ? d.getTime() : 0);
 
 async function appVersion(id: string) {
-  const [app, msgs, pending, comments, votes, ratings, lastMsg] = await Promise.all([
+  const [app, msgs, pending, comments, votes, ratings, lastMsg, notes, checks] = await Promise.all([
     db.application.findUnique({ where: { id }, select: { updatedAt: true } }),
     db.message.count({ where: { applicationId: id } }),
     db.message.count({ where: { applicationId: id, deliveryStatus: "PENDING" } }),
@@ -23,10 +23,12 @@ async function appVersion(id: string) {
     db.vote.findMany({ where: { applicationId: id }, select: { updatedAt: true } }),
     db.rating.findMany({ where: { applicationId: id }, select: { updatedAt: true } }),
     db.message.findFirst({ where: { applicationId: id }, orderBy: { createdAt: "desc" }, select: { createdAt: true, readAt: true, deliveryStatus: true } }),
+    db.interviewNote.count({ where: { applicationId: id } }),
+    db.interviewCheck.count({ where: { applicationId: id } }),
   ]);
   if (!app) return "gone";
   const maxT = (rows: { updatedAt: Date }[]) => Math.max(0, ...rows.map((r) => t(r.updatedAt)));
-  return [t(app.updatedAt), msgs, pending, comments, votes.length, maxT(votes), ratings.length, maxT(ratings), t(lastMsg?.createdAt), t(lastMsg?.readAt), lastMsg?.deliveryStatus ?? ""].join(".");
+  return [t(app.updatedAt), msgs, pending, comments, votes.length, maxT(votes), ratings.length, maxT(ratings), t(lastMsg?.createdAt), t(lastMsg?.readAt), lastMsg?.deliveryStatus ?? "", notes, checks].join(".");
 }
 
 async function listVersion(where: { userId?: string }) {

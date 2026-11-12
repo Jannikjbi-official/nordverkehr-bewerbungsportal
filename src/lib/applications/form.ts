@@ -19,6 +19,8 @@ export interface FormQuestion {
   minValue: number | null;
   maxValue: number | null;
   options: string[];
+  /** Nur im Team-Formularbaukasten gesetzt (QUIZ) – Bewerber bekommen das Feld nie */
+  correctOption?: string | null;
 }
 
 export interface FormSectionDef {
@@ -52,6 +54,7 @@ export const QUESTION_TYPE_LABEL: Record<QuestionType, string> = {
   URL: "Link",
   FILE: "Bilder hochladen",
   SCENARIO: "Szenario-Frage",
+  QUIZ: "Quiz (eine richtige Antwort)",
 };
 
 function isEmpty(v: AnswerValue | undefined) {
@@ -90,6 +93,7 @@ export function validateAnswer(q: FormQuestion, value: AnswerValue | undefined):
       return null;
     }
     case "SELECT":
+    case "QUIZ":
       return typeof value === "string" && q.options.includes(value) ? null : "Bitte eine Option wählen.";
     case "MULTI_SELECT": {
       if (!Array.isArray(value) || !value.every((v) => q.options.includes(v))) return "Ungültige Auswahl.";
@@ -197,4 +201,12 @@ export function formatAnswerForDisplay(type: QuestionType, value: AnswerValue): 
   if (type === "CHECKBOX") return value ? "Ja" : "Nein";
   if (Array.isArray(value)) return value.join(", ");
   return String(value);
+}
+
+/** Quiz auswerten: richtige Antworten pro Frage-ID (Lösung kommt aus der DB, nie vom Browser). */
+export function scoreQuiz(questions: { id: string; type: QuestionType }[], correct: Map<string, string | null>, answers: AnswerMap) {
+  const quiz = questions.filter((q) => q.type === "QUIZ" && correct.get(q.id));
+  const perQuestion = new Map<string, boolean>();
+  for (const q of quiz) perQuestion.set(q.id, answers[q.id] === correct.get(q.id));
+  return { total: quiz.length, correct: [...perQuestion.values()].filter(Boolean).length, perQuestion };
 }

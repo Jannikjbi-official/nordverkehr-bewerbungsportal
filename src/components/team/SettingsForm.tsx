@@ -178,6 +178,14 @@ export function SettingsForm({ settings, env, spend, spendMicro }: Props) {
         </div>
       </Card>
 
+      <Card title="Gesprächsprotokoll" desc="Fragen zum Abhaken im Bewerbungsgespräch. Pro Stelle eigene Vorlage möglich (Positionen & Fragen).">
+        <label htmlFor="iv-q" className="nv-field-label">
+          Standard-Fragen (eine pro Zeile)
+        </label>
+        <textarea id="iv-q" className="nv-input text-sm !min-h-40" maxLength={3000} value={s["interview.defaultQuestions"]} onChange={(e) => set("interview.defaultQuestions", e.target.value)} />
+        <p className="nv-help mt-1">Notizen hängen am Fragetext – benennst du eine Frage um, bleiben alte Notizen unter „Weitere Notizen“ sichtbar.</p>
+      </Card>
+
       <Card title="Automatische Bestätigung" desc="Wird direkt nach dem Absenden per DM und im Portal angezeigt.">
         <div className="grid gap-4 xl:grid-cols-2">
           <div>

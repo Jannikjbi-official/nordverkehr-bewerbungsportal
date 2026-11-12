@@ -1,0 +1,83 @@
+/**
+ * Gesprächsprotokoll fürs TeamSpeak-Gespräch: Fragen zum Abhaken (Vorlage pro
+ * Stelle, sonst Standard aus den Einstellungen, plus eigene Fragen pro Bewerbung)
+ * und Notizen pro Frage sowie ein Gesamtfazit. Mehrere Teammitglieder ergänzen –
+ * jede Notiz mit Name und Zeit, nichts wird überschrieben. Nur für das Team.
+ */
+
+/** Notizen ohne Frage = Gesamtfazit */
+export const CONCLUSION = "";
+export const MAX_QUESTION_LENGTH = 300;
+
+export const splitLines = (text: string) =>
+  text
+    .split("\n")
+    .map((l) => l.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim())
+    .filter(Boolean)
+    .map((l) => l.slice(0, MAX_QUESTION_LENGTH));
+
+/** Fragenliste: Stellen-Vorlage (oder Standard) + eigene Fragen, ohne Dubletten. */
+export function protocolQuestions(positionQuestions: string[], defaults: string, extra: string[]) {
+  const base = positionQuestions.length ? positionQuestions : splitLines(defaults);
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const q of [...base, ...extra]) {
+    const k = q.trim().toLowerCase();
+    if (!k || seen.has(k)) continue;
+    seen.add(k);
+    out.push(q.trim());
+  }
+  return out;
+}
+
+export interface ProtocolNote {
+  id: string;
+  body: string;
+  by: string;
+  byId: string | null;
+  at: string;
+}
+
+export interface ProtocolItem {
+  question: string;
+  extra: boolean;
+  checked: { by: string; at: string } | null;
+  notes: ProtocolNote[];
+}
+
+export interface Protocol {
+  items: ProtocolItem[];
+  conclusion: ProtocolNote[];
+  /** Notizen zu Fragen, die es in der Vorlage nicht mehr gibt */
+  orphans: (ProtocolNote & { question: string })[];
+  started: boolean;
+}
+
+type Person = { globalName: string | null; username: string } | null;
+const nameOf = (u: Person) => (u ? u.globalName || u.username : "Gelöscht");
+
+export function buildProtocol(
+  questions: string[],
+  extra: string[],
+  checks: { question: string; checkedAt: Date; checkedBy: Person }[],
+  notes: { id: string; question: string; body: string; authorId: string | null; author: Person; createdAt: Date }[],
+): Protocol {
+  const extraSet = new Set(extra.map((e) => e.trim().toLowerCase()));
+  const toNote = (n: (typeof notes)[number]): ProtocolNote => ({ id: n.id, body: n.body, by: nameOf(n.author), byId: n.authorId, at: n.createdAt.toISOString() });
+  const sorted = [...notes].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  const known = new Set(questions);
+  return {
+    items: questions.map((q) => {
+      const c = checks.find((x) => x.question === q);
+      return {
+        question: q,
+        extra: extraSet.has(q.toLowerCase()),
+        checked: c ? { by: nameOf(c.checkedBy), at: c.checkedAt.toISOString() } : null,
+        notes: sorted.filter((n) => n.question === q).map(toNote),
+      };
+    }),
+    conclusion: sorted.filter((n) => n.question === CONCLUSION).map(toNote),
+    orphans: sorted.filter((n) => n.question !== CONCLUSION && !known.has(n.question)).map((n) => ({ ...toNote(n), question: n.question })),
+    started: notes.length > 0 || checks.length > 0,
+  };
+}

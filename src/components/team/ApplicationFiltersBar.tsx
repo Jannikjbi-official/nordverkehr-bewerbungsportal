@@ -66,8 +66,8 @@ export function ApplicationFiltersBar({ positions, current }: { positions: { slu
 
   return (
     <div className={`nv-card p-4 space-y-3 transition-opacity ${pending ? "opacity-70" : ""}`}>
-      <div className="flex flex-col gap-3 md:flex-row md:items-center">
-        <label className="relative flex-1">
+      <div className="grid gap-3 md:grid-cols-2">
+        <label className="relative">
           <span className="sr-only">Suche</span>
           <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" aria-hidden />
           <input
@@ -77,7 +77,7 @@ export function ApplicationFiltersBar({ positions, current }: { positions: { slu
             onChange={(e) => setQ(e.target.value)}
           />
         </label>
-        <label className="relative flex-1">
+        <label className="relative">
           <span className="sr-only">In Antworten suchen</span>
           <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" aria-hidden />
           <input
@@ -89,6 +89,8 @@ export function ApplicationFiltersBar({ positions, current }: { positions: { slu
             data-testid="answer-search"
           />
         </label>
+      </div>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center">
         <Select
           ariaLabel="Position"
           className="md:w-52"

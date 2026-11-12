@@ -210,6 +210,7 @@ function SortableSection({ section, index, ctx }: { section: FormSectionDef; ind
                     minValue: q.minValue ?? null,
                     maxValue: q.maxValue ?? null,
                     options: q.options ?? [],
+                    correctOption: q.type === "QUIZ" ? (q.correctOption ?? null) : null,
                   }),
                 () => setEditing(null),
               )
@@ -238,6 +239,7 @@ function SortableQuestion({ q, onEdit, onArchive }: { q: FormQuestion; onEdit: (
         <p className="text-xs text-muted">
           {q.key && <span className="font-mono">{q.key} · </span>}
           {QUESTION_TYPE_LABEL[q.type]}
+          {q.type === "QUIZ" && (q.correctOption ? ` · richtig: „${q.correctOption}“` : " · ⚠ keine Lösung")}
           {q.required ? " · Pflicht" : " · optional"}
           {q.minLength ? ` · min. ${q.minLength} Zeichen` : ""}
         </p>
@@ -276,7 +278,7 @@ function QuestionEditor({
   const num = (v: string) => (v === "" ? null : Number(v));
   const type = q.type ?? "LONG_TEXT";
   const isText = ["SHORT_TEXT", "LONG_TEXT", "SCENARIO", "URL"].includes(type);
-  const isChoice = ["SELECT", "MULTI_SELECT"].includes(type);
+  const isChoice = ["SELECT", "MULTI_SELECT", "QUIZ"].includes(type);
   const preview: FormQuestion = {
     id: "preview",
     key: null,
@@ -383,6 +385,21 @@ function QuestionEditor({
             Optionen (eine pro Zeile)
           </label>
           <textarea id="q-opts" className="nv-input text-sm" rows={4} value={opts} onChange={(e) => setOpts(e.target.value)} />
+        </div>
+      )}
+      {type === "QUIZ" && (
+        <div>
+          <label htmlFor="q-correct" className="nv-field-label">
+            Richtige Antwort
+          </label>
+          <Select
+            id="q-correct"
+            placeholder={preview.options.length >= 2 ? "Bitte wählen …" : "Erst mindestens 2 Optionen eintragen"}
+            options={preview.options.map((o) => ({ value: o, label: o }))}
+            value={q.correctOption && preview.options.includes(q.correctOption) ? q.correctOption : ""}
+            onChange={(v) => set("correctOption", v)}
+          />
+          <p className="nv-help mt-1">Bleibt auf dem Server – Bewerber sehen nur die Optionen. Ausgewertet wird direkt beim Absenden („8 von 10 richtig“).</p>
         </div>
       )}
       <div className="rounded-xl bg-surface-2 p-4">

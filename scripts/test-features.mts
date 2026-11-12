@@ -194,6 +194,27 @@ try {
     check((await searchAnswers(db, "a.b")).size === 1 && (await searchAnswers(db, ".*")).size === 0, "Regex-Zeichen sind entschärft");
   }
 
+  // ── Regel-Quiz: Auswertung beim Absenden, Lösung nie im Formular
+  {
+    const { submitApplication } = await import("../src/lib/applications/service");
+    const { getFormDefinition } = await import("../src/lib/data/positions");
+    const pq = await db.position.create({ data: { typeId: type.id, slug: "quiz", title: "Quiz", tagline: "x", description: "x", quizMinScore: 2 } });
+    const sec = await db.formSection.create({ data: { typeId: type.id, positionId: pq.id, title: "Regeln", sortOrder: 1 } });
+    const q1 = await db.question.create({ data: { sectionId: sec.id, label: "Was ist RDM?", type: "QUIZ", options: ["Erlaubt", "Verboten"], correctOption: "Verboten", sortOrder: 1 } });
+    const q2 = await db.question.create({ data: { sectionId: sec.id, label: "Darf man metagamen?", type: "QUIZ", options: ["Ja", "Nein"], correctOption: "Nein", sortOrder: 2 } });
+    const form = await getFormDefinition(pq);
+    check(!JSON.stringify(form).includes("correctOption") && !JSON.stringify(form).includes("Verboten\"}"), "Formular enthält keine Lösung");
+    const qu = await mk("Quinn", "100000000000000051");
+    const draft = await db.application.create({ data: { userId: qu.id, positionId: pq.id, status: "DRAFT", createdAt: new Date(Date.now() - 3600_000) } });
+    const r = await submitApplication(
+      { ...qu, avatar: null },
+      { draftId: draft.id, age: 20, data: { [q1.id]: "Verboten", [q2.id]: "Ja" }, confirmations: { voice: true, rules: true, truth: true, privacy: true } },
+    );
+    const done = await db.application.findUnique({ where: { id: r.applicationId }, include: { answers: true } });
+    check(done!.quizCorrect === 1 && done!.quizTotal === 2, `Quiz ausgewertet: ${done!.quizCorrect}/${done!.quizTotal}`);
+    check(done!.answers.find((a) => a.questionId === q1.id)?.correct === true && done!.answers.find((a) => a.questionId === q2.id)?.correct === false, "Pro Antwort richtig/falsch gespeichert");
+  }
+
   // ── Feedback (eins pro Bewerbung)
   await db.feedback.create({ data: { applicationId: app1.id, rating: 5 } });
   dup = false;

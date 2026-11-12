@@ -55,6 +55,7 @@ function answerFor(type: QuestionType, options: string[], tone: keyof typeof TEX
     case "SCENARIO":
       return pool[i % pool.length];
     case "SELECT":
+    case "QUIZ":
       return options[Math.min(options.length - 1, tone === "stark" ? 2 : 1)] ?? null;
     case "MULTI_SELECT":
       return options.slice(0, tone === "stark" ? 2 : 1);
