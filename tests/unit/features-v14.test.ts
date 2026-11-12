@@ -150,3 +150,17 @@ describe("Gesprächsleitfaden: Nachfragen", () => {
     expect(s).toEqual(["Quiz falsch: „Was tun bei RDM?“ – Regel im Gespräch erklären lassen"]);
   });
 });
+
+import { shortOf } from "@/components/team/HelpBrowser";
+import { HELP } from "@/lib/help";
+
+describe("Hilfe: Einzeiler", () => {
+  it("eigener Kurztext hat Vorrang", () => expect(shortOf({ short: "Kurz.", text: "Lang. Und mehr." })).toBe("Kurz."));
+  it("trennt nicht an Abkürzungen", () => {
+    expect(shortOf({ text: "Die Nummer einer Bewerbung, z. B. NV-2026-0012. Steht überall." })).toBe("Die Nummer einer Bewerbung, z. B. NV-2026-0012.");
+    expect(shortOf({ text: "Erster Satz hier. Zweiter Satz." })).toBe("Erster Satz hier.");
+  });
+  it("jeder Begriff hat einen kurzen Einzeiler", () => {
+    for (const s of HELP) for (const t of s.terms) expect(shortOf(t).length, t.id).toBeLessThanOrEqual(162);
+  });
+});

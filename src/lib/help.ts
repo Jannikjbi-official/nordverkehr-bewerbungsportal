@@ -13,7 +13,9 @@ import { PLACEHOLDERS } from "@/lib/messages/placeholders";
 export interface HelpTerm {
   id: string;
   term: string;
-  /** Kurzer Erklärtext (Discord-Markdown: **fett**) */
+  /** Ein Satz für die eingeklappte Ansicht (ohne Angabe: erster Satz von `text`) */
+  short?: string;
+  /** Erklärtext (Discord-Markdown: **fett**) */
   text: string;
   /** Optionale Liste (Begriff → Erklärung) */
   list?: { label: string; text: string }[];
@@ -50,6 +52,12 @@ export const HELP: HelpSection[] = [
     id: "ablauf",
     title: "Ablauf & Status",
     terms: [
+      {
+        id: "phase-2",
+        term: "Phase 2: Bewerbungsgespräch",
+        short: "Ins Gespräch geht es erst ab 3 Sternen im Team-Schnitt.",
+        text: "Phase 1 ist die schriftliche Bewerbung, **Phase 2 das Bewerbungsgespräch**. Dorthin kommt eine Bewerbung nur mit einem Team-Schnitt von mindestens **3 Sternen** im Bewertungsbogen – ohne Bewertung oder darunter ist „Gespräch“ gesperrt (Status, Kanban und Termin setzen). Admins ändern die Grenze unter Einstellungen → Gesprächstermine, 0 schaltet sie ab.",
+      },
       {
         id: "status",
         term: "Status einer Bewerbung",
@@ -88,7 +96,7 @@ export const HELP: HelpSection[] = [
       {
         id: "claimen",
         term: "Claimen",
-        text: "Wer eine Bewerbung **claimt**, betreut sie – die anderen sehen oben in der Bewerbung und in der Liste („Betreut von“), wer dran ist. **Übernehmen** kann jedes Teammitglied, **Freigeben** nur wer geclaimt hat oder ein Admin. Alles landet im Bot-Log.",
+        text: "Wer eine Bewerbung **claimt**, betreut sie – die anderen sehen oben in der Bewerbung und in der Liste („Betreut von“), wer dran ist. **Übernehmen** kann jedes Teammitglied, **Freigeben** nur wer geclaimt hat oder ein Admin. Alles landet im Bot-Log. Passiert nach dem Claim ein paar Tage nichts (Standard 3), bekommt der Betreuer einmal eine **Erinnerung per DM**.",
       },
       {
         id: "absender",
@@ -114,12 +122,30 @@ export const HELP: HelpSection[] = [
       {
         id: "bewertungsbogen",
         term: "Bewertungsbogen",
-        text: "Jedes Teammitglied vergibt pro Kriterium 1–5 Sterne (Kommunikation, Erfahrung, Szenarien, Motivation, Verfügbarkeit, Teamfit). Ein Kriterium darf offen bleiben, ein zweiter Klick auf denselben Stern nimmt ihn zurück. Oben steht der **Schnitt des Teams**, unten der Schnitt jedes Einzelnen. Ist die KI aktiv, steht neben jedem Kriterium außerdem ein blaues **„KI 4“** – Maus drüber zeigt die Begründung, unter „KI-Einschätzung“ stehen alle Gründe und ein kurzes Fazit. Die KI-Punkte zählen **nicht** zum Team-Schnitt und gibt es nur für Bewerbungen ab dem 12.11.2026 (Einwilligung). Findet der Schutzfilter einen Manipulationsversuch, vergibt die KI keine Punkte. Alle Punkte sind eine Orientierung – entschieden wird im Gespräch und in der Abstimmung. **Phase 2:** Ins Gespräch geht es erst ab einem Team-Schnitt von 3 Sternen (Admins können die Grenze ändern) – ohne Bewertung oder darunter ist „Gespräch“ gesperrt.",
+        text: "Jedes Teammitglied vergibt pro Kriterium 1–5 Sterne (Kommunikation, Erfahrung, Szenarien, Motivation, Verfügbarkeit, Teamfit). Ein Kriterium darf offen bleiben, ein zweiter Klick auf denselben Stern nimmt ihn zurück. Oben steht der **Schnitt des Teams**, unten der Schnitt jedes Einzelnen. Ist die KI aktiv, steht neben jedem Kriterium außerdem ein blaues **„KI 4“** – Maus drüber zeigt die Begründung, unter „KI-Einschätzung“ stehen alle Gründe und ein kurzes Fazit. Die KI-Punkte zählen **nicht** zum Team-Schnitt und gibt es nur für Bewerbungen ab dem 12.11.2026 (Einwilligung). Findet der Schutzfilter einen Manipulationsversuch, vergibt die KI keine Punkte. Admins können pro Stelle **eigene Kriterien** festlegen (Positionen → Stelle → „Eigener Bewertungsbogen“) – dann gibt es keine KI-Punkte. Alle Punkte sind eine Orientierung – entschieden wird im Gespräch und in der Abstimmung.",
+      },
+      {
+        id: "gespraech",
+        term: "Gesprächsprotokoll & Nachfragen",
+        short: "Fragen fürs TeamSpeak-Gespräch zum Abhaken, Notizen und Vorschläge aus der Bewerbung.",
+        text: "Ab Phase 2 hat die Bewerbung den Reiter **Gespräch**: Fragen der Stelle zum Abhaken, Notizen pro Frage und ein Gesamtfazit. Darüber stehen **Nachfragen aus der Bewerbung** – knappe Antworten und falsch beantwortete Quizfragen. Mit **+** landen sie als eigene Frage im Protokoll.",
+      },
+      {
+        id: "vergleichen",
+        term: "Bewerbungen vergleichen",
+        short: "Zwei oder drei Bewerbungen derselben Stelle nebeneinander.",
+        text: "Oben in der Bewerbung über **Vergleichen** eine andere laufende Bewerbung derselben Stelle wählen. Die Ansicht zeigt Antwort für Antwort nebeneinander, dazu Sterne, Abstimmung, Quiz und Hinweise. Bis zu drei Bewerbungen gehen gleichzeitig.",
+      },
+      {
+        id: "stummschalten",
+        term: "Stummschalten",
+        short: "Neue Antworten eines Bewerbers für eine Weile ohne Bot-Log.",
+        text: "Rechts unter dem Status: **Neue Antworten stumm für** 1 Std., 8 Std., 24 Std. oder 3 Tage. Solange gibt es zu neuen Bewerber-Nachrichten keine Zeile im Bot-Log – im Portal steht trotzdem alles. „aufheben“ beendet es sofort.",
       },
       {
         id: "termine",
         term: "Gesprächstermine",
-        text: "Unter **Termine** legt das Team freie Zeiten an (z. B. Donnerstag ab 19 Uhr, 4 × 30 Minuten). Steht eine Bewerbung auf „Gespräch“ und hat noch keinen festen Termin, sucht sich der Bewerber im Portal selbst einen aus – umbuchen geht bis 12 Stunden vorher. Am Tag des Gesprächs bekommt er morgens eine Erinnerung per DM. Trägst du in der Bewerbung selbst eine Uhrzeit ein, gilt die – ein gebuchter Termin wird dann wieder frei. Geht die Bewerbung aus dem Status „Gespräch“ raus, wird ihr künftiger Termin ebenfalls frei.",
+        text: "Unter **Termine** legt das Team freie Zeiten an (z. B. Donnerstag ab 19 Uhr, 4 × 30 Minuten). Steht eine Bewerbung auf „Gespräch“ und hat noch keinen festen Termin, sucht sich der Bewerber im Portal selbst einen aus – umbuchen geht bis 12 Stunden vorher. Am Tag des Gesprächs bekommt er morgens eine Erinnerung per DM. Trägst du in der Bewerbung selbst eine Uhrzeit ein, gilt die – ein gebuchter Termin wird dann wieder frei. Geht die Bewerbung aus dem Status „Gespräch“ raus, wird ihr künftiger Termin ebenfalls frei. Bewerber können selbst **absagen** – mit „Ich kann nicht“ in der Erinnerungs-DM oder im Portal; der Termin wird frei, das Bot-Log meldet es.",
       },
       {
         id: "einarbeitung",
@@ -203,6 +229,24 @@ export const HELP: HelpSection[] = [
         text: "An jeder neuen Bewerbung im Bewerbungs-Kanal hängt (wenn eingeschaltet) der Knopf **📌 Übernehmen**. Wer die Team-Rolle hat und schon einmal im Portal eingeloggt war, claimt die Bewerbung damit direkt – die Antwort sieht nur er selbst. Betreut schon jemand die Bewerbung, sagt der Bot wer; übernehmen geht dann nur im Portal. Einmalig einrichten: Admin-Bereich → Discord → „Knopf ‚Übernehmen‘ einrichten“.",
       },
       {
+        id: "befehle",
+        term: "Discord-Befehle",
+        short: "/bewerbung für Bewerber, /offen und /claim fürs Team.",
+        text: "**/bewerbung** zeigt Bewerbern ihren Stand. **/offen** listet dir die offenen Bewerbungen deiner Stellen, **/claim id:12** (oder NV-2026-0012) übernimmt eine. Antworten sieht nur, wer den Befehl nutzt. Einmalig einrichten: Admin-Bereich → Discord → „Befehle registrieren“.",
+      },
+      {
+        id: "annahme-automatik",
+        term: "Annahme: Rollen, Präfix, Willkommen",
+        short: "Bei Annahme vergibt der Bot Rollen, setzt ein Namens-Präfix und grüßt im Teamchat.",
+        text: "Ist „Rolle bei Annahme vergeben“ an, bekommt die Person die Rolle der Stelle plus die **zusätzlichen Rollen** aus den Einstellungen. Hat die Stelle ein **Namens-Präfix** (z. B. „[Support]“), steht es danach vor dem Server-Namen. Ist ein Kanal eingetragen, postet der Bot einen **Willkommensgruß**. Wird die Annahme zurückgenommen, nimmt der Bot Rollen und Präfix wieder weg.",
+      },
+      {
+        id: "freie-plaetze",
+        term: "Freie Plätze",
+        short: "Jede Annahme belegt einen Platz – bei 0 schließt die Stelle.",
+        text: "Pro Stelle lassen sich **freie Plätze** eintragen. Jede Annahme zieht einen ab, eine zurückgenommene Annahme gibt ihn zurück. Bei 0 schließt die Stelle automatisch und öffnet erst wieder, wenn du Plätze erhöhst. Bewerber sehen „Noch 2 Plätze frei“.",
+      },
+      {
         id: "stellen-automatisch",
         term: "Stellen automatisch öffnen & schließen",
         text: "Pro Stelle lassen sich ein **Startdatum**, ein **Enddatum** und eine **Höchstzahl** an Bewerbungen eintragen. Der Bot prüft die Daten jede Nacht um 0 Uhr; ist die Höchstzahl erreicht, schließt die Stelle sofort nach der letzten Bewerbung. Bei jeder Öffnung bekommen alle eine DM, die „Bei neuen Stellen benachrichtigen“ eingeschaltet haben – und der Stellenaufruf im Discord aktualisiert sich selbst.",
@@ -257,6 +301,12 @@ export const HELP: HelpSection[] = [
         id: "audit",
         term: "Audit-Log",
         text: "Protokoll, wer wann was im Portal gemacht hat (Status, Nachrichten, Claims, Einstellungen …). Für Nachvollziehbarkeit, nicht zur Kontrolle einzelner.",
+      },
+      {
+        id: "team-aktivitaet",
+        term: "Team-Aktivität & Datensicherung",
+        short: "Für Admins: wer was gemacht hat und alle Bewerbungen als Datei.",
+        text: "Unter **Statistiken** sehen Admins pro Teammitglied Übernahmen, Nachrichten, Entscheidungen und wie schnell die erste Antwort kam – als Orientierung, kein Ranking. Im Admin-Bereich lädt **Bewerbungsdaten sichern** alle Bewerbungen samt Antworten und Nachrichten herunter (enthält personenbezogene Daten, steht im Audit-Log).",
       },
     ],
   },

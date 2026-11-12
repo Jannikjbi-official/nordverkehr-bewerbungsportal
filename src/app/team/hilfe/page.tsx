@@ -14,7 +14,7 @@ export default function HelpPage() {
         <h1 className="nv-headline text-4xl mt-2">
           Hilfe &amp; <em>Begriffe.</em>
         </h1>
-        <p className="text-sm text-muted mt-2">Was die Begriffe, Hinweise und Knöpfe im Team-Bereich bedeuten – kurz erklärt.</p>
+        <p className="text-sm text-muted mt-2">Kurz erklärt – Thema wählen oder suchen, auf einen Begriff klicken für Details.</p>
       </header>
       <Suspense fallback={<div className="nv-skeleton h-96" />}>
         <Content />
