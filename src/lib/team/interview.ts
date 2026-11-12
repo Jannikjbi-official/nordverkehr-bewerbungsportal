@@ -1,5 +1,5 @@
 /**
- * Gesprächsprotokoll fürs TeamSpeak-Gespräch: Fragen zum Abhaken (Vorlage pro
+ * Gesprächsprotokoll fürs Bewerbungsgespräch (Discord): Fragen zum Abhaken (Vorlage pro
  * Stelle, sonst Standard aus den Einstellungen, plus eigene Fragen pro Bewerbung)
  * und Notizen pro Frage sowie ein Gesamtfazit. Mehrere Teammitglieder ergänzen –
  * jede Notiz mit Name und Zeit, nichts wird überschrieben. Nur für das Team.

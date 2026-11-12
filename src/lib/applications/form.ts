@@ -159,12 +159,16 @@ export const draftDataSchema = z
 export const CONFIRMATIONS = [
   {
     key: "voice",
-    label: "Ich habe ein funktionierendes Mikrofon und bin auf TeamSpeak mit SaltyChat erreichbar.",
+    label: "Ich habe ein funktionierendes Mikrofon und bin für Gespräch und Support auf Discord erreichbar.",
   },
   {
     key: "rules",
     label: "Ich habe das Regelwerk gelesen und halte mich daran.",
     link: { href: "https://nordverkehr.xyz/regeln", label: "Regelwerk" },
+  },
+  {
+    key: "unpaid",
+    label: "Mir ist klar, dass die Mitarbeit im Team ehrenamtlich ist – es gibt keine Bezahlung.",
   },
   {
     key: "truth",
@@ -182,6 +186,7 @@ export type ConfirmationKey = (typeof CONFIRMATIONS)[number]["key"];
 export const confirmationsSchema = z.object({
   voice: z.literal(true, { error: "Bitte bestätigen." }),
   rules: z.literal(true, { error: "Bitte bestätigen." }),
+  unpaid: z.literal(true, { error: "Bitte bestätigen." }),
   truth: z.literal(true, { error: "Bitte bestätigen." }),
   privacy: z.literal(true, { error: "Bitte bestätigen." }),
 });

@@ -59,7 +59,7 @@ export function buildIcs(events: CalendarEvent[], now = new Date()) {
       `DTEND:${stamp(e.end)}`,
       `SUMMARY:${esc(e.summary)}`,
       `DESCRIPTION:${esc(e.description)}`,
-      `LOCATION:TeamSpeak`,
+      `LOCATION:Discord`,
       `URL:${e.url}`,
       "END:VEVENT",
     ]),

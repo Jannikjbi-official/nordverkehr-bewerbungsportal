@@ -44,7 +44,7 @@ export function SlotPicker({
   async function book(s: PickableSlot) {
     const ok = await confirmDialog({
       title: current ? "Termin umbuchen?" : "Termin buchen?",
-      body: `${day(s.startsAt)} um ${time(s.startsAt)} Uhr (${s.durationMin} Minuten) auf TeamSpeak.${s.note ? `\n${s.note}` : ""}`,
+      body: `${day(s.startsAt)} um ${time(s.startsAt)} Uhr (${s.durationMin} Minuten) auf unserem Discord.${s.note ? `\n${s.note}` : ""}`,
       confirmLabel: current ? "Umbuchen" : "Buchen",
     });
     if (!ok) return;
@@ -65,7 +65,7 @@ export function SlotPicker({
           <p className="font-semibold">{current ? "Dein Gesprächstermin" : "Such dir einen Gesprächstermin aus"}</p>
           {current ? (
             <p className="text-fg-2 mt-0.5">
-              {day(current.startsAt)} um {time(current.startsAt)} Uhr · TeamSpeak
+              {day(current.startsAt)} um {time(current.startsAt)} Uhr · Discord
               {current.note && <span className="block text-sm text-muted">{current.note}</span>}
             </p>
           ) : (

@@ -235,7 +235,7 @@ try {
     const draft = await db.application.create({ data: { userId: qu.id, positionId: pq.id, status: "DRAFT", createdAt: new Date(Date.now() - 3600_000) } });
     const r = await submitApplication(
       { ...qu, avatar: null },
-      { draftId: draft.id, age: 20, data: { [q1.id]: "Verboten", [q2.id]: "Ja" }, confirmations: { voice: true, rules: true, truth: true, privacy: true } },
+      { draftId: draft.id, age: 20, data: { [q1.id]: "Verboten", [q2.id]: "Ja" }, confirmations: { voice: true, rules: true, unpaid: true, truth: true, privacy: true } },
     );
     const done = await db.application.findUnique({ where: { id: r.applicationId }, include: { answers: true } });
     check(done!.quizCorrect === 1 && done!.quizTotal === 2, `Quiz ausgewertet: ${done!.quizCorrect}/${done!.quizTotal}`);

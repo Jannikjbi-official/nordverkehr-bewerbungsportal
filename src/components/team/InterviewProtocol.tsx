@@ -45,7 +45,7 @@ export function InterviewProtocol({
     <div className="p-5 space-y-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="text-sm text-muted">
-          Fragen fürs TeamSpeak-Gespräch zum Abhaken, Notizen mit Name und Zeit. Nur für das Team sichtbar, steht im Audit-Log und in der Druckansicht.
+          Fragen fürs Gespräch auf Discord zum Abhaken, Notizen mit Name und Zeit. Nur für das Team sichtbar, steht im Audit-Log und in der Druckansicht.
         </p>
         <span className="nv-pill tabular-nums">
           {done} / {protocol.items.length} besprochen

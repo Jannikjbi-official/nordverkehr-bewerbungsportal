@@ -92,8 +92,16 @@ async function PositionDetail({ params }: Pick<PageProps<"/positionen/[slug]">, 
                 <dd>{minAge} Jahre</dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt className="text-muted">Voicechat</dt>
+                <dt className="text-muted">Gespräch &amp; Support</dt>
+                <dd>Discord</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted">Ingame-Voice</dt>
                 <dd>TeamSpeak &amp; SaltyChat</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted">Vergütung</dt>
+                <dd>Ehrenamtlich, keine Bezahlung</dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-muted">Sperrfrist nach Absage</dt>

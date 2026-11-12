@@ -93,6 +93,7 @@ export function ApplicationForm({ position, sections, minAge, displayName, initi
   const [confirm, setConfirm] = useState<Record<ConfirmationKey, boolean>>({
     voice: false,
     rules: false,
+    unpaid: false,
     truth: false,
     privacy: false,
   });

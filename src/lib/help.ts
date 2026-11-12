@@ -127,7 +127,7 @@ export const HELP: HelpSection[] = [
       {
         id: "gespraech",
         term: "Gesprächsprotokoll & Nachfragen",
-        short: "Fragen fürs TeamSpeak-Gespräch zum Abhaken, Notizen und Vorschläge aus der Bewerbung.",
+        short: "Fragen fürs Gespräch auf Discord zum Abhaken, Notizen und Vorschläge aus der Bewerbung.",
         text: "Ab Phase 2 hat die Bewerbung den Reiter **Gespräch**: Fragen der Stelle zum Abhaken, Notizen pro Frage und ein Gesamtfazit. Darüber stehen **Nachfragen aus der Bewerbung** – knappe Antworten und falsch beantwortete Quizfragen. Mit **+** landen sie als eigene Frage im Protokoll.",
       },
       {

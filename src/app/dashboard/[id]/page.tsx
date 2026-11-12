@@ -178,7 +178,7 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
               <CalendarCheck size={28} className="text-red-text shrink-0" aria-hidden />
               <div>
                 <p className="font-semibold">Gesprächstermin</p>
-                <p className="text-fg-2 mt-0.5">{formatDayTime(app.interviewAt)} Uhr · TeamSpeak</p>
+                <p className="text-fg-2 mt-0.5">{formatDayTime(app.interviewAt)} Uhr · Discord</p>
                 {app.interviewNote && <p className="text-sm text-muted mt-1">{app.interviewNote}</p>}
                 {app.interviewAt.getTime() > nowMs() && <CancelInterviewButton applicationId={app.id} />}
               </div>

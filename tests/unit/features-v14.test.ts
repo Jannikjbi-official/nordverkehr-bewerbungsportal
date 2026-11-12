@@ -165,3 +165,20 @@ describe("Hilfe: Einzeiler", () => {
     for (const s of HELP) for (const t of s.terms) expect(shortOf(t).length, t.id).toBeLessThanOrEqual(162);
   });
 });
+
+import { replaceDiscordTexts } from "@/lib/setup/migrations";
+import { DEFAULT_CONFIRMATION_TEMPLATE } from "@/lib/settings";
+import { CONFIRMATIONS } from "@/lib/applications/form";
+
+describe("Gespräch & Support auf Discord, ehrenamtlich", () => {
+  it("alte Standardtexte werden umgestellt, eigene bleiben", () => {
+    expect(replaceDiscordTexts("**Termin:** x\\n**Wo:** TeamSpeak, Warteraum Bewerbungsgespräche")).toContain("**Wo:** Discord");
+    expect(replaceDiscordTexts("Funktionierendes Mikrofon, TeamSpeak & SaltyChat")).toBe("Funktionierendes Mikrofon – Gespräch & Support auf Discord");
+    expect(replaceDiscordTexts("Wir treffen uns im TS-Raum 3")).toBe("Wir treffen uns im TS-Raum 3");
+  });
+  it("Standard-Bestätigung nennt Discord, nicht TeamSpeak", () => {
+    expect(DEFAULT_CONFIRMATION_TEMPLATE).toContain("Gespräch auf unserem Discord");
+    expect(DEFAULT_CONFIRMATION_TEMPLATE).not.toContain("TeamSpeak");
+  });
+  it("Pflicht-Haken: ehrenamtlich", () => expect(CONFIRMATIONS.some((c) => c.key === "unpaid" && c.label.includes("keine Bezahlung"))).toBe(true));
+});

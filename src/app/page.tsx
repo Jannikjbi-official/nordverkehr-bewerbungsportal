@@ -19,7 +19,7 @@ const STEPS = [
   { icon: DiscordLogo, title: "Mit Discord einloggen", text: "Kein extra Account. Wir brauchen nur deinen Discord-Namen." },
   { icon: FloppyDisk, title: "In Ruhe ausfüllen", text: "Dein Entwurf wird automatisch gespeichert. Du kannst jederzeit weitermachen." },
   { icon: ChatCircleDots, title: "Team prüft & meldet sich", text: "Du bekommst eine Bestätigung per DM und siehst den Status im Dashboard." },
-  { icon: Microphone, title: "Gespräch auf TeamSpeak", text: "Passt es, lernen wir uns kurz kennen. Ehrlich und ohne Druck." },
+  { icon: Microphone, title: "Gespräch auf Discord", text: "Passt es, lernen wir uns kurz im Sprachkanal kennen. Ehrlich und ohne Druck." },
 ];
 
 export default function HomePage() {
@@ -51,7 +51,8 @@ export default function HomePage() {
           <Suspense fallback={<span className="nv-pill">Mindestalter …</span>}>
             <MinAgePill />
           </Suspense>
-          <span className="nv-pill">TeamSpeak &amp; SaltyChat</span>
+          <span className="nv-pill">Ehrenamtlich</span>
+          <span className="nv-pill">Gespräch &amp; Support auf Discord</span>
           <span className="nv-pill">Hamburg RP</span>
         </div>
       </PageHero>

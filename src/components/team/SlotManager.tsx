@@ -70,7 +70,7 @@ export function SlotCreator() {
         <label htmlFor="s-note" className="nv-field-label">
           Hinweis für Bewerber (optional)
         </label>
-        <input id="s-note" className="nv-input" maxLength={200} placeholder="z. B. TeamSpeak-Channel „Bewerbungsgespräche“" value={note} onChange={(e) => setNote(e.target.value)} />
+        <input id="s-note" className="nv-input" maxLength={200} placeholder="z. B. Discord-Sprachkanal „Bewerbungsgespräche“" value={note} onChange={(e) => setNote(e.target.value)} />
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" className="nv-btn nv-btn-primary nv-btn-sm" disabled={pending}>

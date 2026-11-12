@@ -378,7 +378,7 @@ async function Stats({ searchParams }: Pick<PageProps<"/team/statistiken">, "sea
                   ))}
                 </tbody>
               </table>
-              <p className="mt-2 text-xs text-muted">Zahlen sind eine Orientierung, kein Ranking – Gespräche auf TeamSpeak und Arbeit in Discord tauchen hier nicht auf.</p>
+              <p className="mt-2 text-xs text-muted">Zahlen sind eine Orientierung, kein Ranking – Gespräche im Sprachkanal und Arbeit direkt in Discord tauchen hier nicht auf.</p>
             </div>
           )}
         </section>

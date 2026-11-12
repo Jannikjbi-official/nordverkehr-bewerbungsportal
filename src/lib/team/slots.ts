@@ -132,7 +132,7 @@ export async function sendInterviewReminders(db: PrismaClient, now = new Date())
         ignoreNight: a.interviewAt < nightEndsAt(settings, now),
         message: buildApplicantMessage({
           title: "Heute ist dein Gespräch",
-          body: `Moin ${a.user.globalName || a.user.username}, kurze Erinnerung: Dein Gespräch für **${a.position.title}** ist **heute um ${discordTime(a.interviewAt, "t")} Uhr** auf TeamSpeak.${a.interviewNote ? `\n\n${a.interviewNote}` : ""}\n\nKommst du nicht? Sag unten mit „Ich kann nicht“ ab.`,
+          body: `Moin ${a.user.globalName || a.user.username}, kurze Erinnerung: Dein Gespräch für **${a.position.title}** ist **heute um ${discordTime(a.interviewAt, "t")} Uhr** auf unserem Discord (Sprachkanal).${a.interviewNote ? `\n\n${a.interviewNote}` : ""}\n\nKommst du nicht? Sag unten mit „Ich kann nicht“ ab.`,
           publicId: a.publicId,
           statusUrl: `${publicEnv.appUrl}/dashboard/${a.id}`,
           // Absagen direkt aus der DM (fragt vorher nach)

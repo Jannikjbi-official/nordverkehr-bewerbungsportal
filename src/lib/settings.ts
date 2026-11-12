@@ -21,7 +21,7 @@ danke für deine Bewerbung als **{position}** bei Nordverkehr – sie ist am {da
 **So geht's weiter:**
 1. Das Team liest sich deine Bewerbung in Ruhe durch.
 2. Bei Rückfragen melden wir uns hier per DM oder im Portal.
-3. Passt es, laden wir dich zu einem kurzen Gespräch auf TeamSpeak ein.
+3. Passt es, laden wir dich zu einem kurzen Gespräch auf unserem Discord ein.
 
 Die Bearbeitung dauert {bearbeitungszeit}. Bitte frag in der Zwischenzeit nicht im Support nach – wir melden uns.
 

@@ -305,7 +305,7 @@ export async function createTestApplications(
           testScenario: sc.key,
           age: sc.age === "min" ? minAge : Math.max(sc.age, minAge),
           submittedAt,
-          confirmations: { voice: true, rules: true, truth: true, privacy: true },
+          confirmations: { voice: true, rules: true, unpaid: true, truth: true, privacy: true },
           consentVersion: CONSENT_VERSION,
           consentAt: submittedAt,
           confirmationDmStatus: "NOT_SENT",

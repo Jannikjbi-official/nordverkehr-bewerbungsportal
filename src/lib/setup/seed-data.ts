@@ -51,7 +51,7 @@ export const POSITIONS: SeedPosition[] = [
     requirements: [
       "Mindestalter 18 Jahre",
       "Geduld und ein freundlicher, klarer Ton",
-      "Funktionierendes Mikrofon, TeamSpeak & SaltyChat",
+      "Funktionierendes Mikrofon – Gespräch & Support auf Discord",
       "Regelmäßige Verfügbarkeit (mind. 5 Std./Woche)",
     ],
     sections: [...(POSITION_SECTIONS["support"] ?? []), ...(POSITION_QUIZ["support"] ? [POSITION_QUIZ["support"]] : [])],
@@ -74,7 +74,7 @@ export const POSITIONS: SeedPosition[] = [
       "Mindestalter 18 Jahre",
       "Sehr gute Kenntnis des Regelwerks",
       "Neutralität – auch bei Freunden",
-      "Funktionierendes Mikrofon, TeamSpeak & SaltyChat",
+      "Funktionierendes Mikrofon – Gespräch & Support auf Discord",
     ],
     sections: [...(POSITION_SECTIONS["moderator"] ?? []), ...(POSITION_QUIZ["moderator"] ? [POSITION_QUIZ["moderator"]] : [])],
   },
@@ -196,7 +196,7 @@ export const TEMPLATES: { category: TemplateCategory; title: string; body: strin
   {
     category: "EINLADUNG",
     title: "Einladung zum Gespräch",
-    body: "Moin {name},\n\ndeine Bewerbung als **{position}** hat uns gefallen – wir wollen dich kennenlernen.\n\n**Termin:** {termin}\n**Wo:** TeamSpeak, Warteraum Bewerbungsgespräche\n**Mit:** {teammitglied}\n\nPlan etwa 20–30 Minuten ein. Passt der Termin nicht, sag einfach kurz Bescheid.",
+    body: "Moin {name},\n\ndeine Bewerbung als **{position}** hat uns gefallen – wir wollen dich kennenlernen.\n\n**Termin:** {termin}\n**Wo:** Discord, Sprachkanal „Bewerbungsgespräche“\n**Mit:** {teammitglied}\n\nPlan etwa 20–30 Minuten ein. Passt der Termin nicht, sag einfach kurz Bescheid.",
   },
   {
     category: "EINLADUNG",
@@ -236,7 +236,7 @@ export const TEMPLATES: { category: TemplateCategory; title: string; body: strin
   {
     category: "ERINNERUNG",
     title: "Erinnerung an den Gesprächstermin",
-    body: "Moin {name},\n\nkurze Erinnerung: Dein Gespräch ist am **{termin}** auf TeamSpeak. Bis dann!",
+    body: "Moin {name},\n\nkurze Erinnerung: Dein Gespräch ist am **{termin}** auf unserem Discord. Bis dann!",
   },
   {
     category: "ERINNERUNG",

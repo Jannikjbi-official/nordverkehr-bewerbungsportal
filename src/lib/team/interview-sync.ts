@@ -36,7 +36,7 @@ export async function syncInterview(applicationId: string, now = new Date()) {
       const event = {
         name: `Bewerbungsgespräch · ${app.position.title}`,
         description: `Bewerbung ${app.publicId ?? ""} – Details im Team-Bereich: ${publicEnv.appUrl}/team/bewerbungen/${app.id}`,
-        location: "TeamSpeak",
+        location: "Discord – Sprachkanal Bewerbungsgespräche",
         start: start!,
         end: end!,
       };

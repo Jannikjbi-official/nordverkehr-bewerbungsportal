@@ -462,7 +462,50 @@ const MIGRATIONS: { id: string; run: (db: PrismaClient, opts: Options) => Promis
     run: (db, o) =>
       o.dryRun ? Promise.resolve(0) : db.$runCommandRaw({ update: "User", updates: [{ q: { digestOptOut: { $exists: false } }, u: { $set: { digestOptOut: false } }, multi: true }] }),
   },
+  // Bewerbungsgespräche und Support laufen über Discord (TeamSpeak nur Ingame-Voice)
+  { id: "2026-11-gespraech-auf-discord", run: (db, o) => (o.dryRun ? Promise.resolve(0) : interviewsOnDiscord(db)) },
 ];
+
+/** Alte Standardtexte (genau so ausgeliefert) → neue Fassung. Von Admins geänderte Texte bleiben unberührt. */
+export const DISCORD_TEXT_REPLACE: [string, string][] = [
+  ["**Wo:** TeamSpeak, Warteraum Bewerbungsgespräche", "**Wo:** Discord, Sprachkanal „Bewerbungsgespräche“"],
+  ["Dein Gespräch ist am **{termin}** auf TeamSpeak. Bis dann!", "Dein Gespräch ist am **{termin}** auf unserem Discord. Bis dann!"],
+  ["laden wir dich zu einem kurzen Gespräch auf TeamSpeak ein.", "laden wir dich zu einem kurzen Gespräch auf unserem Discord ein."],
+  ["Funktionierendes Mikrofon, TeamSpeak & SaltyChat", "Funktionierendes Mikrofon – Gespräch & Support auf Discord"],
+];
+export const replaceDiscordTexts = (text: string) => DISCORD_TEXT_REPLACE.reduce((t, [a, b]) => t.split(a).join(b), text);
+
+async function interviewsOnDiscord(db: PrismaClient) {
+  let changed = 0;
+  for (const t of await db.messageTemplate.findMany({ select: { id: true, body: true } })) {
+    const body = replaceDiscordTexts(t.body);
+    if (body !== t.body) {
+      await db.messageTemplate.update({ where: { id: t.id }, data: { body } });
+      changed++;
+    }
+  }
+  for (const p of await db.position.findMany({ select: { id: true, requirements: true } })) {
+    const requirements = p.requirements.map(replaceDiscordTexts);
+    if (requirements.some((r, i) => r !== p.requirements[i])) {
+      await db.position.update({ where: { id: p.id }, data: { requirements } });
+      changed++;
+    }
+  }
+  const conf = await db.setting.findUnique({ where: { key: "messages.confirmationTemplate" } });
+  if (conf && typeof conf.value === "string") {
+    const value = replaceDiscordTexts(conf.value);
+    if (value !== conf.value) {
+      await db.setting.update({ where: { key: conf.key }, data: { value } });
+      changed++;
+    }
+  }
+  // Stellenaufruf im Discord zeigt die Anforderungen – mit aktualisieren
+  if (changed) {
+    const { refreshJobsPostQuietly } = await import("@/lib/discord/jobs-post");
+    await refreshJobsPostQuietly(db).catch(() => {});
+  }
+  return changed;
+}
 
 
 export const COOLDOWN_SENTENCE = "Für {position} gilt nach einer Absage eine Sperrfrist von **{sperrfrist_tage}** – du kannst dich also ab dem **{sperrfrist}** wieder bewerben.";
