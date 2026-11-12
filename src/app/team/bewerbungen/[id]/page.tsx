@@ -503,6 +503,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
                 items={onboardingItems(settings["onboarding.items"])}
                 state={readOnboarding(app.onboarding)}
                 probationUntil={app.probationUntil?.toISOString() ?? null}
+                me={me.globalName || me.username}
               />
             </div>
           )}

@@ -162,7 +162,7 @@ export async function deleteSlotAction(slotId: string): Promise<ActionResult> {
 }
 
 /** Einarbeitungs-Punkt abhaken / zurücknehmen. */
-export async function toggleOnboardingAction(applicationId: string, item: string, done: boolean): Promise<ActionResult> {
+export async function toggleOnboardingAction(applicationId: string, item: string, done: boolean): Promise<ActionResult<{ state: Record<string, { at: string; by: string }> }>> {
   const { user, access } = await requireTeam();
   if (!id.safeParse(applicationId).success || typeof item !== "string" || item.length > 200) return { ok: false, error: "Ungültig." };
   {
@@ -176,9 +176,9 @@ export async function toggleOnboardingAction(applicationId: string, item: string
   if (done) state[item] = { at: new Date().toISOString(), by: user.globalName || user.username };
   else delete state[item];
   await db.application.update({ where: { id: applicationId }, data: { onboarding: state as object } });
+  // Kein revalidatePath: die Checkliste aktualisiert sich selbst (optimistisch) – sonst rendert die ganze Detailseite neu
   await audit("application.onboarding", { actorId: user.id, targetType: "application", targetId: applicationId, meta: { item, done } });
-  revalidatePath(`/team/bewerbungen/${applicationId}`);
-  return { ok: true };
+  return { ok: true, data: { state } };
 }
 
 /** Probezeit-Ende setzen oder entfernen. */
@@ -193,7 +193,6 @@ export async function setProbationAction(applicationId: string, until: string | 
   if (date && Number.isNaN(date.getTime())) return { ok: false, error: "Ungültiges Datum." };
   await db.application.update({ where: { id: applicationId }, data: { probationUntil: date } });
   await audit("application.onboarding", { actorId: user.id, targetType: "application", targetId: applicationId, meta: { probationUntil: until } });
-  revalidatePath(`/team/bewerbungen/${applicationId}`);
   return { ok: true };
 }
 
