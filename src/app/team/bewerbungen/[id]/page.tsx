@@ -3,7 +3,7 @@ import { LiveRefresh } from "@/components/LiveRefresh";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ArrowLeft, ArrowSquareOut, CalendarCheck, DiscordLogo, Printer, WarningCircle } from "@phosphor-icons/react/ssr";
+import { ArrowLeft, ArrowSquareOut, CalendarCheck, DiscordLogo, Printer, WarningCircle, Flask } from "@phosphor-icons/react/ssr";
 import { Avatar, DeliveryBadge, Notice, StatusBadge, cn, formatDay, formatDayTime, formatRelative } from "@/components/ui";
 import { DiscordMarkdown } from "@/components/DiscordMarkdown";
 import { ChatAvatar, ChatRoleBadge, personName } from "@/components/ChatParticipant";
@@ -236,6 +236,11 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
         </Notice>
       )}
 
+      {app.isTest && (
+        <Notice tone="warn" icon={Flask} title="Testbewerbung">
+          Kein echter Bewerber – Nachrichten erscheinen nur im Portal, DMs und Rollen werden nicht verschickt. Löschen unter Einstellungen → Testbewerbungen.
+        </Notice>
+      )}
       {(dmIssue || flags.length > 0 || activeBan) && (
         <div className="grid gap-2">
           {activeBan && (

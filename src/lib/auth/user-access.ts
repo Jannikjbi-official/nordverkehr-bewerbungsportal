@@ -7,6 +7,7 @@ import { env } from "@/lib/env";
 import { resolveAccess, type Access, type AccessDeps } from "@/lib/auth/access";
 import type { User } from "@prisma/client";
 import { isDevLoginEnabled } from "@/lib/auth/dev";
+import { isTestDiscordId } from "@/lib/discord/test-ids";
 
 export type CurrentUser = User;
 
@@ -46,6 +47,10 @@ function accessDeps(): AccessDeps {
 const inflight = new Map<string, Promise<Access>>();
 
 export async function getAccess(user: CurrentUser, opts: { force?: boolean } = {}): Promise<Access> {
+  // Testbewerber: gibt es bei Discord nicht → gelten als auf dem Server, ohne Rollen, keine Abfrage
+  if (isTestDiscordId(user.discordId)) {
+    return { inGuild: true, isTeam: false, isAdmin: false, guildJoinedAt: user.guildJoinedAt, roleCheckedAt: new Date(), source: "cache" };
+  }
   // Lokale Entwicklung ohne Discord-Server: Rollen aus der Datenbank (Seed) übernehmen
   if (isDevLoginEnabled() && !process.env.DISCORD_GUILD_ID) {
     return { inGuild: user.inGuild, isTeam: user.isTeam, isAdmin: user.isAdmin, guildJoinedAt: user.guildJoinedAt, roleCheckedAt: new Date(), source: "cache" };

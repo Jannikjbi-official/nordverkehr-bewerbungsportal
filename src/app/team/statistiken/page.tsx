@@ -46,7 +46,8 @@ async function Stats({ searchParams }: Pick<PageProps<"/team/statistiken">, "sea
 
   const [apps, positions, aiMonth, feedback] = await Promise.all([
     db.application.findMany({
-      where: { status: { not: "DRAFT" }, ...(since ? { submittedAt: { gte: since } } : {}) },
+      // Testbewerbungen zählen nicht
+      where: { status: { not: "DRAFT" }, isTest: { not: true }, ...(since ? { submittedAt: { gte: since } } : {}) },
       select: { id: true, status: true, positionId: true, submittedAt: true, decidedAt: true, firstReviewedAt: true, rejectionCategory: true },
     }),
     db.position.findMany({ orderBy: { sortOrder: "asc" }, select: { id: true, title: true } }),

@@ -6,6 +6,8 @@ import { SettingsForm } from "@/components/team/SettingsForm";
 import { DiscordDiagnostics, type FailedJob } from "@/components/team/DiscordDiagnostics";
 import { HelpLink } from "@/components/team/HelpLink";
 import { DangerZone } from "@/components/team/DangerZone";
+import { TestDataPanel } from "@/components/team/TestDataPanel";
+import { TEST_SCENARIOS } from "@/lib/setup/test-applications";
 import { RESET_CONFIRM_PHRASE, countApplications } from "@/lib/team/reset";
 import { db } from "@/lib/db";
 import { formatDayTime } from "@/components/ui";
@@ -41,10 +43,12 @@ async function Content() {
     logChannel: !!process.env.DISCORD_LOG_CHANNEL_ID,
     anthropic: isAiConfigured(),
   };
-  const [failedJobs, pending, appCounts] = await Promise.all([
+  const [failedJobs, pending, appCounts, positions, testCount] = await Promise.all([
     db.outboxJob.findMany({ where: { status: "FAILED" }, orderBy: { updatedAt: "desc" }, take: 8 }),
     db.outboxJob.count({ where: { status: "PENDING" } }),
     countApplications(db),
+    db.position.findMany({ orderBy: { sortOrder: "asc" }, select: { id: true, title: true, status: true } }),
+    db.application.count({ where: { isTest: true } }),
   ]);
   const failed: FailedJob[] = failedJobs.map((j) => {
     const p = j.payload as { type?: string; channelId?: string; purpose?: string };
@@ -69,6 +73,7 @@ async function Content() {
       </section>
       {/* Neu aufbauen, wenn ein Knopf oben eine Einstellung ändert – sonst würde „Speichern“ den alten Wert zurückschreiben */}
       <SettingsForm key={String(settings["discord.claimButton"])} settings={settings} env={env} spend={formatUsd(spend)} spendMicro={spend} />
+      <TestDataPanel positions={positions} scenarios={TEST_SCENARIOS.map(({ key, label, description }) => ({ key, label, description }))} existing={testCount} />
       <DangerZone counts={appCounts} phrase={RESET_CONFIRM_PHRASE} />
     </div>
   );

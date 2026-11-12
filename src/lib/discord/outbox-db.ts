@@ -20,9 +20,14 @@ export const prismaOutboxStore: OutboxStore = {
         data: { status: "DONE", attempts: { increment: 1 }, result, lastError: null, lockedAt: null },
       });
       if (job.messageId) {
-        await tx.message.update({ where: { id: job.messageId }, data: { deliveryStatus: "SENT", sentAt: now, deliveryError: null } });
+        // Testbewerber: nichts verschickt → im Portal als „nicht per DM“ zeigen
+        const skipped = result.skipped === "test";
+        await tx.message.update({
+          where: { id: job.messageId },
+          data: skipped ? { deliveryStatus: "NOT_SENT", deliveryError: null } : { deliveryStatus: "SENT", sentAt: now, deliveryError: null },
+        });
       }
-      if (job.applicationId && purposeOf(job) === "confirmation") {
+      if (job.applicationId && purposeOf(job) === "confirmation" && result.skipped !== "test") {
         await tx.application.update({ where: { id: job.applicationId }, data: { confirmationDmStatus: "SENT" } });
       }
       // Thread zur Bewerbung angelegt → merken (Kommentare & Abschluss landen dort)

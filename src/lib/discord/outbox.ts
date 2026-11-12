@@ -8,6 +8,7 @@
  */
 import type { RESTPostAPIChannelMessageJSONBody } from "discord-api-types/v10";
 import { classifyDiscordError, type DiscordApi } from "@/lib/discord/client";
+import { isTestDiscordId } from "@/lib/discord/test-ids";
 
 /** "notify" = Rundmail (z. B. neue Stelle) – Fehler werden nicht einzeln geloggt */
 export type DmPurpose = "confirmation" | "team_message" | "status" | "reminder" | "notify";
@@ -61,6 +62,8 @@ export async function executeJob(
   try {
     switch (payload.type) {
       case "DM": {
+        // Testbewerber: kein echter Account → nie zustellen
+        if (isTestDiscordId(payload.discordUserId)) return { kind: "done", result: { skipped: "test" } };
         const channelId = await api.openDm(payload.discordUserId);
         const messageId = await api.postMessage(channelId, payload.message);
         return { kind: "done", result: { channelId, messageId } };
@@ -80,6 +83,7 @@ export async function executeJob(
         return { kind: "done", result };
       }
       case "ADD_ROLE": {
+        if (isTestDiscordId(payload.discordUserId)) return { kind: "done", result: { skipped: "test" } };
         await api.addRole(payload.guildId, payload.discordUserId, payload.roleId, payload.reason);
         return { kind: "done", result: { roleId: payload.roleId } };
       }

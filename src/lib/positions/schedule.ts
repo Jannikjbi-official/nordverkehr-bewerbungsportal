@@ -56,7 +56,7 @@ export function clearStaleSchedule(to: Status, p: { opensAt: Date | null; closes
 }
 
 /** Bewerbungen, die auf die Höchstzahl zählen (eingereicht, nicht zurückgezogen). */
-export const countingWhere = (positionId: string) => ({ positionId, submittedAt: { not: null }, status: { not: "WITHDRAWN" as const } });
+export const countingWhere = (positionId: string) => ({ positionId, submittedAt: { not: null }, status: { not: "WITHDRAWN" as const }, isTest: { not: true } });
 
 /** Datums-Regeln anwenden. Gibt die Umschaltungen zurück. */
 export async function applyPositionSchedule(db: PrismaClient, now = new Date()) {

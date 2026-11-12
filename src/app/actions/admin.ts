@@ -507,3 +507,104 @@ export async function publishSpotlightAction(slug: string, mode: "new" | "update
     return { ok: false, error: `Discord: ${err instanceof Error ? err.message : String(err)}` };
   }
 }
+
+// ─── Testbewerbungen ──────────────────────────────────────────
+
+const testSchema = z.object({
+  positionIds: z.array(id).min(1, "Bitte mindestens eine Stelle wählen.").max(30),
+  scenarios: z.array(z.string().max(30)).min(1, "Bitte mindestens ein Szenario wählen.").max(20),
+  postToDiscord: z.boolean().default(false),
+  runAi: z.boolean().default(false),
+});
+
+/**
+ * Testbewerbungen pro Stelle und Szenario anlegen (nur Admins). Testbewerber sind
+ * keine echten Discord-Accounts: DMs/Rollen werden nie verschickt.
+ */
+export async function createTestApplicationsAction(input: z.input<typeof testSchema>): Promise<ActionResult<{ message: string }>> {
+  const { user } = await requireAdmin();
+  const p = testSchema.safeParse(input);
+  if (!p.success) return { ok: false, error: p.error.issues[0].message };
+  const { createTestApplications, TEST_SCENARIO_KEYS } = await import("@/lib/setup/test-applications");
+  const scenarios = p.data.scenarios.filter((s) => TEST_SCENARIO_KEYS.includes(s));
+  if (!scenarios.length) return { ok: false, error: "Unbekannte Szenarien." };
+  if (p.data.positionIds.length * scenarios.length > 120) return { ok: false, error: "Zu viele auf einmal – höchstens 120 Testbewerbungen pro Durchgang." };
+  const { getFormDefinition } = await import("@/lib/data/positions");
+  const created = await createTestApplications(db, getFormDefinition, { positionIds: p.data.positionIds, scenarios, actorId: user.id });
+  await audit("data.test", { actorId: user.id, meta: { created: created.length, positions: p.data.positionIds.length, scenarios } });
+
+  if (p.data.postToDiscord || p.data.runAi) {
+    const ids = created.map((c) => c.id);
+    const postToDiscord = p.data.postToDiscord;
+    const runAi = p.data.runAi;
+    after(async () => {
+      if (postToDiscord) await postTestApplications(ids).catch((e) => console.error("[test-apps] Discord", e));
+      if (runAi) {
+        const { tagApplication } = await import("@/lib/ai/tagging");
+        const { claimAndScore } = await import("@/lib/ai/scoring");
+        for (const appId of ids) {
+          await tagApplication(appId).catch((e) => console.error("[test-apps] KI-Tags", e));
+          await claimAndScore(appId);
+        }
+      }
+    });
+  }
+  revalidatePath("/team/einstellungen");
+  revalidatePath("/team/bewerbungen");
+  const extra = [p.data.postToDiscord && "Discord-Posts", p.data.runAi && "KI-Einordnung"].filter(Boolean).join(" und ");
+  return {
+    ok: true,
+    data: { message: `${created.length} Testbewerbung${created.length === 1 ? "" : "en"} angelegt (${created[0]?.publicId ?? "–"} …).${extra ? ` ${extra} laufen im Hintergrund.` : ""}` },
+  };
+}
+
+/** Testbewerbungen wie echte im Bewerbungs-Kanal posten (inkl. Thread, falls eingeschaltet). */
+async function postTestApplications(ids: string[]) {
+  const { channelIds } = await import("@/lib/discord/botlog");
+  const { applications } = await channelIds();
+  if (!applications) return;
+  const { getSettings } = await import("@/lib/settings");
+  const { enqueue, runOutboxAll } = await import("@/lib/discord/outbox-db");
+  const { buildLogMessage } = await import("@/lib/messages/embed");
+  const { claimCustomId } = await import("@/lib/discord/interactions");
+  const { threadName } = await import("@/lib/discord/threads");
+  const { publicEnv } = await import("@/lib/env");
+  const s = await getSettings();
+  const apps = await db.application.findMany({ where: { id: { in: ids }, isTest: true }, include: { user: true, position: { select: { title: true } } } });
+  const jobs: string[] = [];
+  for (const a of apps) {
+    const flags = (a.flags as unknown as { message: string }[]) ?? [];
+    const job = await enqueue(
+      {
+        type: "CHANNEL_MESSAGE",
+        channelId: applications,
+        message: buildLogMessage({
+          positionTitle: `${a.position.title} (TEST)`,
+          applicantDiscordId: a.user.discordId,
+          applicantName: a.user.globalName || a.user.username,
+          applicantAvatarUrl: null,
+          publicId: a.publicId ?? "TEST",
+          age: a.age,
+          teamUrl: `${publicEnv.appUrl}/team/bewerbungen/${a.id}`,
+          flags: flags.map((f) => f.message),
+          claimCustomId: s["discord.claimButton"] ? claimCustomId(a.id) : null,
+        }),
+        ...(s["discord.threadPerApplication"] ? { startThread: threadName(a.publicId ?? "TEST", `${a.position.title} (TEST)`) } : {}),
+      },
+      { applicationId: a.id },
+    );
+    jobs.push(job.id);
+  }
+  await runOutboxAll(jobs, { deadline: Date.now() + 25_000 });
+}
+
+/** Alle Testbewerbungen samt Testbewerbern löschen. */
+export async function deleteTestApplicationsAction(): Promise<ActionResult<{ message: string }>> {
+  const { user } = await requireAdmin();
+  const { deleteTestApplications } = await import("@/lib/setup/test-applications");
+  const r = await deleteTestApplications(db);
+  await audit("data.test", { actorId: user.id, meta: { deleted: r.applications, users: r.users } });
+  revalidatePath("/team/einstellungen");
+  revalidatePath("/team/bewerbungen");
+  return { ok: true, data: { message: `${r.applications} Testbewerbung${r.applications === 1 ? "" : "en"} und ${r.users} Testbewerber gelöscht.` } };
+}

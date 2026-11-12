@@ -88,6 +88,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       { kind: "neu", text: "**Suche in Antworten** – z. B. „Wer hat schon mal Moderation gemacht?“, mit hervorgehobenen Ausschnitten." },
       { kind: "neu", text: "**Absagegründe** – beim Ablehnen eine Kategorie wählen, die Statistik zeigt pro Stelle, woran es am häufigsten scheitert." },
       { kind: "neu", text: "**Regel-Quiz** – Quizfragen mit einer richtigen Antwort, das Team sieht direkt „8 von 10 richtig“. Die Lösungen bleiben auf dem Server." },
+      { kind: "neu", text: "**Testbewerbungen** – Admins legen pro Stelle Testbewerbungen für typische Szenarien an (vorbildlich, knapp, beleidigend, Manipulationsversuch, kopiert, neuer Account, Grenzfall Alter). Keine DMs, nicht in der Statistik, mit einem Klick wieder weg." },
       { kind: "neu", text: "**Gesprächsprotokoll** – Fragen zum Abhaken und Notizen pro Frage im Reiter „Gespräch“, mit Gesamtfazit und in der PDF." },
       { kind: "fix", text: "**Termine** – ein zweites Gespräch zeigt nicht mehr den alten Termin, gerade gebuchte Termine können nicht versehentlich gelöscht werden, die Terminauswahl zeigt immer deutsche Zeit." },
       { kind: "fix", text: "**Stellen** – geplante Start-/Enddaten greifen nach einem Statuswechsel von Hand oder bei Höchstzahl nicht mehr ungewollt, Benachrichtigungen gehen an alle sofort raus." },

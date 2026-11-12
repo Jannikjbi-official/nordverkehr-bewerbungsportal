@@ -168,3 +168,24 @@ describe("Thread pro Bewerbung", () => {
     expect(api.archiveThread).toHaveBeenCalledWith("t1");
   });
 });
+
+describe("Testbewerber (Discord-ID mit 0000)", () => {
+  const job = (payload: unknown, type: "DM" | "ADD_ROLE" = "DM") => ({ id: "j1", type, payload, attempts: 0, maxAttempts: 5, messageId: "m1", applicationId: "a1" });
+  it("verschickt nie eine DM", async () => {
+    const api = fakeApi();
+    const r = await executeJob(job({ type: "DM", discordUserId: "000000000000000001", purpose: "team_message", message: { content: "x" } }), api);
+    expect(r).toEqual({ kind: "done", result: { skipped: "test" } });
+    expect(api.openDm).not.toHaveBeenCalled();
+    expect(api.postMessage).not.toHaveBeenCalled();
+  });
+  it("vergibt nie eine Rolle", async () => {
+    const api = fakeApi();
+    await executeJob(job({ type: "ADD_ROLE", guildId: "1", discordUserId: "000000000000000001", roleId: "2" }, "ADD_ROLE"), api);
+    expect(api.addRole).not.toHaveBeenCalled();
+  });
+  it("echte IDs werden normal zugestellt", async () => {
+    const api = fakeApi();
+    await executeJob(job({ type: "DM", discordUserId: "123456789012345678", purpose: "team_message", message: { content: "x" } }), api);
+    expect(api.postMessage).toHaveBeenCalled();
+  });
+});

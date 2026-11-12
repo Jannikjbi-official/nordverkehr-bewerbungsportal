@@ -119,6 +119,8 @@ model User {
   notifyNewPositions Boolean   @default(false)
   /// Teammitglied möchte keine persönliche Morgen-DM mit seinen offenen Punkten
   digestOptOut       Boolean   @default(false)
+  /// Testbewerber (Admin → Testbewerbungen) – kein echter Discord-Account
+  isTest             Boolean   @default(false)
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
@@ -327,6 +329,8 @@ model Application {
   guildLeftNotifiedAt  DateTime?
   /// Discord-Thread zur Bewerbung im Bewerbungs-Kanal (Team-Diskussion)
   discordThreadId      String?
+  /// Testbewerbung (Admin → Testbewerbungen): keine DMs, nicht in Statistik/Höchstzahl
+  isTest               Boolean   @default(false)
   /// Einarbeitung nach der Annahme: { [Punkt]: { at, by } }
   onboarding           Json      @default("{}")
   probationUntil       DateTime?

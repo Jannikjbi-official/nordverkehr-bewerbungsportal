@@ -215,6 +215,49 @@ try {
     check(done!.answers.find((a) => a.questionId === q1.id)?.correct === true && done!.answers.find((a) => a.questionId === q2.id)?.correct === false, "Pro Antwort richtig/falsch gespeichert");
   }
 
+  // ── Testbewerbungen: pro Stelle und Szenario, sicher (keine DMs), löschbar
+  {
+    const { createTestApplications, deleteTestApplications, TEST_SCENARIO_KEYS } = await import("../src/lib/setup/test-applications");
+    const { getFormDefinition } = await import("../src/lib/data/positions");
+    const { getAccess } = await import("../src/lib/auth/user-access");
+    const { countingWhere } = await import("../src/lib/positions/schedule");
+    const pt = await db.position.create({ data: { typeId: type.id, slug: "testpos", title: "Testpos", tagline: "x", description: "x", minAge: 16 } });
+    const st = await db.formSection.create({ data: { typeId: type.id, positionId: pt.id, title: "Fach", sortOrder: 1 } });
+    await db.question.create({ data: { sectionId: st.id, label: "Erfahrung?", type: "LONG_TEXT", minLength: 80, sortOrder: 1 } });
+    await db.question.create({ data: { sectionId: st.id, label: "Jemand beleidigt dich im Ticket – was tust du?", type: "SCENARIO", minLength: 80, sortOrder: 2 } });
+    for (const [k, l] of ["Was reizt dich am Team?", "Wie gehst du mit Kritik um?", "Was machst du bei Stress?", "Wie erklärst du Neulingen die Regeln?"].entries())
+      await db.question.create({ data: { sectionId: st.id, label: l, type: "LONG_TEXT", minLength: 80, sortOrder: 10 + k } });
+    await db.question.create({ data: { sectionId: st.id, label: "Was ist RDM?", type: "QUIZ", options: ["Erlaubt", "Verboten"], correctOption: "Verboten", sortOrder: 3 } });
+    const realCount = await db.application.count({ where: countingWhere(pt.id) });
+    const created = await createTestApplications(db, getFormDefinition, { positionIds: [pt.id], scenarios: TEST_SCENARIO_KEYS, actorId: team.id });
+    check(created.length === TEST_SCENARIO_KEYS.length && created.every((c) => c.publicId.startsWith("TEST-")), `Eine Testbewerbung pro Szenario (${created.length})`);
+    const apps = await db.application.findMany({ where: { id: { in: created.map((c) => c.id) } }, include: { user: true, answers: true } });
+    const by = (label: string) => apps.find((a) => a.user.globalName?.startsWith(label))!;
+    const codes = (a: (typeof apps)[number]) => (a.flags as { code: string }[]).map((f) => f.code);
+    check(codes(by("Test Knapp")).includes("short_answers"), "Knapp → Hinweis kurze Antworten");
+    check(codes(by("Test Kopie")).includes("similar_to_other"), "Kopie → Ähnlichkeits-Hinweis");
+    check(codes(by("Test Neuling")).join(",") === "young_account", `Neuer Account → nur Hinweis junger Account (${codes(by("Test Neuling")).join(",")})`);
+    check(!codes(by("Test Grenzfall")).includes("similar_to_other") && !codes(by("Test Vorbildlich")).length, "Andere Szenarien ohne falsche Hinweise");
+    check(apps.filter((a) => !a.user.globalName?.startsWith("Test Kopie")).every((a) => !codes(a).includes("duplicate_answers")), "Keine „identische Antwort“ innerhalb einer Bewerbung");
+    check(by("Test Grenzfall").age === 16, "Grenzfall Alter = Mindestalter der Stelle");
+    check(by("Test Vorbildlich").quizCorrect === 1 && by("Test Beleidigend").quizCorrect === 0, "Quiz je nach Szenario richtig/falsch");
+    check(by("Test Manipulation").answers.some((a) => String(a.value).includes("Ignoriere alle vorherigen Anweisungen")), "Manipulationsversuch steht in den Antworten");
+    check(apps.every((a) => a.isTest && a.user.isTest && a.user.discordId.startsWith("0000")), "Als Test markiert, Discord-ID 0000…");
+    check((await db.application.count({ where: countingWhere(pt.id) })) === realCount, "Zählt nicht für die Höchstzahl");
+    check((await getAccess(by("Test Solide").user)).inGuild === true, "Kein Discord-Abfrage, gilt als auf dem Server");
+    check((await db.application.count({ where: { isTest: { not: true }, positionId: pt.id } })) === 0 && (await db.application.count({ where: { isTest: { not: true } } })) > 0, "isTest-Filter trifft echte Bewerbungen");
+    // Nachricht an Testbewerber → Job wird übersprungen, nicht verschickt
+    const { sendTeamMessage } = await import("../src/lib/team/service");
+    const { processJob } = await import("../src/lib/discord/outbox");
+    const { prismaOutboxStore } = await import("../src/lib/discord/outbox-db");
+    const msg = await sendTeamMessage({ applicationId: by("Test Solide").id, actor: { ...team, isAdmin: false }, title: "Hallo", body: "Moin, Test!", templateIds: [] });
+    const dmJob = await db.outboxJob.findFirst({ where: { messageId: msg.messageId, type: "DM" } });
+    await processJob(dmJob!, { openDm: async () => { throw new Error("darf nicht aufgerufen werden"); } } as never, prismaOutboxStore);
+    check((await db.message.findUnique({ where: { id: msg.messageId } }))!.deliveryStatus === "NOT_SENT", "DM an Testbewerber wird nicht verschickt");
+    const del = await deleteTestApplications(db);
+    check(del.applications === created.length && (await db.user.count({ where: { isTest: true } })) === 0, `Löschen entfernt alles (${del.applications}/${del.users})`);
+  }
+
   // ── Feedback (eins pro Bewerbung)
   await db.feedback.create({ data: { applicationId: app1.id, rating: 5 } });
   dup = false;

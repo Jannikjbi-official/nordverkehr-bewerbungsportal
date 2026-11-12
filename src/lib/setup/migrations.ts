@@ -416,6 +416,15 @@ const MIGRATIONS: { id: string; run: (db: PrismaClient, opts: Options) => Promis
   { id: "2026-11-sperrfristen-pro-stelle", run: (db, o) => (o.dryRun ? Promise.resolve(0) : setPositionCooldowns(db)) },
   // Absage-Bausteine nennen die Sperrfrist der Stelle (Tage + Datum)
   { id: "2026-11-absage-sperrfrist", run: (db, o) => (o.dryRun ? Promise.resolve(0) : rejectionTemplatesWithCooldown(db)) },
+  // Testbewerbungen: Feld in Altdokumenten setzen (Filter isTest greifen sonst nicht überall)
+  {
+    id: "2026-11-is-test",
+    run: async (db, o) => {
+      if (o.dryRun) return 0;
+      for (const c of ["User", "Application"]) await db.$runCommandRaw({ update: c, updates: [{ q: { isTest: { $exists: false } }, u: { $set: { isTest: false } }, multi: true }] });
+      return 1;
+    },
+  },
   // Neues Pflichtfeld mit Standardwert: Filter `digestOptOut: false` soll auch Altkonten treffen
   {
     id: "2026-11-digest-optout",
