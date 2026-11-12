@@ -53,7 +53,7 @@ export function linkButtons(links: { label: string; url: string | null | undefin
 export const truncate = (s: string, max: number) => (s.length > max ? s.slice(0, max - 1) + "…" : s);
 
 /** Discord-Zeitstempel, im Client lokal formatiert. */
-export const discordTime = (d: Date, style: "f" | "R" | "D" = "f") => `<t:${Math.floor(d.getTime() / 1000)}:${style}>`;
+export const discordTime = (d: Date, style: "f" | "R" | "D" | "t" = "f") => `<t:${Math.floor(d.getTime() / 1000)}:${style}>`;
 
 /** Eine V2-Nachricht aus einem Container. Erwähnungen werden angezeigt, pingen aber nie. */
 export function v2Message(accent: number, children: (APIComponentInContainer | null | false)[]): RESTPostAPIChannelMessageJSONBody {

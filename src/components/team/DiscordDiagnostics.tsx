@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import { useState, useTransition } from "react";
 import { ArrowClockwise, CheckCircle, PaperPlaneTilt, WarningCircle } from "@phosphor-icons/react/ssr";
-import { deleteChangelogPostsAction, discordTestAction, flushOutboxAction, postChangelogNowAction } from "@/app/actions/admin";
+import { deleteChangelogPostsAction, discordTestAction, flushOutboxAction, postChangelogNowAction, postSummaryNowAction } from "@/app/actions/admin";
 
 export interface FailedJob {
   id: string;
@@ -39,12 +39,28 @@ export function DiscordDiagnostics({ failed, pending }: { failed: FailedJob[]; p
             ["applications", "Test: Bewerbungs-Kanal"],
             ["botLog", "Test: Bot-Log-Kanal"],
             ["changelog", "Test: Changelog-Kanal"],
+            ["summary", "Test: Teamchat"],
+            ["lead", "Test: Leitungs-Chat"],
           ] as const
         ).map(([k, l]) => (
           <button key={k} type="button" className="nv-btn nv-btn-ghost nv-btn-sm" disabled={busy} onClick={() => run(l, () => discordTestAction(k))}>
             <PaperPlaneTilt size={14} aria-hidden /> {l}
           </button>
         ))}
+        <button
+          type="button"
+          className="nv-btn nv-btn-ghost nv-btn-sm"
+          disabled={busy}
+          onClick={async () =>
+            (await confirmDialog({
+              title: "Team-Übersicht jetzt posten?",
+              body: "Die Übersicht geht sofort in den Teamchat – auch wenn sie heute schon kam. Liegt etwas seit Langem, bekommt auch der Leitungs-Chat einen Hinweis.",
+              confirmLabel: "Jetzt posten",
+            })) && run("Team-Übersicht", () => postSummaryNowAction())
+          }
+        >
+          <PaperPlaneTilt size={14} aria-hidden /> Team-Übersicht jetzt posten
+        </button>
         <button type="button" className="nv-btn nv-btn-ghost nv-btn-sm" disabled={busy} onClick={() => run("Changelog", () => postChangelogNowAction())}>
           <ArrowClockwise size={14} aria-hidden /> Fertige Changelog-Tage jetzt posten
         </button>

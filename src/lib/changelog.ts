@@ -64,6 +64,10 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: "1.1",
     date: "2026-11-12",
     items: [
+      {
+        kind: "neu",
+        text: "**Team-Übersicht** – jeden Morgen im Teamchat: Gespräche heute, unbeantwortete Nachrichten, liegengebliebene Bewerbungen und offene Rückzüge. Liegt etwas über eine Woche, bekommt die Leitung einen Hinweis.",
+      },
       { kind: "besser", text: "**Bestätigungen** – eigene Abfrage-Fenster im Nordverkehr-Stil statt der grauen Browser-Boxen, mit rotem Knopf bei Löschen, Sperren & Co." },
     ],
   },

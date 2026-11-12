@@ -164,7 +164,12 @@ export const HELP: HelpSection[] = [
       {
         id: "discord-kanaele",
         term: "Discord-Kanäle",
-        text: "**Bewerbungs-Kanal:** ein Post pro neuer Bewerbung. **Bot-Log:** Status, Claims, Nachrichten, Antworten von Bewerbern, Zustellfehler. **Changelog:** einmal am Tag um 0 Uhr alle Änderungen des Vortags als neue Version (gleichzeitig unter „Changelog“ im Team-Bereich). Admins ändern die Kanäle in den Einstellungen und können dort mit „Discord-Zustellung prüfen“ eine Testnachricht schicken.",
+        text: "**Bewerbungs-Kanal:** ein Post pro neuer Bewerbung. **Bot-Log:** Status, Claims, Nachrichten, Antworten von Bewerbern, Zustellfehler. **Changelog:** einmal am Tag um 0 Uhr alle Änderungen des Vortags als neue Version (gleichzeitig unter „Changelog“ im Team-Bereich). **Teamchat:** jeden Morgen die Team-Übersicht. **Leitungs-Chat:** Hinweis, wenn Bewerbungen zu lange liegen. Admins ändern die Kanäle in den Einstellungen und können dort mit „Discord-Zustellung prüfen“ eine Testnachricht schicken.",
+      },
+      {
+        id: "team-uebersicht",
+        term: "Team-Übersicht",
+        text: "Jeden Morgen gegen 8 Uhr postet der Bot in den Teamchat, was ansteht: **Gespräche heute**, Bewerbungen, bei denen der Bewerber zuletzt geschrieben hat (**wartet auf Antwort**), Bewerbungen, bei denen das Team seit ein paar Tagen nichts gemacht hat (**liegengeblieben** – kein Statuswechsel, keine Nachricht, kein Kommentar) und **noch nicht bestätigte Rückzüge**. Liegt etwas länger als eine Woche, bekommt der Leitungs-Chat einen kurzen Hinweis. Ist nichts zu tun, kommt kein Post. Die Tage stellen Admins in den Einstellungen ein.",
       },
       {
         id: "stellenaufruf",

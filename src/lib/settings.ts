@@ -65,6 +65,15 @@ export const settingsSchema = z.object({
   "discord.changelogEnabled": bool(true),
   "discord.changelogChannelId": channel("1570181667627475146"),
   "discord.autoRoleOnAccept": bool(false),
+  /** Tägliche Team-Übersicht (morgens) im Teamchat */
+  "discord.dailySummaryEnabled": bool(true),
+  "discord.summaryChannelId": channel("1569736476797837312"),
+  /** Leitungs-Chat: Hinweis, wenn Bewerbungen zu lange liegen (leer = aus) */
+  "discord.leadChannelId": channel("1569736564433494167"),
+  /** Ab wie vielen Tagen ohne Team-Aktivität eine Bewerbung als „liegengeblieben“ gilt */
+  "team.staleDays": z.coerce.number().int().min(1).max(30).default(3),
+  /** Ab wie vielen Tagen die Leitung Bescheid bekommt */
+  "team.escalateDays": z.coerce.number().int().min(2).max(60).default(7),
 
   "messages.confirmationTemplate": z.string().min(10).max(3500).default(DEFAULT_CONFIRMATION_TEMPLATE),
 

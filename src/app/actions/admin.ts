@@ -258,8 +258,8 @@ export async function reorderQuestionsAction(ids: string[]): Promise<ActionResul
 
 // ─── Discord-Diagnose ─────────────────────────────────────────
 
-const CHANNEL_KIND = z.enum(["applications", "botLog", "changelog"]);
-const CHANNEL_LABEL = { applications: "Bewerbungs-Kanal", botLog: "Bot-Log-Kanal", changelog: "Changelog-Kanal" } as const;
+const CHANNEL_KIND = z.enum(["applications", "botLog", "changelog", "summary", "lead"]);
+const CHANNEL_LABEL = { applications: "Bewerbungs-Kanal", botLog: "Bot-Log-Kanal", changelog: "Changelog-Kanal", summary: "Teamchat", lead: "Leitungs-Chat" } as const;
 
 /** Testnachricht direkt (ohne Warteschlange) senden – zeigt den genauen Discord-Fehler. */
 export async function discordTestAction(kind: z.input<typeof CHANNEL_KIND>): Promise<ActionResult<{ message: string }>> {
@@ -268,8 +268,13 @@ export async function discordTestAction(kind: z.input<typeof CHANNEL_KIND>): Pro
   if (!k.success) return { ok: false, error: "Ungültig." };
   const { getSettings } = await import("@/lib/settings");
   const s = await getSettings();
-  const channelId =
-    k.data === "applications" ? s["discord.applicationsChannelId"] : k.data === "botLog" ? s["discord.botLogChannelId"] || process.env.DISCORD_LOG_CHANNEL_ID : s["discord.changelogChannelId"];
+  const channelId = {
+    applications: s["discord.applicationsChannelId"],
+    botLog: s["discord.botLogChannelId"] || process.env.DISCORD_LOG_CHANNEL_ID,
+    changelog: s["discord.changelogChannelId"],
+    summary: s["discord.summaryChannelId"],
+    lead: s["discord.leadChannelId"],
+  }[k.data];
   if (!channelId) return { ok: false, error: `Für den ${CHANNEL_LABEL[k.data]} ist keine Kanal-ID eingetragen.` };
   try {
     const { getDiscordApi } = await import("@/lib/discord/client");
@@ -302,6 +307,21 @@ export async function postChangelogNowAction(): Promise<ActionResult<{ message: 
   const errors = jobs.map((j) => j.lastError).filter(Boolean);
   if (errors.length) return { ok: false, error: `Fehler: ${errors.join(" · ")}` };
   return { ok: true, data: { message: `${ids.length} Version(en) gepostet.` } };
+}
+
+/** Team-Übersicht sofort posten (auch wenn heute schon gepostet wurde oder nichts ansteht). */
+export async function postSummaryNowAction(): Promise<ActionResult<{ message: string }>> {
+  await requireAdmin();
+  const { postDailySummary } = await import("@/lib/team/daily-summary");
+  const r = await postDailySummary(db, { force: true });
+  if (!r.posted) return { ok: false, error: r.reason };
+  const jobs = await db.outboxJob.findMany({ where: { id: { in: r.jobIds } }, select: { lastError: true } });
+  const errors = jobs.map((j) => j.lastError).filter(Boolean);
+  if (errors.length) return { ok: false, error: `Fehler: ${errors.join(" · ")}` };
+  return {
+    ok: true,
+    data: { message: `Übersicht gepostet${r.escalated ? " – plus Hinweis an die Leitung" : ""}.` },
+  };
 }
 
 /** Ausstehende Zustellungen jetzt senden. */
