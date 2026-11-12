@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { formatUsd, monthStart } from "@/lib/ai/config";
 import { daysAgo } from "@/lib/time";
 import { REJECTION_CATEGORIES, aggregateRejections } from "@/lib/applications/rejection";
+import { loadTeamActivity } from "@/lib/team/activity";
 
 export const metadata: Metadata = { title: "Statistiken" };
 
@@ -37,12 +38,15 @@ export default function StatsPage({ searchParams }: PageProps<"/team/statistiken
 const days = (ms: number) => ms / 86_400_000;
 const fmtDays = (d: number | null) => (d === null ? "–" : `${d.toLocaleString("de-DE", { maximumFractionDigits: 1 })} Tage`);
 const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+const fmtHours = (h: number | null) => (h === null ? "–" : h < 1 ? "< 1 Std." : h < 48 ? `${Math.round(h)} Std.` : `${(h / 24).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Tage`);
 
 async function Stats({ searchParams }: Pick<PageProps<"/team/statistiken">, "searchParams">) {
-  await requireTeam();
+  const { access } = await requireTeam();
   const { zeitraum } = await searchParams;
   const range = RANGES.find((r) => r.key === zeitraum) ?? RANGES[1];
   const since = range.days ? daysAgo(range.days) : null;
+  // Team-Aktivität nur für Admins (Leitung)
+  const activity = access.isAdmin ? await loadTeamActivity(db, since) : null;
 
   const [apps, positions, aiMonth, feedback] = await Promise.all([
     db.application.findMany({
@@ -334,6 +338,51 @@ async function Stats({ searchParams }: Pick<PageProps<"/team/statistiken">, "sea
           </div>
         )}
       </section>
+
+      {activity && (
+        <section className="nv-card p-5" aria-labelledby="activity">
+          <h2 id="activity" className="font-semibold">
+            Team-Aktivität <span className="text-xs font-normal text-muted">· nur für Admins sichtbar · {range.label}</span>
+          </h2>
+          {activity.length === 0 ? (
+            <p className="mt-3 text-sm text-muted">Im Zeitraum keine Aktivität.</p>
+          ) : (
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-muted border-b border-line">
+                    <th className="py-1.5 pr-3 font-medium">Teammitglied</th>
+                    <th className="py-1.5 px-2 font-medium text-right">Übernommen</th>
+                    <th className="py-1.5 px-2 font-medium text-right">Nachrichten</th>
+                    <th className="py-1.5 px-2 font-medium text-right">Status</th>
+                    <th className="py-1.5 px-2 font-medium text-right">Entscheidungen</th>
+                    <th className="py-1.5 px-2 font-medium text-right">Kommentare</th>
+                    <th className="py-1.5 px-2 font-medium text-right">Bewertungen</th>
+                    <th className="py-1.5 pl-2 font-medium text-right" title="Median: Eingang bis zur ersten Nachricht an den Bewerber">
+                      Erste Antwort
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activity.map((r) => (
+                    <tr key={r.userId} className="border-b border-line last:border-0 tabular-nums">
+                      <td className="py-1.5 pr-3">{r.name}</td>
+                      <td className="py-1.5 px-2 text-right">{r.claims}</td>
+                      <td className="py-1.5 px-2 text-right">{r.messages}</td>
+                      <td className="py-1.5 px-2 text-right">{r.statusChanges}</td>
+                      <td className="py-1.5 px-2 text-right">{r.decisions}</td>
+                      <td className="py-1.5 px-2 text-right">{r.comments}</td>
+                      <td className="py-1.5 px-2 text-right">{r.ratings}</td>
+                      <td className="py-1.5 pl-2 text-right text-muted">{fmtHours(r.firstReplyHours)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="mt-2 text-xs text-muted">Zahlen sind eine Orientierung, kein Ranking – Gespräche auf TeamSpeak und Arbeit in Discord tauchen hier nicht auf.</p>
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="nv-card p-5">
         <h2 className="font-semibold">KI-Nutzung (dieser Monat)</h2>

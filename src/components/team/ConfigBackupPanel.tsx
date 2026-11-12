@@ -30,10 +30,22 @@ export function ConfigBackupPanel() {
           größeren Umbauten. Bewerbungen und Nutzer sind nie enthalten. Beim Einspielen wird zusammengeführt: Vorhandenes wird aktualisiert, Fehlendes angelegt,
           nichts gelöscht.
         </p>
+        <p className="text-xs text-muted mt-2">
+          „Bewerbungsdaten sichern“ lädt zusätzlich alle Bewerbungen samt Antworten, Nachrichten, Kommentaren und Bewertungen herunter (nur zum Aufbewahren, kein
+          Einspielen). Enthält personenbezogene Daten – sicher ablegen und nach den Löschfristen löschen. Der Download steht im Audit-Log.
+        </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <a href="/api/team/admin/config" className="nv-btn nv-btn-ghost nv-btn-sm" download>
           <DownloadSimple size={14} aria-hidden /> Sicherung herunterladen
+        </a>
+        <a
+          href="/api/team/admin/data"
+          className="nv-btn nv-btn-ghost nv-btn-sm"
+          download
+          title="Alle Bewerbungen mit Antworten, Nachrichten, Kommentaren und Bewertungen – enthält personenbezogene Daten, sicher aufbewahren."
+        >
+          <DownloadSimple size={14} aria-hidden /> Bewerbungsdaten sichern
         </a>
         <label className="nv-btn nv-btn-quiet nv-btn-sm cursor-pointer">
           <UploadSimple size={14} aria-hidden /> Sicherung auswählen …

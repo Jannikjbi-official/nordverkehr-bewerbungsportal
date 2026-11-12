@@ -110,3 +110,26 @@ describe("Claim-Erinnerung & Kontingent", () => {
     expect(dueTransitions([{ id: "b", ...base, seats: 2 }], now)).toHaveLength(1);
   });
 });
+
+import { aggregateActivity, median } from "@/lib/team/activity";
+
+describe("Team-Aktivität", () => {
+  it("Median", () => {
+    expect(median([])).toBeNull();
+    expect(median([5, 1, 3])).toBe(3);
+    expect(median([4, 1, 3, 2])).toBe(2.5);
+  });
+  it("zählt pro Person, Entscheidungen extra", () => {
+    const rows = aggregateActivity({
+      names: new Map([["a", "Anna"], ["b", "Ben"]]),
+      claims: [{ userId: "a" }],
+      messages: [{ userId: "a" }, { userId: "b" }, { userId: null }],
+      statusChanges: [{ userId: "a", to: "ACCEPTED" }, { userId: "a", to: "IN_REVIEW" }],
+      comments: [],
+      ratings: [{ userId: "b" }],
+      firstReplies: [{ userId: "a", hours: 2 }, { userId: "a", hours: 10 }],
+    });
+    expect(rows[0]).toMatchObject({ name: "Anna", claims: 1, messages: 1, statusChanges: 2, decisions: 1, firstReplyHours: 6, total: 4 });
+    expect(rows[1]).toMatchObject({ name: "Ben", messages: 1, ratings: 1, firstReplyHours: null });
+  });
+});
