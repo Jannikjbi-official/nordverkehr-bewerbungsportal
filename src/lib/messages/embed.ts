@@ -105,8 +105,8 @@ export function buildApplicantMessage(input: ApplicantEmbedInput): RESTPostAPICh
   const at = input.timestamp ?? new Date();
   const headLines = [`-# ${head.name}`, `## ${truncate(input.title, 200)}`];
   return v2Message(BRAND_COLOR, [
-    // Profilbild nur, wenn eine Person schreibt – als Team ruhiger Text-Kopf ohne großes Logo
-    input.author?.iconUrl ? section(headLines, input.author.iconUrl) : text(headLines.join("\n")),
+    // Profilbild: Teammitglied persönlich → sein Avatar, als Team → Nordverkehr-Logo
+    section(headLines, input.author?.iconUrl || LOGO_URL),
     separator(),
     text(truncate(input.body || " ", BODY_LIMIT)),
     separator(false),

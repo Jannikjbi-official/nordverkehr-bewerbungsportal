@@ -40,9 +40,13 @@ export function DiscordPreview({
                 </p>
                 {title && <p className="mt-1 text-xl font-bold leading-tight text-white">{title}</p>}
               </div>
-              {author && (
+              {author ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={author.iconUrl} alt="" className="h-16 w-16 shrink-0 rounded-lg object-cover" />
+              ) : (
+                // Als Team: Nordverkehr-Logo als Profilbild
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src="/logo.png" alt="" className="h-16 w-16 shrink-0 rounded-lg object-contain p-2" style={{ background: "#1e1f22" }} />
               )}
             </div>
             <hr className="my-3 border-0 h-px" style={{ background: "#3f4147" }} />
