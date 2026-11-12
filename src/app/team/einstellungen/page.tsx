@@ -67,7 +67,8 @@ async function Content() {
         </p>
         <DiscordDiagnostics failed={failed} pending={pending} />
       </section>
-      <SettingsForm settings={settings} env={env} spend={formatUsd(spend)} spendMicro={spend} />
+      {/* Neu aufbauen, wenn ein Knopf oben eine Einstellung ändert – sonst würde „Speichern“ den alten Wert zurückschreiben */}
+      <SettingsForm key={String(settings["discord.claimButton"])} settings={settings} env={env} spend={formatUsd(spend)} spendMicro={spend} />
       <DangerZone counts={appCounts} phrase={RESET_CONFIRM_PHRASE} />
     </div>
   );
