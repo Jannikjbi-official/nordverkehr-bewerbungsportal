@@ -13,16 +13,55 @@ export const RATING_CRITERIA = [
 ] as const;
 
 export type CriterionKey = (typeof RATING_CRITERIA)[number]["key"];
-export type Scores = Partial<Record<CriterionKey, number>>;
+export type Scores = Partial<Record<string, number>>;
 
-const KEYS = new Set<string>(RATING_CRITERIA.map((c) => c.key));
+/** Ein Kriterium des Bewertungsbogens (Standard oder pro Stelle). */
+export interface Criterion {
+  key: string;
+  label: string;
+  hint: string;
+}
+
+export const STANDARD_CRITERIA: readonly Criterion[] = RATING_CRITERIA;
+
+const slug = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/ä/g, "ae")
+    .replace(/ö/g, "oe")
+    .replace(/ü/g, "ue")
+    .replace(/ß/g, "ss")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_|_$/g, "")
+    .slice(0, 40);
+
+/**
+ * Kriterien einer Stelle: eigene Zeilen „Kriterium | Hinweis“ oder der Standard.
+ * Der Schlüssel hängt am Text (`p_<slug>`) – umbenennen beginnt das Kriterium neu.
+ */
+export function criteriaFor(position: { ratingCriteria?: string[] | null } | null | undefined): readonly Criterion[] {
+  const lines = position?.ratingCriteria ?? [];
+  const out: Criterion[] = [];
+  const seen = new Set<string>();
+  for (const line of lines) {
+    const [label, ...hint] = line.split("|");
+    const l = label.trim().slice(0, 80);
+    const key = `p_${slug(l)}`;
+    if (!l || key === "p_" || seen.has(key)) continue;
+    seen.add(key);
+    out.push({ key, label: l, hint: hint.join("|").trim().slice(0, 120) });
+    if (out.length >= 10) break;
+  }
+  return out.length ? out : STANDARD_CRITERIA;
+}
 
 /** Nur bekannte Kriterien mit ganzen Punkten 1–5 übernehmen. */
-export function cleanScores(input: unknown): Scores {
+export function cleanScores(input: unknown, criteria: readonly Criterion[] = STANDARD_CRITERIA): Scores {
+  const keys = new Set(criteria.map((c) => c.key));
   const out: Scores = {};
   if (!input || typeof input !== "object") return out;
   for (const [k, v] of Object.entries(input as Record<string, unknown>)) {
-    if (KEYS.has(k) && typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= 5) out[k as CriterionKey] = v;
+    if (keys.has(k) && typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= 5) out[k] = v;
   }
   return out;
 }
@@ -30,31 +69,31 @@ export function cleanScores(input: unknown): Scores {
 export interface RatingSummary {
   /** Anzahl Teammitglieder mit mindestens einem Punkt */
   raters: number;
-  perCriterion: Record<CriterionKey, { avg: number | null; count: number }>;
+  perCriterion: Record<string, { avg: number | null; count: number }>;
   /** Durchschnitt über alle vergebenen Punkte */
   overall: number | null;
 }
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
-export function summarizeRatings(ratings: { scores: unknown }[]): RatingSummary {
-  const perCriterion = Object.fromEntries(RATING_CRITERIA.map((c) => [c.key, { avg: null, count: 0 }])) as RatingSummary["perCriterion"];
+export function summarizeRatings(ratings: { scores: unknown }[], criteria: readonly Criterion[] = STANDARD_CRITERIA): RatingSummary {
+  const perCriterion: RatingSummary["perCriterion"] = Object.fromEntries(criteria.map((c) => [c.key, { avg: null, count: 0 }]));
   const sums: Record<string, number> = {};
   let total = 0;
   let n = 0;
   let raters = 0;
   for (const r of ratings) {
-    const s = cleanScores(r.scores);
-    const entries = Object.entries(s);
+    const sc = cleanScores(r.scores, criteria);
+    const entries = Object.entries(sc);
     if (entries.length) raters++;
     for (const [k, v] of entries) {
       sums[k] = (sums[k] ?? 0) + v!;
-      perCriterion[k as CriterionKey].count++;
+      perCriterion[k].count++;
       total += v!;
       n++;
     }
   }
-  for (const c of RATING_CRITERIA) {
+  for (const c of criteria) {
     const pc = perCriterion[c.key];
     pc.avg = pc.count ? round1(sums[c.key] / pc.count) : null;
   }

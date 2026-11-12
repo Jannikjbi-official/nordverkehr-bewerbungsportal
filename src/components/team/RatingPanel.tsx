@@ -5,7 +5,7 @@ import { useEffect, useState, useTransition } from "react";
 import { Robot, Star } from "@phosphor-icons/react/ssr";
 import { overrideAiConsentAction, rateAction, rescoreAction } from "@/app/actions/team";
 import { confirmDialog } from "@/components/ConfirmDialog";
-import { RATING_CRITERIA, formatScore, summarizeRatings, type CriterionKey, type RatingSummary, type Scores } from "@/lib/team/ratings";
+import { RATING_CRITERIA, STANDARD_CRITERIA, formatScore, summarizeRatings, type Criterion, type CriterionKey, type RatingSummary, type Scores } from "@/lib/team/ratings";
 
 export type AiRatingView =
   | { kind: "scores"; scores: Scores; reasons: Partial<Record<CriterionKey, string>>; fazit: string | null; at: string }
@@ -29,8 +29,11 @@ export function RatingPanel({
   ai = { kind: "off" },
   bot,
   isAdmin = false,
+  criteria = STANDARD_CRITERIA,
 }: {
   applicationId: string;
+  /** Kriterien der Stelle (eigener Bogen oder Standard) */
+  criteria?: readonly Criterion[];
   mine: Scores;
   myNote: string | null;
   summary: RatingSummary;
@@ -40,6 +43,8 @@ export function RatingPanel({
   isAdmin?: boolean;
 }) {
   const aiScores = ai.kind === "scores" ? ai.scores : null;
+  // KI bewertet nur die Standard-Kriterien – bei eigenem Bogen ohne KI-Spalte
+  const standard = criteria === STANDARD_CRITERIA || criteria.every((c) => !c.key.startsWith("p_"));
   const aiOverall = aiScores ? summarizeRatings([{ scores: aiScores }]).overall : null;
   const router = useRouter();
   const [scores, setScores] = useState<Scores>(mine);
@@ -51,7 +56,8 @@ export function RatingPanel({
   function save() {
     setMsg(null);
     start(async () => {
-      const r = await rateAction({ applicationId, scores, note });
+      const clean = Object.fromEntries(Object.entries(scores).filter((e): e is [string, number] => typeof e[1] === "number"));
+      const r = await rateAction({ applicationId, scores: clean, note });
       setMsg(r.ok ? { ok: true, text: "Gespeichert." } : { ok: false, text: r.error });
       if (r.ok) router.refresh();
     });
@@ -69,12 +75,12 @@ export function RatingPanel({
         </p>
       </div>
       <ul className="space-y-1">
-        {RATING_CRITERIA.map((c) => {
+        {criteria.map((c) => {
           const val = scores[c.key] ?? 0;
-          const team = summary.perCriterion[c.key];
+          const team = summary.perCriterion[c.key] ?? { avg: null, count: 0 };
           return (
             <li key={c.key} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-2">
-              <span className="text-xs text-fg-2 truncate" title={`${c.label} – ${c.hint}`}>
+              <span className="text-xs text-fg-2 truncate" title={c.hint ? `${c.label} – ${c.hint}` : c.label}>
                 {c.label}
               </span>
               <span className="flex" role="radiogroup" aria-label={c.label}>
@@ -94,8 +100,8 @@ export function RatingPanel({
                 ))}
               </span>
               <span className="flex items-center justify-end gap-1.5 text-[0.7rem] text-muted tabular-nums min-w-[4.5rem]">
-                {aiScores && (
-                  <span className="nv-pill nv-tone-info !py-0 !px-1.5 cursor-help" title={ai.kind === "scores" ? (ai.reasons[c.key] ?? "Ohne Begründung") : undefined}>
+                {aiScores && standard && (
+                  <span className="nv-pill nv-tone-info !py-0 !px-1.5 cursor-help" title={ai.kind === "scores" ? (ai.reasons[c.key as CriterionKey] ?? "Ohne Begründung") : undefined}>
                     KI {aiScores[c.key] ?? "–"}
                   </span>
                 )}

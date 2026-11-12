@@ -59,3 +59,54 @@ describe("Knöpfe & Befehle", () => {
     expect(json).toContain("https://x/d");
   });
 });
+
+import { criteriaFor, cleanScores, summarizeRatings, STANDARD_CRITERIA } from "@/lib/team/ratings";
+import { nickWithPrefix } from "@/lib/discord/outbox";
+import { acceptRoles, parseRoleIds, welcomeText } from "@/lib/discord/roles";
+import { idleSinceClaim } from "@/lib/team/claim-nudge";
+import { dueTransitions } from "@/lib/positions/schedule";
+
+describe("Bewertungsbogen pro Stelle", () => {
+  it("ohne eigene Kriterien → Standard", () => expect(criteriaFor({ ratingCriteria: [] })).toBe(STANDARD_CRITERIA));
+  it("eigene Kriterien mit Hinweis, ohne Dubletten", () => {
+    const c = criteriaFor({ ratingCriteria: ["Regelkenntnis | Kennt die Regeln?", "Regelkenntnis", "Ruhe im Ticket"] });
+    expect(c.map((x) => x.label)).toEqual(["Regelkenntnis", "Ruhe im Ticket"]);
+    expect(c[0]).toMatchObject({ key: "p_regelkenntnis", hint: "Kennt die Regeln?" });
+  });
+  it("Punkte nur für die Kriterien der Stelle", () => {
+    const c = criteriaFor({ ratingCriteria: ["Regelkenntnis"] });
+    expect(cleanScores({ p_regelkenntnis: 4, kommunikation: 5 }, c)).toEqual({ p_regelkenntnis: 4 });
+    expect(summarizeRatings([{ scores: { p_regelkenntnis: 2 } }, { scores: { p_regelkenntnis: 5 } }], c).overall).toBe(3.5);
+  });
+});
+
+describe("Annahme: Rollen, Präfix, Gruß", () => {
+  it("Präfix setzen und wieder entfernen", () => {
+    expect(nickWithPrefix("Jonas", "[Support]", "add")).toBe("[Support] Jonas");
+    expect(nickWithPrefix("[Support] Jonas", "[Support]", "add")).toBeUndefined();
+    expect(nickWithPrefix("[Support] Jonas", "[Support]", "remove")).toBe("Jonas");
+    expect(nickWithPrefix("Jonas", "[Support]", "remove")).toBeUndefined();
+    expect(nickWithPrefix("[Support]", "[Support]", "remove")).toBeNull();
+    expect(nickWithPrefix("x".repeat(40), "[S]", "add")!.length).toBe(32);
+  });
+  it("Rollen der Stelle + zusätzliche, ohne Dubletten", () => {
+    expect(parseRoleIds("123456789012345678, 223456789012345678 abc")).toEqual(["123456789012345678", "223456789012345678"]);
+    expect(acceptRoles({ acceptRoleId: "123456789012345678" }, "123456789012345678,323456789012345678")).toEqual(["123456789012345678", "323456789012345678"]);
+    expect(acceptRoles({ acceptRoleId: null }, "")).toEqual([]);
+  });
+  it("Willkommensgruß", () => expect(welcomeText("Hi {mention} ({name}) als {stelle}", { discordId: "1", name: "Lea", position: "Support" })).toBe("Hi <@1> (Lea) als Support"));
+});
+
+describe("Claim-Erinnerung & Kontingent", () => {
+  const claimed = new Date("2026-11-01T10:00:00Z");
+  it("nur ohne Aktivität seit dem Claim", () => {
+    expect(idleSinceClaim(claimed, [null, new Date("2026-10-30T10:00:00Z")])).toBe(true);
+    expect(idleSinceClaim(claimed, [new Date("2026-11-02T10:00:00Z")])).toBe(false);
+  });
+  it("volle Stelle (0 Plätze) öffnet nicht automatisch", () => {
+    const now = new Date("2026-11-12T10:00:00Z");
+    const base = { status: "CLOSED" as const, opensAt: new Date("2026-11-11T10:00:00Z"), closesAt: null };
+    expect(dueTransitions([{ id: "a", ...base, seats: 0 }], now)).toEqual([]);
+    expect(dueTransitions([{ id: "b", ...base, seats: 2 }], now)).toHaveLength(1);
+  });
+});

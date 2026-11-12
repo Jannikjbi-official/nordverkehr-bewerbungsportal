@@ -188,6 +188,35 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
           )}
           {s["discord.threadPerApplication"] && toggle("discord.threadMirrorComments", "Interne Kommentare in den Thread spiegeln", "Kommentare aus dem Portal erscheinen zusätzlich im Thread (nur Portal → Discord).")}
           {toggle("discord.autoRoleOnAccept", "Bei Annahme automatisch die Rolle der Position vergeben", "Rolle pro Position unter „Positionen & Fragen“ eintragen. Der Bot braucht „Rollen verwalten“ und muss über der Rolle stehen.")}
+          {s["discord.autoRoleOnAccept"] && (
+            <div className="grid gap-4 sm:grid-cols-2 pl-1">
+              <div>
+                <label htmlFor="extra-roles" className="nv-field-label">
+                  Zusätzliche Rollen bei Annahme
+                </label>
+                <input
+                  id="extra-roles"
+                  className="nv-input font-mono text-sm"
+                  inputMode="numeric"
+                  placeholder="z. B. allgemeine Team-Rolle"
+                  value={s["discord.acceptExtraRoleIds"]}
+                  onChange={(e) => set("discord.acceptExtraRoleIds", e.target.value)}
+                />
+                <p className="nv-help mt-1">Rollen-IDs, durch Komma getrennt. Gilt für alle Stellen. Namens-Präfix (z. B. „[Support]“) pro Stelle.</p>
+              </div>
+              {toggle("discord.revertOnUnaccept", "Annahme zurückgenommen → Rollen & Präfix entfernen", "Wenn eine angenommene Bewerbung wieder auf „In Prüfung“ oder „Gespräch“ geht.")}
+            </div>
+          )}
+          <div className="grid gap-4 sm:grid-cols-[1fr_2fr]">
+            {channelField("discord.welcomeChannelId", "Kanal: Willkommensgruß bei Annahme")}
+            <div>
+              <label htmlFor="welcome" className="nv-field-label">
+                Willkommensgruß
+              </label>
+              <textarea id="welcome" className="nv-input text-sm !min-h-16" rows={2} maxLength={1000} value={s["discord.welcomeMessage"]} onChange={(e) => set("discord.welcomeMessage", e.target.value)} />
+              <p className="nv-help mt-1">Platzhalter: {"{mention}"} (pingt nur die neue Person), {"{name}"}, {"{stelle}"}. Kanal leer = kein Gruß.</p>
+            </div>
+          </div>
         </div>
       </Card>
 
@@ -209,6 +238,7 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {num("team.staleDays", "„Liegengeblieben“ ab (Tagen)", "So lange ohne Statuswechsel, Nachricht oder Kommentar vom Team.")}
             {num("team.escalateDays", "Leitung informieren ab (Tagen)", "Dann kommt zusätzlich ein Hinweis in den Leitungs-Chat (leere Kanal-ID = aus).")}
+            {num("team.claimNudgeDays", "Claim-Erinnerung nach (Tagen)", "Übernommen, aber seitdem nichts passiert? Der Betreuer bekommt einmal eine DM (bearbeiten oder freigeben). 0 = aus.")}
             {num("applications.draftReminderDays", "Erinnerung an Entwürfe nach (Tagen)", "Einmalige DM mit Link zum Weitermachen. 0 = aus.")}
             {num("followup.reminderDays", "Rückfrage: Erinnerung nach (Tagen)", "Hat das Team „Antwort erwartet“ markiert, erinnert der Bot den Bewerber einmal. 0 = aus.")}
             {num("followup.closeDays", "Rückfrage: „schließen?“ nach (Tagen)", "Dann steht die Bewerbung in der Team-Übersicht unter „Keine Antwort – schließen?“.")}

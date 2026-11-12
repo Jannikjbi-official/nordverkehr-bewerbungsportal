@@ -10,6 +10,7 @@ const url = new URL(process.env.DATABASE_URL!);
 url.pathname = "/nordverkehr_featuretest";
 process.env.DATABASE_URL = url.toString();
 process.env.DISCORD_BOT_TOKEN = ""; // nichts an Discord schicken
+process.env.DISCORD_GUILD_ID ||= "523456789012345678"; // für Rollen-Jobs (werden nur angelegt, nie ausgeführt)
 const { db } = await import("../src/lib/db");
 const { ensureIndexes } = await import("../src/lib/setup/indexes");
 const { bookSlot, sendInterviewReminders, SlotError } = await import("../src/lib/team/slots");
@@ -485,6 +486,42 @@ try {
     const rule = await changelogRule();
     const todays = CHANGELOG.filter((e) => e.date === todayBerlin());
     check(rule.through === todayBerlin() && todays.every((e) => publishedEntries(new Date(), rule).includes(e)), "Changelog: „Jetzt veröffentlichen“ macht den heutigen Eintrag sichtbar");
+  }
+
+  // ── Annahme: Plätze, Rollen, Präfix, Gruß · Claim-Erinnerung
+  {
+    const { saveSettings } = await import("../src/lib/settings");
+    await saveSettings(
+      { "discord.autoRoleOnAccept": true, "discord.acceptExtraRoleIds": "323456789012345678", "discord.welcomeChannelId": "423456789012345678", "interview.minStars": 0 },
+      team.id,
+    );
+    const sp = await db.position.create({ data: { typeId: type.id, slug: "seats", title: "Plätze", tagline: "x", description: "x", status: "OPEN", seats: 1, acceptRoleId: "123456789012345678", nickPrefix: "[S]" } });
+    const su = await mk("Sina", "100000000000000095");
+    const sa = await db.application.create({ data: { userId: su.id, positionId: sp.id, status: "IN_REVIEW", publicId: "NV-S-1", submittedAt: new Date() } });
+    await changeStatus({ applicationId: sa.id, to: "ACCEPTED", actorId: team.id });
+    const spAfter = await db.position.findUniqueOrThrow({ where: { id: sp.id } });
+    check(spAfter.seats === 0 && spAfter.status === "CLOSED", "Letzter Platz vergeben → Stelle automatisch geschlossen");
+    const jobs = await db.outboxJob.findMany({ where: { applicationId: sa.id } });
+    const types = jobs.map((j) => j.type);
+    check(types.filter((t) => t === "ADD_ROLE").length === 2 && types.includes("SET_NICK"), "Annahme: Rolle der Stelle + Zusatzrolle + Namens-Präfix");
+    check(jobs.some((j) => j.type === "CHANNEL_MESSAGE" && JSON.stringify(j.payload).includes("Willkommen im Team") && JSON.stringify(j.payload).includes('"users":["100000000000000095"]')), "Annahme: Willkommensgruß pingt nur die neue Person");
+    await changeStatus({ applicationId: sa.id, to: "IN_REVIEW", actorId: team.id });
+    const back = await db.outboxJob.findMany({ where: { applicationId: sa.id, type: { in: ["REMOVE_ROLE", "SET_NICK"] } } });
+    check(back.filter((j) => j.type === "REMOVE_ROLE").length === 2 && back.filter((j) => j.type === "SET_NICK").length === 2, "Zurückgenommen: Rollen & Präfix werden entfernt");
+    check((await db.position.findUniqueOrThrow({ where: { id: sp.id } })).seats === 1, "Zurückgenommen: Platz wieder frei");
+
+    // Claim-Erinnerung: seit 4 Tagen betreut, nichts passiert → einmal DM
+    const { nudgeIdleClaims } = await import("../src/lib/team/claim-nudge");
+    const nu = await mk("Nora", "100000000000000096");
+    const old = new Date(Date.now() - 4 * 86_400_000);
+    const na = await db.application.create({ data: { userId: nu.id, positionId: pos.id, status: "SUBMITTED", publicId: "NV-N-1", submittedAt: old, claimedById: team.id, claimedAt: old } });
+    const n1 = await nudgeIdleClaims(db);
+    const n2 = await nudgeIdleClaims(db);
+    check(n1 >= 1 && n2 === 0 && (await db.outboxJob.count({ where: { applicationId: na.id, type: "DM" } })) === 1, "Claim-Erinnerung: einmal DM an den Betreuer");
+    await db.message.create({ data: { applicationId: na.id, direction: "TEAM_TO_APPLICANT", body: "Hi", authorId: team.id } });
+    await db.application.update({ where: { id: na.id }, data: { claimRemindedAt: null } });
+    check((await nudgeIdleClaims(db)) === 0, "Claim-Erinnerung: nicht, wenn seitdem geschrieben wurde");
+    await saveSettings({ "discord.autoRoleOnAccept": false, "discord.acceptExtraRoleIds": "", "discord.welcomeChannelId": "", "interview.minStars": 3 }, team.id);
   }
 
   // ── Feedback (eins pro Bewerbung)

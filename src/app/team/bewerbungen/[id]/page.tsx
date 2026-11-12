@@ -32,7 +32,7 @@ import { canSeePosition, viewerOf } from "@/lib/team/visibility";
 import { RatingPanel } from "@/components/team/RatingPanel";
 import { OnboardingPanel } from "@/components/team/OnboardingPanel";
 import { onboardingItems, readOnboarding } from "@/lib/team/onboarding";
-import { cleanScores, formatScore, summarizeRatings } from "@/lib/team/ratings";
+import { cleanScores, criteriaFor, formatScore, summarizeRatings } from "@/lib/team/ratings";
 import { claimAndScore, isScoringPending, readAiRating, scoringBlockedReason } from "@/lib/ai/scoring";
 import { after } from "next/server";
 import { applyGuildState, guildStateKnown } from "@/lib/applications/guild-watch";
@@ -132,7 +132,8 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
   const myVote = app.votes.find((v) => v.userId === me.id)?.value ?? null;
   const aiEnabled = settings["ai.enabled"] && isAiConfigured();
   const myRating = app.ratings.find((r) => r.userId === me.id);
-  const ratingSummary = summarizeRatings(app.ratings);
+  const criteria = criteriaFor(app.position);
+  const ratingSummary = summarizeRatings(app.ratings, criteria);
   // Phase 2 (Gespräch) erst ab X Sternen Team-Schnitt
   const interviewBlock = ["SUBMITTED", "IN_REVIEW"].includes(app.status) ? interviewBlockText(ratingSummary.overall, settings["interview.minStars"], formatScore) : null;
   const statusTargets = allowedTeamTargets(app.status).filter((s) => !(s === "INTERVIEW" && interviewBlock));
@@ -539,15 +540,16 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
 
             <RatingPanel
               applicationId={app.id}
-              mine={cleanScores(myRating?.scores)}
+              criteria={criteria}
+              mine={cleanScores(myRating?.scores, criteria)}
               myNote={myRating?.note ?? null}
               summary={ratingSummary}
               ai={aiView}
               bot={bot}
               isAdmin={access.isAdmin}
               raters={app.ratings
-                .filter((r) => r.userId !== me.id || Object.keys(cleanScores(r.scores)).length)
-                .map((r) => ({ name: r.user.globalName || r.user.username, avg: summarizeRatings([r]).overall }))}
+                .filter((r) => r.userId !== me.id || Object.keys(cleanScores(r.scores, criteria)).length)
+                .map((r) => ({ name: r.user.globalName || r.user.username, avg: summarizeRatings([r], criteria).overall }))}
             />
                     <div className="nv-divider" />
                     <p className="nv-mono flex items-center justify-between gap-2">

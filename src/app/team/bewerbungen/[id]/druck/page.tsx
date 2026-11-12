@@ -13,7 +13,7 @@ import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { STATUS_LABEL } from "@/lib/applications/status";
 import { formatAnswerForDisplay, type AnswerValue } from "@/lib/applications/form";
-import { RATING_CRITERIA, cleanScores, formatScore, summarizeRatings } from "@/lib/team/ratings";
+import { STANDARD_CRITERIA, cleanScores, criteriaFor, formatScore, summarizeRatings } from "@/lib/team/ratings";
 import { readAiRating } from "@/lib/ai/scoring";
 
 export const metadata: Metadata = { title: "Bewerbung drucken" };
@@ -62,7 +62,9 @@ async function PrintView({ params, searchParams }: PageProps<"/team/bewerbungen/
   const sections = new Map<string, typeof app.answers>();
   for (const a of app.answers) sections.set(a.sectionTitle, [...(sections.get(a.sectionTitle) ?? []), a]);
   const name = app.user.globalName || app.user.username;
-  const rating = summarizeRatings(app.ratings);
+  const criteria = criteriaFor(app.position);
+  const rating = summarizeRatings(app.ratings, criteria);
+  const standardCriteria = criteria === STANDARD_CRITERIA;
   const aiStored = readAiRating(app.aiRating);
   const ai = aiStored && !("blocked" in aiStored) ? aiStored : null;
   const aiScores = ai ? cleanScores(ai.scores) : null;
@@ -125,11 +127,11 @@ async function PrintView({ params, searchParams }: PageProps<"/team/bewerbungen/
               </p>
               <table className="mt-2 w-full text-left">
                 <tbody>
-                  {RATING_CRITERIA.map((c) => (
+                  {criteria.map((c) => (
                     <tr key={c.key} className="border-b border-line">
                       <td className="py-1">{c.label}</td>
-                      <td className="py-1 text-right tabular-nums">{formatScore(rating.perCriterion[c.key].avg)}</td>
-                      {aiScores && <td className="py-1 text-right tabular-nums text-muted">KI {aiScores[c.key] ?? "–"}</td>}
+                      <td className="py-1 text-right tabular-nums">{formatScore(rating.perCriterion[c.key]?.avg ?? null)}</td>
+                      {aiScores && standardCriteria && <td className="py-1 text-right tabular-nums text-muted">KI {aiScores[c.key] ?? "–"}</td>}
                     </tr>
                   ))}
                 </tbody>

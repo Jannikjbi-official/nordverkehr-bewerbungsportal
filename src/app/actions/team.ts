@@ -213,8 +213,10 @@ export async function rateAction(input: z.input<typeof ratingSchema>): Promise<A
     const denied = await guardApp(user, access, p.data.applicationId);
     if (denied) return denied;
   }
-  const { cleanScores } = await import("@/lib/team/ratings");
-  const scores = cleanScores(p.data.scores);
+  const { cleanScores, criteriaFor } = await import("@/lib/team/ratings");
+  const app = await db.application.findUnique({ where: { id: p.data.applicationId }, select: { position: { select: { ratingCriteria: true } } } });
+  if (!app) return { ok: false, error: "Bewerbung nicht gefunden." };
+  const scores = cleanScores(p.data.scores, criteriaFor(app.position));
   const note = p.data.note || null;
   const where = { applicationId_userId: { applicationId: p.data.applicationId, userId: user.id } };
   if (!Object.keys(scores).length && !note) {

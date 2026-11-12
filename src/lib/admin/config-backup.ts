@@ -56,6 +56,10 @@ export const backupSchema = z.object({
       minProVotes: z.number().int().nullable(),
       requireAdminApproval: z.boolean(),
       teamRoleIds: z.array(z.string()).max(10),
+      // Neuere Felder optional, damit ältere Exporte weiter importierbar sind
+      ratingCriteria: z.array(str(200)).max(10).optional(),
+      seats: z.number().int().nullable().optional(),
+      nickPrefix: z.string().max(12).nullable().optional(),
     }),
   ).max(50),
   sections: z.array(
@@ -103,6 +107,9 @@ export async function exportConfig(db: PrismaClient): Promise<Backup> {
       minProVotes: p.minProVotes,
       requireAdminApproval: !!p.requireAdminApproval,
       teamRoleIds: p.teamRoleIds ?? [],
+      ratingCriteria: p.ratingCriteria ?? [],
+      seats: p.seats ?? null,
+      nickPrefix: p.nickPrefix ?? null,
     })),
     sections: sections.map((s) => ({
       key: s.key,

@@ -31,6 +31,9 @@ interface PositionData {
   minProVotes: number | null;
   requireAdminApproval: boolean;
   teamRoleIds: string[];
+  ratingCriteria: string[];
+  seats: number | null;
+  nickPrefix: string | null;
 }
 
 /** ISO → Wert für <input type="datetime-local"> (lokale Zeit des Browsers) */
@@ -62,6 +65,9 @@ const EMPTY: PositionData = {
   minProVotes: null,
   requireAdminApproval: false,
   teamRoleIds: [],
+  ratingCriteria: [],
+  seats: null,
+  nickPrefix: null,
 };
 
 const slugify = (s: string) =>
@@ -80,6 +86,7 @@ export function PositionForm({ position, applicationCount = 0 }: { position: Pos
   const [p, setP] = useState<PositionData>(position ?? EMPTY);
   const [tasks, setTasks] = useState((position?.tasks ?? []).join("\n"));
   const [ivq, setIvq] = useState((position?.interviewQuestions ?? []).join("\n"));
+  const [crit, setCrit] = useState((position?.ratingCriteria ?? []).join("\n"));
   const [reqs, setReqs] = useState((position?.requirements ?? []).join("\n"));
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -94,7 +101,7 @@ export function PositionForm({ position, applicationCount = 0 }: { position: Pos
   function save() {
     setError(null);
     start(async () => {
-      const res = await savePositionAction({ ...p, tasks: lines(tasks), requirements: lines(reqs), interviewQuestions: lines(ivq), acceptRoleId: p.acceptRoleId || null });
+      const res = await savePositionAction({ ...p, tasks: lines(tasks), requirements: lines(reqs), interviewQuestions: lines(ivq), ratingCriteria: lines(crit), acceptRoleId: p.acceptRoleId || null, nickPrefix: p.nickPrefix?.trim() || null });
       if (!res.ok) return setError(res.error);
       setSaved(true);
       if (!p.id) router.push(`/team/positionen/${res.data.id}`);
@@ -157,6 +164,23 @@ export function PositionForm({ position, applicationCount = 0 }: { position: Pos
           <textarea id="p-ivq" className="nv-input text-sm" rows={4} placeholder="Leer = Standard-Fragen aus den Einstellungen" value={ivq} onChange={(e) => { setIvq(e.target.value); setSaved(false); }} />
           <p className="nv-help mt-1">Nur für das Team: erscheinen im Reiter „Gespräch“ der Bewerbung zum Abhaken, mit Notizen pro Frage.</p>
         </div>
+        <div className="sm:col-span-2">
+          <label htmlFor="p-crit" className="nv-field-label">
+            Eigener Bewertungsbogen (ein Kriterium pro Zeile)
+          </label>
+          <textarea
+            id="p-crit"
+            className="nv-input text-sm"
+            rows={4}
+            placeholder={"Leer = Standard-Kriterien\nz. B. Regelkenntnis | Kennt die Serverregeln sicher?"}
+            value={crit}
+            onChange={(e) => {
+              setCrit(e.target.value);
+              setSaved(false);
+            }}
+          />
+          <p className="nv-help mt-1">Format „Kriterium | Hinweis“ (Hinweis optional), höchstens 10. Ersetzt die Standard-Kriterien für diese Stelle. KI-Punkte gibt es nur für die Standard-Kriterien.</p>
+        </div>
       </div>
 
       <fieldset>
@@ -201,6 +225,20 @@ export function PositionForm({ position, applicationCount = 0 }: { position: Pos
             Discord-Rolle bei Annahme
           </label>
           <input id="p-role" className="nv-input font-mono text-sm" inputMode="numeric" placeholder="Rollen-ID (optional)" value={p.acceptRoleId ?? ""} onChange={(e) => set("acceptRoleId", e.target.value.trim() || null)} />
+        </div>
+        <div>
+          <label htmlFor="p-nick" className="nv-field-label">
+            Namens-Präfix bei Annahme
+          </label>
+          <input id="p-nick" className="nv-input text-sm" maxLength={12} placeholder="z. B. [Support]" value={p.nickPrefix ?? ""} onChange={(e) => set("nickPrefix", e.target.value || null)} />
+          <p className="nv-help mt-1">Steht dann vor dem Server-Namen. Braucht „Spitznamen verwalten“ und die Einstellung „Rolle bei Annahme vergeben“.</p>
+        </div>
+        <div>
+          <label htmlFor="p-seats" className="nv-field-label">
+            Freie Plätze
+          </label>
+          <input id="p-seats" type="number" min={0} className="nv-input" placeholder="unbegrenzt" value={p.seats ?? ""} onChange={(e) => set("seats", optNum(e.target.value))} />
+          <p className="nv-help mt-1">Jede Annahme zieht einen Platz ab (zurückgenommen = wieder frei). Bei 0 schließt die Stelle automatisch. Leer = unbegrenzt.</p>
         </div>
         <div>
           <label htmlFor="p-quiz" className="nv-field-label">

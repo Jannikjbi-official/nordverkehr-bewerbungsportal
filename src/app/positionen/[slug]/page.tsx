@@ -83,6 +83,9 @@ async function PositionDetail({ params }: Pick<PageProps<"/positionen/[slug]">, 
               <p className="mt-2 text-xs text-muted">Bewerbungen bis {formatDay(position.closesAt)} möglich.</p>
             )}
             {!open && position.opensAt && <p className="mt-2 text-xs text-muted">Öffnet voraussichtlich am {formatDay(position.opensAt)}.</p>}
+            {open && typeof position.seats === "number" && position.seats > 0 && (
+              <p className="mt-2 text-xs text-muted">{position.seats === 1 ? "Nur noch 1 Platz frei." : `Noch ${position.seats} Plätze frei.`}</p>
+            )}
             <dl className="mt-5 space-y-2 text-sm">
               <div className="flex justify-between gap-3">
                 <dt className="text-muted">Mindestalter</dt>

@@ -84,6 +84,13 @@ export const settingsSchema = z.object({
   /** Changelog: per Knopf bis zu diesem Tag (YYYY-MM-DD) sofort veröffentlicht */
   "changelog.publishedThrough": z.string().regex(/^(\d{4}-\d{2}-\d{2})?$/).default(""),
   "discord.autoRoleOnAccept": bool(false),
+  /** Bei Annahme zusätzlich diese Rollen (z. B. allgemeine Team-Rolle), IDs durch Komma/Leerzeichen getrennt */
+  "discord.acceptExtraRoleIds": z.string().trim().regex(/^[\d\s,]*$/, "Nur Rollen-IDs, durch Komma getrennt.").max(300).default(""),
+  /** Wird eine Annahme zurückgenommen: Rollen und Namens-Präfix wieder entfernen */
+  "discord.revertOnUnaccept": bool(true),
+  /** Willkommensnachricht bei Annahme in diesem Kanal (leer = aus) */
+  "discord.welcomeChannelId": channel(""),
+  "discord.welcomeMessage": z.string().trim().min(1).max(1000).default("👋 Willkommen im Team, {mention}! Ab jetzt als **{stelle}** dabei – schön, dass du da bist."),
   /** Zu jeder neuen Bewerbung einen Thread im Bewerbungs-Kanal starten (Bot braucht „Öffentliche Threads erstellen“) */
   "discord.threadPerApplication": bool(false),
   /** Interne Kommentare aus dem Portal in den Thread spiegeln */
@@ -110,6 +117,8 @@ export const settingsSchema = z.object({
   "discord.leadChannelId": channel("1569736564433494167"),
   /** Ab wie vielen Tagen ohne Team-Aktivität eine Bewerbung als „liegengeblieben“ gilt */
   "team.staleDays": z.coerce.number().int().min(1).max(30).default(3),
+  /** Betreuer bekommt eine DM, wenn seit dem Claim so viele Tage nichts passiert ist (0 = aus) */
+  "team.claimNudgeDays": z.coerce.number().int().min(0).max(30).default(3),
   /** Ab wie vielen Tagen die Leitung Bescheid bekommt */
   "team.escalateDays": z.coerce.number().int().min(2).max(60).default(7),
 

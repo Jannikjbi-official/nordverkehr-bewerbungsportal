@@ -90,6 +90,9 @@ async function Editor({ params }: Pick<PageProps<"/team/positionen/[id]">, "para
             quizMinScore: position.quizMinScore ?? null,
             interviewQuestions: position.interviewQuestions ?? [],
             minProVotes: position.minProVotes ?? null,
+            ratingCriteria: position.ratingCriteria ?? [],
+            seats: position.seats ?? null,
+            nickPrefix: position.nickPrefix ?? null,
             requireAdminApproval: !!position.requireAdminApproval,
             teamRoleIds: position.teamRoleIds ?? [],
           }}

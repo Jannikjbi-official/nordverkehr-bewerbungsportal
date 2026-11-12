@@ -124,6 +124,12 @@ function actionRow(action: { label: string; customId: string; emoji?: string }, 
   return { type: 1, components };
 }
 
+/** Willkommensgruß im Teamchat: Text mit Avatar, pingt nur die neue Person. */
+export function buildWelcomeMessage(body: string, discordId: string, avatar: string | null): RESTPostAPIChannelMessageJSONBody {
+  const msg = v2Message(BRAND_COLOR, [section([`-# NORDVERKEHR // TEAM`, truncate(body, 1500)], avatar || LOGO_URL)]);
+  return { ...msg, allowed_mentions: { parse: [], users: [discordId] } };
+}
+
 // ─── Bewerbungs-Kanal ─────────────────────────────────────────
 
 export interface LogEmbedInput {

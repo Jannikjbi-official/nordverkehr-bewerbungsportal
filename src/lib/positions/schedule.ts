@@ -18,6 +18,8 @@ export interface ScheduledPosition {
   status: Status;
   opensAt: Date | null;
   closesAt: Date | null;
+  /** Kontingent: 0 = alle Plätze vergeben → nicht automatisch öffnen */
+  seats?: number | null;
 }
 
 export interface Transition {
@@ -32,7 +34,7 @@ export function dueTransitions(positions: ScheduledPosition[], now: Date): Trans
   for (const p of positions) {
     const closed = !!p.closesAt && p.closesAt <= now;
     if (p.status === "OPEN" && closed) out.push({ id: p.id, to: "CLOSED", reason: "closesAt" });
-    else if (p.status === "CLOSED" && p.opensAt && p.opensAt <= now && !closed) out.push({ id: p.id, to: "OPEN", reason: "opensAt" });
+    else if (p.status === "CLOSED" && p.opensAt && p.opensAt <= now && !closed && p.seats !== 0) out.push({ id: p.id, to: "OPEN", reason: "opensAt" });
   }
   return out;
 }
@@ -62,7 +64,7 @@ export const countingWhere = (positionId: string) => ({ positionId, submittedAt:
 export async function applyPositionSchedule(db: PrismaClient, now = new Date()) {
   const positions = await db.position.findMany({
     where: { status: { in: ["OPEN", "CLOSED"] }, OR: [{ opensAt: { not: null } }, { closesAt: { not: null } }] },
-    select: { id: true, title: true, slug: true, status: true, opensAt: true, closesAt: true },
+    select: { id: true, title: true, slug: true, status: true, opensAt: true, closesAt: true, seats: true },
   });
   const due = dueTransitions(positions as ScheduledPosition[], now);
   const logIds: string[] = [];
@@ -125,4 +127,29 @@ export async function notifyPositionOpened(db: PrismaClient, position: { id: str
 async function refreshJobs(db: PrismaClient) {
   const { refreshJobsPostQuietly } = await import("@/lib/discord/jobs-post");
   await refreshJobsPostQuietly(db).catch((e) => console.error("[positions] Stellenaufruf", e));
+}
+
+/**
+ * Kontingent („Freie Plätze“): Annahme zieht einen Platz ab, zurückgenommene Annahme
+ * gibt ihn zurück. Bei 0 schließt die Stelle automatisch (Bot-Log). Testbewerbungen zählen nicht.
+ */
+export async function adjustSeats(db: PrismaClient, positionId: string, delta: -1 | 1) {
+  const p = await db.position.findUnique({ where: { id: positionId }, select: { id: true, title: true, status: true, seats: true } });
+  if (!p || p.seats === null || p.seats === undefined) return { seats: null as number | null, closed: false };
+  // Atomar: nie unter 0
+  const res =
+    delta < 0
+      ? await db.position.updateMany({ where: { id: p.id, seats: { gt: 0 } }, data: { seats: { decrement: 1 } } })
+      : await db.position.updateMany({ where: { id: p.id, seats: { not: null } }, data: { seats: { increment: 1 } } });
+  if (!res.count) return { seats: p.seats, closed: false };
+  const now = await db.position.findUniqueOrThrow({ where: { id: p.id }, select: { seats: true, status: true } });
+  if (delta < 0 && now.seats === 0 && now.status === "OPEN") {
+    await db.position.updateMany({ where: { id: p.id, status: "OPEN" }, data: { status: "CLOSED", opensAt: null, closesAt: null } });
+    await db.auditLog.create({ data: { action: "position.auto", targetType: "position", targetId: p.id, meta: { to: "CLOSED", reason: "seats" } } });
+    const job = await botLog(`🔴 **${p.title}** wurde automatisch geschlossen – alle Plätze sind vergeben.`, { tone: "warn" });
+    if (job) await runOutbox({ ids: [job] }).catch(() => {});
+    await refreshJobs(db);
+    return { seats: 0, closed: true };
+  }
+  return { seats: now.seats, closed: false };
 }

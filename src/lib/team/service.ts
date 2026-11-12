@@ -102,20 +102,49 @@ export async function changeStatus(opts: {
     });
 
     const e = env();
-    if (opts.to === "ACCEPTED" && settings["discord.autoRoleOnAccept"] && app.position.acceptRoleId && e.DISCORD_GUILD_ID) {
-      const job = await enqueue(
-        {
-          type: "ADD_ROLE",
+    // Annahme: Rollen (Stelle + zusätzliche) und Namens-Präfix; Zurücknehmen: wieder entfernen
+    const accepting = opts.to === "ACCEPTED";
+    const reverting = app.status === "ACCEPTED" && !accepting && settings["discord.revertOnUnaccept"];
+    if ((accepting || reverting) && settings["discord.autoRoleOnAccept"] && e.DISCORD_GUILD_ID) {
+      const { acceptRoles, enqueueMemberChanges } = await import("@/lib/discord/roles");
+      jobIds.push(
+        ...(await enqueueMemberChanges(tx, {
+          mode: accepting ? "accept" : "revert",
           guildId: e.DISCORD_GUILD_ID,
           discordUserId: app.user.discordId,
-          roleId: app.position.acceptRoleId,
-          reason: `Bewerbung ${app.publicId} angenommen`,
+          roles: acceptRoles(app.position, settings["discord.acceptExtraRoleIds"]),
+          nickPrefix: app.position.nickPrefix,
+          fallbackName: app.user.globalName || app.user.username,
+          applicationId: app.id,
+          publicId: app.publicId,
+        })),
+      );
+    }
+    // Willkommensgruß im Teamchat (pingt nur die neue Person)
+    if (accepting && settings["discord.welcomeChannelId"] && !app.isTest) {
+      const { welcomeText } = await import("@/lib/discord/roles");
+      const { buildWelcomeMessage } = await import("@/lib/messages/embed");
+      const job = await enqueue(
+        {
+          type: "CHANNEL_MESSAGE",
+          kind: "summary",
+          channelId: settings["discord.welcomeChannelId"],
+          message: buildWelcomeMessage(
+            welcomeText(settings["discord.welcomeMessage"], { discordId: app.user.discordId, name: app.user.globalName || app.user.username, position: app.position.title }),
+            app.user.discordId,
+            avatarUrl(app.user.discordId, app.user.avatar, 128),
+          ),
         },
         { tx, applicationId: app.id },
       );
       jobIds.push(job.id);
     }
   });
+  // Kontingent: Annahme belegt einen Platz, Zurücknehmen gibt ihn frei
+  if (!app.isTest && app.position.seats !== null && (opts.to === "ACCEPTED" || app.status === "ACCEPTED")) {
+    const { adjustSeats } = await import("@/lib/positions/schedule");
+    await adjustSeats(db, app.positionId, opts.to === "ACCEPTED" ? -1 : 1).catch((e) => console.error("[seats]", e));
+  }
   // Termin-Abgleich (Discord-Event, Erinnerung an den Betreuer) – nur wenn ein Gespräch beteiligt ist
   if (app.status === "INTERVIEW" || opts.to === "INTERVIEW" || app.interviewAt || app.discordEventId || app.teamReminderJobId) {
     const { syncInterviewLater } = await import("@/lib/team/interview-sync");
@@ -139,9 +168,12 @@ export function acceptRuleText(position: { minProVotes: number | null; requireAd
  */
 export async function interviewBlockReason(applicationId: string, minStars: number) {
   if (!minStars) return null;
-  const { summarizeRatings, formatScore } = await import("@/lib/team/ratings");
-  const ratings = await db.rating.findMany({ where: { applicationId }, select: { scores: true } });
-  return interviewBlockText(summarizeRatings(ratings).overall, minStars, formatScore);
+  const { summarizeRatings, formatScore, criteriaFor } = await import("@/lib/team/ratings");
+  const [ratings, app] = await Promise.all([
+    db.rating.findMany({ where: { applicationId }, select: { scores: true } }),
+    db.application.findUnique({ where: { id: applicationId }, select: { position: { select: { ratingCriteria: true } } } }),
+  ]);
+  return interviewBlockText(summarizeRatings(ratings, criteriaFor(app?.position)).overall, minStars, formatScore);
 }
 
 /** Text für die Hürde (rein, für Tests und die Anzeige in der Detailansicht). */
