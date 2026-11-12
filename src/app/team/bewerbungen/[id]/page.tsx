@@ -369,7 +369,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
                 ? [
                     {
                       key: "ki",
-                      label: "KI-Zusammenfassung",
+                      label: "KI",
                       content: (
                         <div className="p-5">
                           <AiPanel applicationId={app.id} cachedSummary={app.aiSummary} cachedAt={app.aiSummaryAt?.toISOString() ?? null} />
@@ -550,7 +550,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
           />
 
           {/* Discord-Vorschau des Nachrichtenfelds (auf breiten Bildschirmen hier, sonst direkt unter dem Feld) */}
-          <div id="composer-preview-slot" />
+          <div id="composer-preview-slot" className="xl:sticky xl:top-28" />
         </aside>
       </div>
     </div>
