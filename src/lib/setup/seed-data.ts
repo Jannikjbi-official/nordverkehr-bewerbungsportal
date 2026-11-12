@@ -3,6 +3,7 @@
  */
 import type { PositionStatus, TemplateCategory } from "@prisma/client";
 import { GENERAL_SECTIONS, POSITION_SECTIONS, type SeedQuestion, type SeedSection } from "@/lib/setup/questions";
+import { POSITION_QUIZ } from "@/lib/setup/quiz-questions";
 
 export { GENERAL_SECTIONS, POSITION_SECTIONS, type SeedQuestion, type SeedSection };
 
@@ -53,7 +54,7 @@ export const POSITIONS: SeedPosition[] = [
       "Funktionierendes Mikrofon, TeamSpeak & SaltyChat",
       "Regelmäßige Verfügbarkeit (mind. 5 Std./Woche)",
     ],
-    sections: POSITION_SECTIONS["support"] ?? [],
+    sections: [...(POSITION_SECTIONS["support"] ?? []), ...(POSITION_QUIZ["support"] ? [POSITION_QUIZ["support"]] : [])],
   },
   {
     slug: "moderator",
@@ -75,7 +76,7 @@ export const POSITIONS: SeedPosition[] = [
       "Neutralität – auch bei Freunden",
       "Funktionierendes Mikrofon, TeamSpeak & SaltyChat",
     ],
-    sections: POSITION_SECTIONS["moderator"] ?? [],
+    sections: [...(POSITION_SECTIONS["moderator"] ?? []), ...(POSITION_QUIZ["moderator"] ? [POSITION_QUIZ["moderator"]] : [])],
   },
   {
     slug: "entwickler",
@@ -97,7 +98,7 @@ export const POSITIONS: SeedPosition[] = [
       "Git-Grundlagen",
       "Portfolio oder GitHub-Profil",
     ],
-    sections: POSITION_SECTIONS["entwickler"] ?? [],
+    sections: [...(POSITION_SECTIONS["entwickler"] ?? []), ...(POSITION_QUIZ["entwickler"] ? [POSITION_QUIZ["entwickler"]] : [])],
   },
   {
     slug: "media",
@@ -119,7 +120,7 @@ export const POSITIONS: SeedPosition[] = [
       "Gespür für Stil und Timing",
       "Beispiele deiner Arbeit",
     ],
-    sections: POSITION_SECTIONS["media"] ?? [],
+    sections: [...(POSITION_SECTIONS["media"] ?? []), ...(POSITION_QUIZ["media"] ? [POSITION_QUIZ["media"]] : [])],
   },
   {
     slug: "mapper",
@@ -141,7 +142,7 @@ export const POSITIONS: SeedPosition[] = [
       "Screenshots bisheriger Arbeiten",
       "Geduld für Details",
     ],
-    sections: POSITION_SECTIONS["mapper"] ?? [],
+    sections: [...(POSITION_SECTIONS["mapper"] ?? []), ...(POSITION_QUIZ["mapper"] ? [POSITION_QUIZ["mapper"]] : [])],
   },
   {
     slug: "eventteam",
@@ -157,7 +158,7 @@ export const POSITIONS: SeedPosition[] = [
       "Feedback einsammeln und auswerten",
     ],
     requirements: ["Mindestalter 18 Jahre", "Organisationstalent", "Kreativität und Zuverlässigkeit"],
-    sections: POSITION_SECTIONS["eventteam"] ?? [],
+    sections: [...(POSITION_SECTIONS["eventteam"] ?? []), ...(POSITION_QUIZ["eventteam"] ? [POSITION_QUIZ["eventteam"]] : [])],
   },
 ];
 

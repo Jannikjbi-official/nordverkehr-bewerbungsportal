@@ -109,3 +109,60 @@ describe("Einstellungen sichern (#12)", () => {
     expect(backupSchema.safeParse({ version: 1, exportedAt: "x", settings: {}, positions: [], sections: [], templates: [] }).success).toBe(true);
   });
 });
+
+import { POSITION_QUIZ } from "@/lib/setup/quiz-questions";
+import { POSITION_SECTIONS } from "@/lib/setup/questions";
+import { isPublished } from "@/lib/changelog";
+import { claimNoticeText } from "@/lib/team/claim-notice";
+
+describe("Regel-Quiz pro Stelle", () => {
+  it("jede Stelle hat ein Quiz mit sechs gültigen Fragen", () => {
+    for (const slug of Object.keys(POSITION_SECTIONS)) {
+      const q = POSITION_QUIZ[slug];
+      expect(q, slug).toBeDefined();
+      expect(q.key).toBe(`${slug}.quiz`);
+      expect(q.questions).toHaveLength(6);
+      for (const x of q.questions) {
+        expect(x.type).toBe("QUIZ");
+        expect(x.options, x.key).toHaveLength(4);
+        expect(x.options!.filter((o) => o === x.correctOption), x.key).toHaveLength(1);
+        expect(new Set(x.options).size).toBe(4);
+        expect(x.key.startsWith(`${slug}.`)).toBe(true);
+      }
+    }
+  });
+  it("Keys sind eindeutig und die richtige Antwort steht nicht immer an derselben Stelle", () => {
+    const all = Object.values(POSITION_QUIZ).flatMap((s) => s.questions);
+    expect(new Set(all.map((q) => q.key)).size).toBe(all.length);
+    const positions = new Set(all.map((q) => q.options!.indexOf(q.correctOption!)));
+    expect(positions.size).toBeGreaterThan(2);
+  });
+});
+
+describe("Changelog veröffentlichen", () => {
+  const e = { date: "2026-11-12" };
+  it("Standard 00:00: erst nach Ende des Tages", () => {
+    expect(isPublished(e, new Date("2026-11-12T20:00:00Z"))).toBe(false); // 21:00 am selben Tag
+    expect(isPublished(e, new Date("2026-11-12T23:01:00Z"))).toBe(true); // 00:01 am Folgetag
+  });
+  it("Uhrzeit am selben Tag", () => {
+    const rule = { time: "20:00", through: "" };
+    expect(isPublished(e, new Date("2026-11-12T18:59:00Z"), rule)).toBe(false); // 19:59
+    expect(isPublished(e, new Date("2026-11-12T19:00:00Z"), rule)).toBe(true); // 20:00
+    expect(isPublished({ date: "2026-11-13" }, new Date("2026-11-12T22:00:00Z"), rule)).toBe(false); // Zukunft
+  });
+  it("„Jetzt veröffentlichen“ gilt bis einschließlich dem Tag", () => {
+    const rule = { time: "00:00", through: "2026-11-12" };
+    expect(isPublished(e, new Date("2026-11-12T08:00:00Z"), rule)).toBe(true);
+    expect(isPublished({ date: "2026-11-13" }, new Date("2026-11-13T08:00:00Z"), rule)).toBe(false);
+  });
+});
+
+describe("Claim-Nachricht an den Bewerber", () => {
+  it("nennt Betreuer, Stelle und ID", () => {
+    const t = claimNoticeText("Anna", "Support", "NV-2026-0001", "Jonas", false);
+    expect(t).toContain("**Jonas**");
+    expect(t).toContain("**Support** (NV-2026-0001)");
+    expect(claimNoticeText("Anna", "Support", null, "Lea", true)).toContain("ab sofort kümmert sich **Lea**");
+  });
+});

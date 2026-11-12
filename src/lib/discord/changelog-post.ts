@@ -1,26 +1,41 @@
 /**
  * Changelog auf Discord: Jeder veröffentlichte Tag (siehe lib/changelog.ts)
- * wird genau einmal gepostet – vom täglichen Cron um 0 Uhr.
+ * wird genau einmal gepostet – von den stündlichen Zustellläufen, sobald die
+ * eingestellte Uhrzeit erreicht ist, oder sofort per Admin-Knopf.
  *
  * Markierung (`Setting changelog:<id>`, eindeutiger Key) und Versandauftrag
  * entstehen in einer Transaktion: Nur eine Instanz gewinnt, und bricht etwas
  * ab, wird der Eintrag beim nächsten Lauf erneut versucht.
  */
 import type { PrismaClient } from "@prisma/client";
-import { CHANGELOG, publishedEntries } from "@/lib/changelog";
+import { CHANGELOG, publishedEntries, todayBerlin, type PublishRule } from "@/lib/changelog";
 import { enqueue, runOutbox } from "@/lib/discord/outbox-db";
 import { buildChangelogMessage } from "@/lib/messages/embed";
 import { getSettings } from "@/lib/settings";
 import { publicEnv } from "@/lib/env";
 
-/** Veröffentlichte, noch nicht gepostete Tage posten (älteste zuerst). */
-export async function postNewChangelogEntries(db: PrismaClient, now = new Date()) {
+/** Veröffentlichungsregel aus den Einstellungen. */
+export async function changelogRule(): Promise<PublishRule> {
   const s = await getSettings();
+  return { time: s["changelog.publishTime"], through: s["changelog.publishedThrough"] };
+}
+
+/** Admin-Knopf: alles bis heute sofort veröffentlichen (Website) und posten – auch in der Nachtruhe. */
+export async function publishChangelogNow(db: PrismaClient, actorId: string, now = new Date()) {
+  const { saveSettings } = await import("@/lib/settings");
+  await saveSettings({ "changelog.publishedThrough": todayBerlin(now) }, actorId);
+  return postNewChangelogEntries(db, now, { force: true });
+}
+
+/** Veröffentlichte, noch nicht gepostete Tage posten (älteste zuerst). */
+export async function postNewChangelogEntries(db: PrismaClient, now = new Date(), opts: { force?: boolean } = {}) {
+  const s = await getSettings();
+  const rule: PublishRule = { time: s["changelog.publishTime"], through: s["changelog.publishedThrough"] };
   const channelId = s["discord.changelogChannelId"];
   if (!s["discord.changelogEnabled"] || !channelId) return [];
 
   const posted: string[] = [];
-  for (const entry of [...publishedEntries(now)].reverse()) {
+  for (const entry of [...publishedEntries(now, rule)].reverse()) {
     const key = `changelog:${entry.id}`;
     if (await db.setting.findUnique({ where: { key }, select: { key: true } })) continue;
 
@@ -28,7 +43,7 @@ export async function postNewChangelogEntries(db: PrismaClient, now = new Date()
       .$transaction(async (tx) => {
         await tx.setting.create({ data: { key, value: { at: new Date().toISOString() } } });
         return enqueue(
-          { type: "CHANNEL_MESSAGE", kind: "changelog", channelId, message: buildChangelogMessage(entry, `${publicEnv.appUrl}/team/changelog`) },
+          { type: "CHANNEL_MESSAGE", kind: "changelog", channelId, message: buildChangelogMessage(entry, `${publicEnv.appUrl}/team/changelog`), ...(opts.force ? { ignoreNight: true } : {}) },
           { tx },
         );
       })

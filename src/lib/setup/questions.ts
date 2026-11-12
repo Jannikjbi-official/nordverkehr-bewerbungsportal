@@ -21,6 +21,8 @@ export interface SeedQuestion {
   minValue?: number;
   maxValue?: number;
   options?: string[];
+  /** Nur QUIZ: richtige Option */
+  correctOption?: string;
 }
 
 export interface SeedSection {

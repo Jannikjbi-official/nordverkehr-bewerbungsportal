@@ -50,6 +50,8 @@ export const settingsSchema = z.object({
   "applications.processingTime": z.string().min(2).max(80).default("in der Regel 3–7 Tage"),
   "applications.minFillSeconds": z.coerce.number().int().min(0).max(3600).default(90),
   "applications.minDiscordAccountDays": z.coerce.number().int().min(0).max(3650).default(30),
+  /** Bewerber bekommen eine Nachricht (Portal + DM), wenn ein Teammitglied ihre Bewerbung übernimmt */
+  "applications.claimNotice": bool(true),
   /** Bewerber dürfen Antworten nachreichen, solange noch niemand die Bewerbung angesehen hat */
   "applications.amendEnabled": bool(true),
   /** Bewerber sehen ihre Position in der Warteschlange und die aktuelle Bearbeitungszeit */
@@ -75,6 +77,10 @@ export const settingsSchema = z.object({
   /** Neue Changelog-Einträge des Portals posten */
   "discord.changelogEnabled": bool(true),
   "discord.changelogChannelId": channel("1570181667627475146"),
+  /** Changelog: Uhrzeit der Veröffentlichung (00:00 = nach Ende des Tages, sonst am selben Tag) */
+  "changelog.publishTime": z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Uhrzeit als HH:MM").default("00:00"),
+  /** Changelog: per Knopf bis zu diesem Tag (YYYY-MM-DD) sofort veröffentlicht */
+  "changelog.publishedThrough": z.string().regex(/^(\d{4}-\d{2}-\d{2})?$/).default(""),
   "discord.autoRoleOnAccept": bool(false),
   /** Zu jeder neuen Bewerbung einen Thread im Bewerbungs-Kanal starten (Bot braucht „Öffentliche Threads erstellen“) */
   "discord.threadPerApplication": bool(false),

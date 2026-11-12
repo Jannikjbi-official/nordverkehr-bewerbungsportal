@@ -47,14 +47,39 @@ export function todayBerlin(now = new Date()) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
 }
 
-/** Veröffentlicht = der Tag ist vorbei (ab 0 Uhr deutscher Zeit am Folgetag). */
-export function isPublished(entry: Pick<ChangelogEntry, "date">, now = new Date()) {
-  return entry.date < todayBerlin(now);
+/**
+ * Wann ein Tag veröffentlicht wird (Admin-Bereich → Discord → Changelog):
+ *  - `time` „00:00“ (Standard): wenn der Tag vorbei ist, also um 0 Uhr am Folgetag
+ *  - andere Uhrzeit, z. B. „20:00“: am selben Tag um diese Uhrzeit (deutsche Zeit)
+ *  - `through`: Admin hat „jetzt veröffentlichen“ gedrückt – alles bis zu diesem Tag ist sofort öffentlich
+ */
+export interface PublishRule {
+  time: string;
+  through: string;
+}
+export const DEFAULT_PUBLISH_RULE: PublishRule = { time: "00:00", through: "" };
+
+function berlinMinutesNow(now: Date) {
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(now);
+  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? 0);
+  return get("hour") * 60 + get("minute");
 }
 
-export function publishedEntries(now = new Date()) {
-  return CHANGELOG.filter((e) => isPublished(e, now));
+export function isPublished(entry: Pick<ChangelogEntry, "date">, now = new Date(), rule: PublishRule = DEFAULT_PUBLISH_RULE) {
+  if (rule.through && entry.date <= rule.through) return true;
+  const today = todayBerlin(now);
+  if (entry.date < today) return true;
+  if (entry.date > today || rule.time === "00:00") return false;
+  const [h, m] = rule.time.split(":").map(Number);
+  return berlinMinutesNow(now) >= h * 60 + m;
 }
+
+export function publishedEntries(now = new Date(), rule: PublishRule = DEFAULT_PUBLISH_RULE) {
+  return CHANGELOG.filter((e) => isPublished(e, now, rule));
+}
+
+/** Für Hinweise: „heute um 20:00 Uhr“ bzw. „heute um Mitternacht“ */
+export const publishTimeLabel = (rule: PublishRule) => (rule.time === "00:00" ? "um Mitternacht (nach Ende des Tages)" : `um ${rule.time} Uhr`);
 
 export const versionLabel = (e: Pick<ChangelogEntry, "version">) => `Version ${e.version}`;
 
@@ -90,6 +115,9 @@ export const CHANGELOG: ChangelogEntry[] = [
       { kind: "neu", text: "**Regel-Quiz** – Quizfragen mit einer richtigen Antwort, das Team sieht direkt „8 von 10 richtig“. Die Lösungen bleiben auf dem Server." },
       { kind: "neu", text: "**Testbewerbungen** – Admins legen pro Stelle Testbewerbungen mit realistischen Namen für typische Szenarien an (vorbildlich, knapp, beleidigend, Manipulationsversuch, kopiert, neuer Account, Grenzfall Alter, unpassender Name). Keine DMs, nicht in der Statistik, mit einem Klick wieder weg." },
       { kind: "neu", text: "**Nachtruhe** – von 22 bis 10 Uhr (für Admins einstellbar) antwortet der Bot auf Bewerber und sie sehen einen Hinweis. Wichtiges wie Bot-Logs, Infos und Nachrichten geht immer sofort raus; pro Nachrichtenart einstellbar, was bis morgens wartet." },
+      { kind: "neu", text: "**Regel-Quiz für jede Stelle** – sechs passende Fragen pro Stelle (Support, Moderation, Entwicklung, Media, Mapping, Events), im Formularbaukasten anpassbar." },
+      { kind: "neu", text: "**Du wirst betreut** – übernimmt jemand aus dem Team eine Bewerbung, erfährt der Bewerber per Portal und DM, wer sich kümmert." },
+      { kind: "neu", text: "**Changelog steuern** – Admins legen fest, um wie viel Uhr der Changelog veröffentlicht wird, oder veröffentlichen ihn sofort." },
       { kind: "neu", text: "**Rückfrage mit Frist** – „Antwort erwartet“ beim Schreiben: Kommt nichts, erinnert der Bot den Bewerber, nach einer Woche schlägt das Portal vor, die Bewerbung zu schließen." },
       { kind: "neu", text: "**Gespräche** – auf Wunsch als Discord-Event, Erinnerungs-DM an den Betreuer kurz vorher, Kalender-Abo für jedes Teammitglied, Knopf „Nicht erschienen“." },
       { kind: "neu", text: "**Vier-Augen-Prinzip & Zuständigkeit** – pro Stelle: Annahme erst ab X Pro-Stimmen oder nur durch Admins; Bewerbungen nur für die zuständigen Discord-Rollen sichtbar." },

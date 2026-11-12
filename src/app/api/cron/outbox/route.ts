@@ -27,7 +27,11 @@ export async function GET(req: Request) {
   await releaseStuckJobs(5);
   // Nicht 0 Uhr deutscher Zeit (Zwillings-Eintrag für Sommer-/Winterzeit oder häufigerer
   // Zeitplan auf Vercel Pro): nur zustellen, die täglichen Aufgaben übernimmt der 0-Uhr-Lauf
-  if (!isScheduledHour(req, 0)) return Response.json({ processed: await drainOutbox(), daily: false });
+  if (!isScheduledHour(req, 0)) {
+    // Changelog zur eingestellten Uhrzeit (stündliche Läufe)
+    await postNewChangelogEntries(db).catch((e) => console.error("[changelog]", e));
+    return Response.json({ processed: await drainOutbox(), daily: false });
+  }
 
   const changelog = await postNewChangelogEntries(db).catch((e) => {
     console.error("[changelog]", e);

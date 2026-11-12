@@ -30,6 +30,8 @@ export type OutboxPayload =
       startThread?: string;
       /** Kanal ist ein Thread: nach dem Posten archivieren */
       archiveThread?: boolean;
+      /** Trotz Nachtruhe sofort (z. B. Admin-Knopf) */
+      ignoreNight?: boolean;
       /** Art des Posts (Nachtruhe-Einstellung, lib/night.ts); ohne Angabe = Bot-Log */
       kind?: "botlog" | "applications" | "threads" | "summary" | "changelog";
     }

@@ -50,7 +50,7 @@ try {
   const m2 = await db.message.findUniqueOrThrow({ where: { id: asTeam.messageId } });
   check(!m1.asTeam && m1.body.includes("Gruß Jonas"), "persönlich: {teammitglied} = Jonas");
   check(m2.asTeam && m2.body.includes("das Nordverkehr-Team"), "als Team: {teammitglied} = das Nordverkehr-Team");
-  check((await db.message.count({ where: { readAt: null } })) === 2, "neue Nachrichten mit readAt:null auffindbar");
+  check((await db.message.count({ where: { id: { in: [m1.id, m2.id] }, readAt: null } })) === 2, "neue Nachrichten mit readAt:null auffindbar");
   const p1 = JSON.stringify((await db.outboxJob.findFirstOrThrow({ where: { messageId: m1.id } })).payload);
   const p2 = JSON.stringify((await db.outboxJob.findFirstOrThrow({ where: { messageId: m2.id } })).payload);
   check(p1.includes('"flags":32768') && p1.includes("Jonas · Nordverkehr-Team") && !p1.includes('"embeds"'), "DM persönlich: V2, Jonas im Kopf");

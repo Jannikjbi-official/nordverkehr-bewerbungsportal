@@ -335,8 +335,8 @@ export async function deleteChangelogPostsAction(): Promise<ActionResult<{ messa
 export async function postChangelogNowAction(): Promise<ActionResult<{ message: string }>> {
   await requireAdmin();
   const { postNewChangelogEntries } = await import("@/lib/discord/changelog-post");
-  const ids = await postNewChangelogEntries(db);
-  if (!ids.length) return { ok: true, data: { message: "Nichts zu posten – der laufende Tag wird erst um 0 Uhr veröffentlicht." } };
+  const ids = await postNewChangelogEntries(db, new Date(), { force: true });
+  if (!ids.length) return { ok: true, data: { message: "Nichts zu posten – alle veröffentlichten Versionen sind schon gepostet. Den laufenden Tag veröffentlichst du mit „Jetzt veröffentlichen“." } };
   const jobs = await db.outboxJob.findMany({ where: { id: { in: ids } }, select: { status: true, lastError: true } });
   const errors = jobs.map((j) => j.lastError).filter(Boolean);
   if (errors.length) return { ok: false, error: `Fehler: ${errors.join(" · ")}` };
@@ -654,4 +654,20 @@ export async function postWeeklyNowAction(): Promise<ActionResult<{ message: str
   if (!id) return { ok: false, error: "Kein Kanal eingetragen (Leitungs-Chat oder Teamchat)." };
   const job = await db.outboxJob.findUnique({ where: { id }, select: { status: true, lastError: true } });
   return job?.lastError ? { ok: false, error: `Fehler: ${job.lastError}` } : { ok: true, data: { message: job?.status === "DONE" ? "Wochenbericht gepostet." : "Wochenbericht ist in der Warteschlange (Nachtruhe oder Discord nicht erreichbar)." } };
+}
+
+/** Changelog des laufenden Tages sofort veröffentlichen (Website) und in Discord posten – auch in der Nachtruhe. */
+export async function publishChangelogNowAction(): Promise<ActionResult<{ message: string }>> {
+  const { user } = await requireAdmin();
+  const { publishChangelogNow } = await import("@/lib/discord/changelog-post");
+  const ids = await publishChangelogNow(db, user.id);
+  await audit("settings.update", { actorId: user.id, meta: { changelog: "published_now", posts: ids.length } });
+  revalidatePath("/team/changelog");
+  revalidatePath("/team/admin", "layout");
+  revalidatePath("/team");
+  if (!ids.length) return { ok: true, data: { message: "Veröffentlicht. In Discord gab es nichts Neues zu posten (schon gepostet oder Changelog-Posts aus)." } };
+  const jobs = await db.outboxJob.findMany({ where: { id: { in: ids } }, select: { status: true, lastError: true } });
+  const errors = jobs.map((j) => j.lastError).filter(Boolean);
+  if (errors.length) return { ok: false, error: `Veröffentlicht, aber Discord meldet: ${errors.join(" · ")}` };
+  return { ok: true, data: { message: `Veröffentlicht und ${ids.length} Version(en) in Discord gepostet.` } };
 }

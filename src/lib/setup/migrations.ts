@@ -18,6 +18,7 @@ import {
   type SeedQuestion,
 } from "@/lib/setup/questions";
 import { backfillNulls } from "@/lib/db-nulls";
+import { POSITION_QUIZ } from "@/lib/setup/quiz-questions";
 
 export interface MigrationReport {
   sectionsKeyed: string[];
@@ -401,6 +402,34 @@ async function scenariosPerPosition(db: PrismaClient, opts: Options) {
   return report;
 }
 
+/**
+ * Regel-Quiz pro Stelle (11/2026): Schritt „Regel-Quiz“ mit sechs passenden Fragen
+ * an jede vorhandene Stelle hängen – nur, wenn es den Schritt (Key) noch nicht gibt.
+ */
+async function addPositionQuiz(db: PrismaClient, opts: Options) {
+  const log = opts.log ?? (() => {});
+  const added: string[] = [];
+  for (const [slug, quiz] of Object.entries(POSITION_QUIZ)) {
+    const position = await db.position.findUnique({ where: { slug }, select: { id: true, typeId: true } });
+    if (!position) continue; // Stelle wurde gelöscht
+    if (await db.formSection.findFirst({ where: { key: quiz.key }, select: { id: true } })) continue;
+    added.push(slug);
+    if (opts.dryRun) continue;
+    const max = await db.formSection.aggregate({ _max: { sortOrder: true }, where: { positionId: position.id } });
+    const section = await db.formSection.create({
+      data: { key: quiz.key, typeId: position.typeId, positionId: position.id, title: quiz.title, description: quiz.description ?? null, sortOrder: (max._max.sortOrder ?? 100) + 1 },
+    });
+    for (const [i, q] of quiz.questions.entries()) {
+      if (await db.question.findFirst({ where: { key: q.key }, select: { id: true } })) continue;
+      await db.question.create({
+        data: { key: q.key, sectionId: section.id, label: q.label, type: q.type, required: true, options: q.options ?? [], correctOption: q.correctOption ?? null, sortOrder: i },
+      });
+    }
+  }
+  log(`Regel-Quiz: ${added.length ? added.join(", ") : "nichts zu tun"}`);
+  return added;
+}
+
 const MIGRATIONS: { id: string; run: (db: PrismaClient, opts: Options) => Promise<unknown> }[] = [
   { id: "2026-11-questions-v2", run: migrateQuestionsV2 },
   { id: "2026-11-claims", run: backfillClaimFields },
@@ -425,6 +454,8 @@ const MIGRATIONS: { id: string; run: (db: PrismaClient, opts: Options) => Promis
       return 1;
     },
   },
+  // Regel-Quiz mit passenden Fragen für jede Stelle
+  { id: "2026-11-quiz-pro-stelle", run: addPositionQuiz },
   // Neues Pflichtfeld mit Standardwert: Filter `digestOptOut: false` soll auch Altkonten treffen
   {
     id: "2026-11-digest-optout",

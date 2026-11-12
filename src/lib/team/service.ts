@@ -170,6 +170,10 @@ export async function setClaim(opts: { applicationId: string; actor: Actor; acti
     const from = app.claimedBy ? ` (übernommen von ${esc(actorName(app.claimedBy))})` : "";
     const j = await botLog(`📌 ${esc(actorName(opts.actor))} betreut jetzt **${app.publicId}** (${app.position.title})${from}`, { applicationId: app.id });
     if (j) jobIds.push(j);
+    // Bewerber erfährt, wer ihn jetzt betreut (Portal + DM)
+    const { notifyApplicantClaimed } = await import("@/lib/team/claim-notice");
+    const n = await notifyApplicantClaimed(app.id, opts.actor, { takeover: !!app.claimedBy }).catch((e) => (console.error("[claim-notice]", e), null));
+    if (n) jobIds.push(n);
   }
   await db.auditLog.create({
     data: { actorId: opts.actor.id, action: `application.${opts.action}`, targetType: "application", targetId: app.id, meta: { publicId: app.publicId } },

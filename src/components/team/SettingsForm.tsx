@@ -128,6 +128,7 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
           {num("applications.minDiscordAccountDays", "Hinweis bei jungen Discord-Accounts (Tage)", "Nur Hinweis für das Team, keine Sperre.")}
         </div>
         <div className="mt-4 space-y-3">
+          {toggle("applications.claimNotice", "Bewerber erfahren, wer sie betreut", "Übernimmt ein Teammitglied eine Bewerbung (auch per Discord-Knopf oder automatischer Zuteilung), bekommt der Bewerber eine kurze Nachricht im Portal und per DM mit dem Namen.")}
           {toggle("applications.amendEnabled", "Bewerber dürfen Antworten nachreichen", "Textantworten ergänzen oder korrigieren, solange noch niemand aus dem Team die Bewerbung übernommen hat. Das Team sieht „nachgereicht“, KI-Einordnung und Hinweise werden neu berechnet.")}
           {toggle("applications.queueInfo", "Warteschlange & Bearbeitungszeit für Bewerber", "Im Dashboard: „Du bist Nr. 4 von 9 – erste Sichtung dauert gerade etwa 2 Tage“ (echte Werte der letzten 90 Tage).")}
         </div>
@@ -150,7 +151,19 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
           {toggle("discord.logChannelEnabled", "Neue Bewerbungen im Bewerbungs-Kanal posten")}
           {toggle("discord.botLogEnabled", "Bot-Logs posten", "Statuswechsel, Claims, Team-Nachrichten, Antworten von Bewerbern und Zustellfehler.")}
           {toggle("discord.jobsAutoUpdate", "Stellenaufruf automatisch aktualisieren", "Ändert sich eine Position (Status, Texte), bearbeitet der Bot seine Posts (Gesamt- und Einzelaufrufe) – kein neuer Post.")}
-          {toggle("discord.changelogEnabled", "Neue Changelog-Einträge posten", "Jeder Eintrag wird genau einmal gepostet, sobald er live ist.")}
+          {toggle("discord.changelogEnabled", "Neue Changelog-Einträge posten", "Jeder Eintrag wird genau einmal gepostet, sobald er veröffentlicht ist.")}
+          <div id="changelog" className="grid gap-4 sm:grid-cols-[180px_1fr] items-start">
+            <div>
+              <label htmlFor="cl-time" className="nv-field-label">
+                Changelog veröffentlichen um
+              </label>
+              <input id="cl-time" type="time" className="nv-input" value={s["changelog.publishTime"]} onChange={(e) => set("changelog.publishTime", e.target.value)} />
+            </div>
+            <p className="nv-help sm:mt-7">
+              Deutsche Zeit. 00:00 = um Mitternacht, wenn der Tag vorbei ist. Andere Uhrzeit (z. B. 20:00) = am selben Tag um diese Uhrzeit. Dann erscheint der Eintrag im
+              Team-Bereich und geht in den Changelog-Kanal (innerhalb der Stunde). Sofort geht es über „Jetzt veröffentlichen“ in der Admin-Übersicht.
+            </p>
+          </div>
           {toggle(
             "discord.claimButton",
             "Knopf „Übernehmen“ an neuen Bewerbungen",

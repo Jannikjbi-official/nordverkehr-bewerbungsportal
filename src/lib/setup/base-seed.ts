@@ -37,6 +37,7 @@ async function ensureSection(db: PrismaClient, typeId: string, positionId: strin
             minValue: q.minValue,
             maxValue: q.maxValue,
             options: q.options ?? [],
+            correctOption: q.type === "QUIZ" ? (q.correctOption ?? null) : null,
             sortOrder: qi,
           },
         });

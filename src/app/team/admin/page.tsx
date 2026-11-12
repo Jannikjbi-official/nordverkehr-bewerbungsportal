@@ -8,6 +8,8 @@ import { loadSettingsProps } from "@/lib/admin/load";
 import { SettingsForm } from "@/components/team/SettingsForm";
 import { isNight, nightEndsAt } from "@/lib/night";
 import { formatDayTime } from "@/components/ui";
+import { CHANGELOG, isPublished, publishTimeLabel, todayBerlin } from "@/lib/changelog";
+import { ChangelogPublishCard } from "@/components/team/ChangelogPublishCard";
 
 export default function AdminOverviewPage() {
   return (
@@ -29,6 +31,10 @@ async function Overview() {
     db.application.count({ where: { isTest: true } }),
   ]);
   const night = isNight(s, now);
+  // Changelog des laufenden Tages: veröffentlicht oder noch ausstehend?
+  const rule = { time: s["changelog.publishTime"], through: s["changelog.publishedThrough"] };
+  const todayEntry = CHANGELOG.find((e) => e.date === todayBerlin(now)) ?? null;
+  const clStatus = !todayEntry ? "none" : isPublished(todayEntry, now, rule) ? "published" : "pending";
   return (
     <div className="space-y-6">
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -60,6 +66,8 @@ async function Overview() {
           </Link>
         </div>
       </section>
+
+      <ChangelogPublishCard status={clStatus} version={todayEntry?.version ?? null} timeLabel={publishTimeLabel(rule)} />
 
       <section className="grid gap-4 md:grid-cols-2" aria-label="Bereiche">
         {ADMIN_SECTIONS.map((sec) => (

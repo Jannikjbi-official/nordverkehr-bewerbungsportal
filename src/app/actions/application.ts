@@ -117,7 +117,8 @@ export async function submitApplicationAction(
       // Faire Verteilung: automatisch zuteilen (falls eingeschaltet)
       const { autoAssign } = await import("@/lib/team/assign");
       const assigned = await autoAssign(db, res.applicationId).catch((e) => (console.error("[assign]", e), null));
-      if (assigned?.jobId) await runOutbox({ ids: [assigned.jobId] }).catch(() => {});
+      const assignJobs = [assigned?.jobId, assigned?.noticeJobId].filter((x): x is string => !!x);
+      if (assignJobs.length) await runOutbox({ ids: assignJobs }).catch(() => {});
       // KI-Punkte gleich reservieren – sonst hält die Team-Seite die Bewerbung während
       // des Taggings für „unbewertet“ und startet eine zweite, parallele Bewertung
       const { claimForScoring, scoreClaimed } = await import("@/lib/ai/scoring");

@@ -7,6 +7,7 @@ import { publishedEntries, versionLabel } from "@/lib/changelog";
 import { DiscordMarkdown } from "@/components/DiscordMarkdown";
 import { AckWithdrawalButton } from "@/components/team/AckWithdrawalButton";
 import { requireTeam } from "@/lib/auth/session";
+import { nowMs } from "@/lib/time";
 import { viewerOf, visiblePositionFilter } from "@/lib/team/visibility";
 import { teamWorkload } from "@/lib/team/assign";
 import { db } from "@/lib/db";
@@ -72,7 +73,8 @@ async function Overview({ searchParams }: Pick<PageProps<"/team">, "searchParams
 
   const workload = await teamWorkload(db);
   const maxLoad = Math.max(1, ...workload.map((w) => w.open));
-  const latest = publishedEntries()[0];
+  const { changelogRule } = await import("@/lib/discord/changelog-post");
+  const latest = publishedEntries(new Date(nowMs()), await changelogRule())[0];
   // Bewerber noch auf dem Discord? Höchstens alle 15 Minuten, nach der Antwort
   after(async () => {
     const { scanIfDue } = await import("@/lib/applications/guild-watch");

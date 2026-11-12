@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { requireTeam } from "@/lib/auth/session";
-import { CHANGELOG, groupItems, isPublished, publishedEntries, versionLabel } from "@/lib/changelog";
+import { CHANGELOG, groupItems, isPublished, publishTimeLabel, publishedEntries, versionLabel } from "@/lib/changelog";
+import { changelogRule } from "@/lib/discord/changelog-post";
+import { nowMs } from "@/lib/time";
 import { DiscordMarkdown } from "@/components/DiscordMarkdown";
 import { formatDay } from "@/components/ui";
 
@@ -28,18 +30,20 @@ export default function ChangelogPage() {
 
 async function Entries() {
   const { access } = await requireTeam();
-  // Admins sehen den laufenden Tag schon vorab (als Vorschau), alle anderen erst ab 0 Uhr
-  const entries = access.isAdmin ? CHANGELOG : publishedEntries();
-  if (!entries.length) return <p className="text-sm text-muted">Die erste Version erscheint heute um 0 Uhr.</p>;
+  const rule = await changelogRule();
+  const now = new Date(nowMs());
+  // Admins sehen den laufenden Tag schon vorab (als Vorschau), alle anderen erst ab der Veröffentlichung
+  const entries = access.isAdmin ? CHANGELOG : publishedEntries(now, rule);
+  if (!entries.length) return <p className="text-sm text-muted">Die erste Version erscheint heute {publishTimeLabel(rule)}.</p>;
   return (
     <ol className="relative space-y-6 border-l border-line pl-6 ml-2">
       {entries.map((e, i) => {
-        const preview = !isPublished(e);
+        const preview = !isPublished(e, now, rule);
         return (
         <li key={e.id} className="relative">
           <span
             className={`absolute -left-[31px] top-1.5 h-3 w-3 rounded-full border-2 ${
-              preview ? "bg-surface border-dashed border-red" : i === 0 || (i === 1 && !isPublished(entries[0])) ? "bg-red border-red" : "bg-surface border-line-strong"
+              preview ? "bg-surface border-dashed border-red" : i === 0 || (i === 1 && !isPublished(entries[0], now, rule)) ? "bg-red border-red" : "bg-surface border-line-strong"
             }`}
             aria-hidden
           />

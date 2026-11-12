@@ -56,7 +56,7 @@ export async function autoAssign(db: PrismaClient, applicationId: string, now = 
   // Aktiv = in den letzten 14 Tagen im Team-Bereich gewesen
   const team = await db.user.findMany({
     where: { isTeam: true, isTest: { not: true }, lastTeamActiveAt: { gte: new Date(now.getTime() - 14 * DAY) } },
-    select: { id: true, isAdmin: true, roleIds: true, globalName: true, username: true },
+    select: { id: true, isAdmin: true, roleIds: true, globalName: true, username: true, discordId: true, avatar: true },
   });
   const eligible = team.filter((u) => canSeePosition({ isAdmin: u.isAdmin, roleIds: u.roleIds ?? [] }, app.position));
   if (!eligible.length) return null;
@@ -85,5 +85,7 @@ export async function autoAssign(db: PrismaClient, applicationId: string, now = 
     applicationId: app.id,
     url: `${publicEnv.appUrl}/team/bewerbungen/${app.id}`,
   });
-  return { userId: pick, jobId: job };
+  const { notifyApplicantClaimed } = await import("@/lib/team/claim-notice");
+  const notice = await notifyApplicantClaimed(app.id, who).catch(() => null);
+  return { userId: pick, jobId: job, noticeJobId: notice };
 }

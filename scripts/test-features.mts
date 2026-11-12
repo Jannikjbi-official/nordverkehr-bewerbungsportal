@@ -424,6 +424,43 @@ try {
     );
   }
 
+  // ── Regel-Quiz pro Stelle (Migration), Claim-Nachricht, Changelog sofort veröffentlichen
+  {
+    const { runMigrations } = await import("../src/lib/setup/migrations");
+    const { POSITION_QUIZ } = await import("../src/lib/setup/quiz-questions");
+    const mod = await db.position.create({ data: { typeId: type.id, slug: "moderator", title: "Moderator", tagline: "x", description: "x" } });
+    await db.setting.deleteMany({ where: { key: "migration:2026-11-quiz-pro-stelle" } });
+    await runMigrations(db);
+    const qs = await db.formSection.findFirst({ where: { key: "moderator.quiz" }, include: { questions: true } });
+    check(!!qs && qs.positionId === mod.id && qs.questions.length === 6 && qs.questions.every((q) => q.type === "QUIZ" && !!q.correctOption && q.options.includes(q.correctOption)), "Quiz-Migration: Moderator bekommt 6 Quizfragen mit Lösung");
+    check(!!(await db.formSection.findFirst({ where: { key: "support.quiz" } })), "Quiz-Migration: Support bekommt sein Quiz");
+    check(!(await db.formSection.findFirst({ where: { key: "media.quiz" } })), "Quiz-Migration: nicht vorhandene Stelle wird übersprungen");
+    await db.setting.deleteMany({ where: { key: "migration:2026-11-quiz-pro-stelle" } });
+    await runMigrations(db);
+    check((await db.formSection.count({ where: { key: "moderator.quiz" } })) === 1 && (await db.question.count({ where: { key: { startsWith: "moderator.quiz_" } } })) === POSITION_QUIZ.moderator.questions.length, "Quiz-Migration: zweiter Lauf legt nichts doppelt an");
+    const { getFormDefinition } = await import("../src/lib/data/positions");
+    check(!JSON.stringify(await getFormDefinition(mod)).includes("correctOption"), "Quiz-Lösungen nicht im Formular");
+
+    // Claim → Bewerber erfährt, wer betreut
+    const { setClaim } = await import("../src/lib/team/service");
+    const cu = await mk("Clara", "100000000000000091");
+    const ca = await db.application.create({ data: { userId: cu.id, positionId: pos.id, status: "SUBMITTED", publicId: "NV-C-1", submittedAt: new Date() } });
+    await setClaim({ applicationId: ca.id, actor: { ...team, isAdmin: false }, action: "claim" });
+    const notes = await db.message.findMany({ where: { applicationId: ca.id, direction: "SYSTEM" } });
+    check(notes.length === 1 && notes[0].body.includes("Jonas") && (await db.outboxJob.count({ where: { messageId: notes[0].id, type: "DM" } })) === 1, "Claim: Bewerber bekommt Nachricht + DM mit Betreuer");
+    const lea2 = await mk("Leander", "100000000000000092", { isTeam: true });
+    await setClaim({ applicationId: ca.id, actor: { ...lea2, isAdmin: false }, action: "claim" });
+    check((await db.message.findMany({ where: { applicationId: ca.id, direction: "SYSTEM" }, orderBy: { createdAt: "desc" } }))[0].body.includes("ab sofort kümmert sich **Leander**"), "Übernahme: Bewerber erfährt den neuen Betreuer");
+
+    // Changelog sofort veröffentlichen
+    const { publishChangelogNow, changelogRule } = await import("../src/lib/discord/changelog-post");
+    const { publishedEntries, todayBerlin, CHANGELOG } = await import("../src/lib/changelog");
+    await publishChangelogNow(db, team.id);
+    const rule = await changelogRule();
+    const todays = CHANGELOG.filter((e) => e.date === todayBerlin());
+    check(rule.through === todayBerlin() && todays.every((e) => publishedEntries(new Date(), rule).includes(e)), "Changelog: „Jetzt veröffentlichen“ macht den heutigen Eintrag sichtbar");
+  }
+
   // ── Feedback (eins pro Bewerbung)
   await db.feedback.create({ data: { applicationId: app1.id, rating: 5 } });
   dup = false;
