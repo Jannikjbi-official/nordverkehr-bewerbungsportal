@@ -79,20 +79,55 @@ export async function applyGuildState(applicationId: string, inGuild: boolean): 
   return "notified";
 }
 
-/** Alle laufenden Bewerbungen prüfen (Cron). Nutzt den Rollen-Cache, fragt Discord nur bei Bedarf. */
-export async function scanApplicantsInGuild(limit = 40) {
+export interface ScanResult {
+  checked: number;
+  notInGuild: number;
+  notified: number;
+  back: number;
+  unknown: number;
+}
+
+/**
+ * Alle laufenden Bewerbungen prüfen. `fresh` fragt Discord direkt (statt Rollen-Cache).
+ * Läuft parallel in kleinen Gruppen, Discord-Ratelimits regelt der REST-Client.
+ */
+export async function scanApplicantsInGuild(opts: { limit?: number; fresh?: boolean } = {}): Promise<ScanResult> {
   const { getAccess } = await import("@/lib/auth/user-access");
   const apps = await db.application.findMany({
     where: { status: { in: WATCHED } },
     select: { id: true, user: true },
     orderBy: { submittedAt: "asc" },
-    take: limit,
+    take: opts.limit ?? 200,
   });
-  let notified = 0;
-  for (const a of apps) {
-    const access = await getAccess(a.user).catch(() => null);
-    if (!guildStateKnown(access)) continue;
-    if ((await applyGuildState(a.id, (access as Access).inGuild)) === "notified") notified++;
+  const r: ScanResult = { checked: 0, notInGuild: 0, notified: 0, back: 0, unknown: 0 };
+  const one = async (a: (typeof apps)[number]) => {
+    const access = await getAccess(a.user, { force: !!opts.fresh }).catch(() => null);
+    if (!guildStateKnown(access)) {
+      r.unknown++;
+      return;
+    }
+    r.checked++;
+    const inGuild = (access as Access).inGuild;
+    if (!inGuild) r.notInGuild++;
+    const res = await applyGuildState(a.id, inGuild).catch(() => null);
+    if (res === "notified") r.notified++;
+    if (res === "back") r.back++;
+  };
+  for (let i = 0; i < apps.length; i += 5) await Promise.all(apps.slice(i, i + 5).map(one));
+  return r;
+}
+
+/** Höchstens alle 15 Minuten im Hintergrund prüfen (z. B. wenn das Team das Dashboard öffnet). */
+export async function scanIfDue(minutes = 15) {
+  // Ein Eintrag pro Zeitfenster: nur wer ihn anlegen kann, prüft (eindeutiger Key)
+  const key = `guildscan:${Math.floor(Date.now() / (minutes * 60_000))}`;
+  if (await db.setting.findUnique({ where: { key }, select: { key: true } })) return null;
+  try {
+    await db.setting.create({ data: { key, value: { at: new Date().toISOString() } } });
+  } catch {
+    return null; // andere Instanz war schneller
   }
-  return notified;
+  // Alte Fenster aufräumen
+  await db.setting.deleteMany({ where: { key: { startsWith: "guildscan:" }, NOT: { key } } }).catch(() => {});
+  return scanApplicantsInGuild();
 }

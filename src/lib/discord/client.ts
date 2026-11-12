@@ -99,6 +99,9 @@ export interface DiscordApi {
   addRole(guildId: string, userId: string, roleId: string, reason?: string): Promise<void>;
 }
 
+/** DM-Kanal-ID pro Nutzer (ändert sich bei Discord nicht) – spart einen Aufruf pro DM */
+const dmChannels = new Map<string, string>();
+
 export function createDiscordApi(token: string, opts: { timeoutMs?: number } = {}): DiscordApi {
   const rest = new REST({ version: "10", timeout: opts.timeoutMs ?? 8000, retries: 2 }).setToken(token);
 
@@ -114,8 +117,12 @@ export function createDiscordApi(token: string, opts: { timeoutMs?: number } = {
       }
     },
     async openDm(userId) {
+      const known = dmChannels.get(userId);
+      if (known) return known;
       try {
         const ch = (await rest.post(Routes.userChannels(), { body: { recipient_id: userId } })) as APIChannel;
+        if (dmChannels.size > 2000) dmChannels.clear();
+        dmChannels.set(userId, ch.id);
         return ch.id;
       } catch (err) {
         throw classifyDiscordError(err);

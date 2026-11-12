@@ -11,7 +11,7 @@ export async function GET(req: Request) {
   await applyPositionSchedule(db).catch((e) => console.error("[positions]", e));
   // Bewerber noch auf dem Discord? (automatische Bot-Nachricht bei Austritt)
   const { scanApplicantsInGuild } = await import("@/lib/applications/guild-watch");
-  await scanApplicantsInGuild().catch((e) => console.error("[guild-watch]", e));
+  await scanApplicantsInGuild({ fresh: true }).catch((e) => console.error("[guild-watch]", e));
   const { sendInterviewReminders } = await import("@/lib/team/slots");
   await sendInterviewReminders(db).catch((e) => console.error("[reminder]", e));
   // Fehlende KI-Punkte nachholen (wenige pro Lauf, Zeitlimit)

@@ -136,9 +136,23 @@ export function parseSettings(rows: { key: string; value: unknown }[]): Settings
   return result as Settings;
 }
 
+// Kurzer Zwischenspeicher: pro Nachricht werden die Einstellungen sonst mehrfach geladen
+const CACHE_MS = 10_000;
+let cached: { at: number; value: Promise<Settings> } | null = null;
+
 export async function getSettings(): Promise<Settings> {
-  const rows = await db.setting.findMany();
-  return parseSettings(rows);
+  if (cached && Date.now() - cached.at < CACHE_MS) return cached.value;
+  const value = db.setting.findMany({ where: { key: { in: SETTING_KEYS } } }).then(parseSettings);
+  cached = { at: Date.now(), value };
+  value.catch(() => {
+    cached = null;
+  });
+  return value;
+}
+
+/** Nach dem Speichern sofort frische Werte */
+export function clearSettingsCache() {
+  cached = null;
 }
 
 export async function saveSettings(patch: Partial<Settings>, actorId: string) {
@@ -152,4 +166,5 @@ export async function saveSettings(patch: Partial<Settings>, actorId: string) {
       }),
     ),
   );
+  clearSettingsCache();
 }

@@ -1,13 +1,12 @@
 "use server";
 
-import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireAdmin, requireTeam } from "@/lib/auth/session";
 import { audit } from "@/lib/audit";
 import { rateLimit } from "@/lib/rate-limit";
-import { runOutbox } from "@/lib/discord/outbox-db";
+import { deliverNow } from "@/lib/discord/outbox-db";
 import { acknowledgeWithdrawal, changeStatus, sendTeamMessage, setClaim } from "@/lib/team/service";
 import { UserFacingError } from "@/lib/applications/service";
 import type { ActionResult } from "@/app/actions/application";
@@ -22,8 +21,9 @@ function fail(err: unknown): { ok: false; error: string } {
   return { ok: false, error: "Das hat nicht geklappt. Versuch es nochmal." };
 }
 
-function kick(jobIds: string[]) {
-  if (jobIds.length) after(() => runOutbox({ ids: jobIds }).catch((e) => console.error("[outbox]", e)));
+/** Zustellen: kurz direkt (Nachricht ist dann gleich „zugestellt“), Rest nach der Antwort. */
+async function kick(jobIds: string[]) {
+  await deliverNow(jobIds);
 }
 
 // ─── Bewerbungen ──────────────────────────────────────────────
@@ -41,7 +41,7 @@ export async function changeStatusAction(input: z.input<typeof statusSchema>): P
   if (!p.success) return { ok: false, error: "Ungültige Eingabe." };
   try {
     const { jobIds } = await changeStatus({ ...p.data, actorId: user.id });
-    kick(jobIds);
+    await kick(jobIds);
     revalidatePath(`/team/bewerbungen/${p.data.applicationId}`);
     revalidatePath("/team/bewerbungen");
     return { ok: true };
@@ -249,7 +249,7 @@ export async function sendMessageAction(input: z.input<typeof messageSchema>): P
       vars: { grund: p.data.grund },
     });
     jobIds.push(...res.jobIds);
-    kick(jobIds);
+    await kick(jobIds);
     revalidatePath(`/team/bewerbungen/${p.data.applicationId}`);
     return { ok: true, data: { missing: res.missing } };
   } catch (err) {
@@ -262,7 +262,7 @@ export async function claimAction(applicationId: string, action: "claim" | "rele
   if (!id.safeParse(applicationId).success || !["claim", "release"].includes(action)) return { ok: false, error: "Ungültig." };
   try {
     const r = await setClaim({ applicationId, actor: user, action });
-    kick(r.jobIds);
+    await kick(r.jobIds);
     revalidatePath(`/team/bewerbungen/${applicationId}`);
     revalidatePath("/team/bewerbungen");
     return { ok: true };
@@ -279,7 +279,7 @@ export async function retryDeliveryAction(messageId: string): Promise<ActionResu
     db.outboxJob.update({ where: { id: job.id }, data: { status: "PENDING", runAt: new Date(), attempts: 0, lastError: null } }),
     db.message.update({ where: { id: messageId }, data: { deliveryStatus: "PENDING", deliveryError: null } }),
   ]);
-  kick([job.id]);
+  await kick([job.id]);
   revalidatePath("/team/bewerbungen");
   return { ok: true };
 }
@@ -455,7 +455,7 @@ export async function acknowledgeWithdrawalAction(applicationId: string): Promis
   if (!id.safeParse(applicationId).success) return { ok: false, error: "Ungültig." };
   try {
     const r = await acknowledgeWithdrawal({ applicationId, actor: user });
-    kick(r.jobIds);
+    await kick(r.jobIds);
     revalidatePath("/team");
     revalidatePath(`/team/bewerbungen/${applicationId}`);
     return { ok: true };

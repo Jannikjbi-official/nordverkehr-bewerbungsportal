@@ -368,6 +368,17 @@ export async function setupInteractionsAction(): Promise<ActionResult<{ message:
   return { ok: true, data: { message: `Eingerichtet: ${url}. Neue Bewerbungen bekommen jetzt den Knopf „Übernehmen“.` } };
 }
 
+/** Alle laufenden Bewerbungen sofort prüfen: noch auf dem Discord? (Bot-Nachricht bei Austritt) */
+export async function scanGuildNowAction(): Promise<ActionResult<{ message: string }>> {
+  await requireAdmin();
+  const { scanApplicantsInGuild } = await import("@/lib/applications/guild-watch");
+  const r = await scanApplicantsInGuild({ fresh: true });
+  const parts = [`${r.checked} geprüft`, `${r.notInGuild} nicht auf dem Discord`, `${r.notified} neue Bot-Nachricht(en)`];
+  if (r.back) parts.push(`${r.back} wieder da`);
+  if (r.unknown) parts.push(`${r.unknown} nicht prüfbar (Discord-Fehler)`);
+  return { ok: true, data: { message: parts.join(" · ") + "." } };
+}
+
 /** Ausstehende Zustellungen jetzt senden. */
 export async function flushOutboxAction(): Promise<ActionResult<{ message: string }>> {
   await requireAdmin();

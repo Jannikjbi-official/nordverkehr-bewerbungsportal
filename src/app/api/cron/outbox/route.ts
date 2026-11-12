@@ -18,6 +18,9 @@ export async function GET(req: Request) {
   // Stellen mit Start-/Enddatum umschalten (0 Uhr)
   const { applyPositionSchedule } = await import("@/lib/positions/schedule");
   await applyPositionSchedule(db).catch((e) => console.error("[positions]", e));
+  // Bewerber noch auf dem Discord? (auch nachts)
+  const { scanApplicantsInGuild } = await import("@/lib/applications/guild-watch");
+  await scanApplicantsInGuild({ fresh: true }).catch((e) => console.error("[guild-watch]", e));
   // Fehlende KI-Punkte nachholen (wenige pro Lauf, Zeitlimit)
   const { scoreMissing } = await import("@/lib/ai/scoring");
   await scoreMissing(2).catch((e) => console.error("[ai-score]", e));

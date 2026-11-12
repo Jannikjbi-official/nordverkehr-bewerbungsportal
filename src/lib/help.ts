@@ -189,7 +189,7 @@ export const HELP: HelpSection[] = [
       {
         id: "discord-pflicht",
         term: "Discord-Pflicht",
-        text: "Absenden geht nur, wenn die Person auf dem Nordverkehr-Discord ist – das Formular zeigt sonst einen Hinweis mit Einladungslink (ausfüllen und speichern geht trotzdem). Verlässt jemand den Server, während die Bewerbung läuft, schreibt der Bot ihm **automatisch** eine Nachricht ins Portal (per DM geht nicht mehr) – einmal pro Austritt. Das Team sieht oben in der Bewerbung einen roten Hinweis, im Bot-Log eine Zeile und morgens in der Team-Übersicht die Liste „Nicht mehr auf dem Discord“. Kommt die Person zurück, verschwindet der Hinweis von selbst. Geprüft wird beim Öffnen der Bewerbung und jeden Morgen.",
+        text: "Absenden geht nur, wenn die Person auf dem Nordverkehr-Discord ist – das Formular zeigt sonst einen Hinweis mit Einladungslink (ausfüllen und speichern geht trotzdem). Verlässt jemand den Server, während die Bewerbung läuft, schreibt der Bot ihm **automatisch** eine Nachricht ins Portal (per DM geht nicht mehr) – einmal pro Austritt. Das Team sieht oben in der Bewerbung einen roten Hinweis, im Bot-Log eine Zeile und morgens in der Team-Übersicht die Liste „Nicht mehr auf dem Discord“. Kommt die Person zurück, verschwindet der Hinweis von selbst. Geprüft wird beim Öffnen einer Bewerbung, im Hintergrund höchstens alle 15 Minuten, wenn jemand das Team-Dashboard öffnet, nachts und morgens per Cron – Admins können unter Einstellungen → „Bewerber auf dem Discord prüfen“ sofort alle prüfen.",
       },
       {
         id: "discord-knoepfe",

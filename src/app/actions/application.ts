@@ -10,7 +10,7 @@ import { draftDataSchema, type AnswerMap } from "@/lib/applications/form";
 import { getEligibility, submitApplication, UserFacingError } from "@/lib/applications/service";
 import { rateLimit } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
-import { runOutbox } from "@/lib/discord/outbox-db";
+import { deliverNow, runOutbox } from "@/lib/discord/outbox-db";
 import { botLog, esc } from "@/lib/discord/botlog";
 import { ACTIVE_STATUSES, canFollowUp, isInProcessing } from "@/lib/applications/status";
 import type { Prisma } from "@prisma/client";
@@ -235,7 +235,7 @@ export async function withdrawApplicationAction(applicationId: string, reason?: 
       : `↩️ **${app.publicId}** (${app.position.title}) wurde vor der Bearbeitung zurückgezogen`,
     { applicationId: app.id, tone: inReview ? "warn" : "default", url: `${publicEnv.appUrl}/team/bewerbungen/${app.id}` },
   );
-  if (job) after(() => runOutbox({ ids: [job] }).catch(() => {}));
+  if (job) await deliverNow([job]);
   revalidatePath(`/dashboard/${app.id}`);
   return { ok: true };
 }
@@ -271,7 +271,7 @@ export async function replyToTeamAction(input: z.input<typeof replySchema>): Pro
     `💬 Neue Antwort von ${esc(user.globalName || user.username)} zu **${app.publicId}** (${app.position.title})`,
     { applicationId: app.id, url: `${publicEnv.appUrl}/team/bewerbungen/${app.id}` },
   );
-  if (job) after(() => runOutbox({ ids: [job] }).catch(() => {}));
+  if (job) await deliverNow([job]);
   revalidatePath(`/dashboard/${app.id}`);
   return { ok: true };
 }

@@ -9,6 +9,7 @@ import { requireTeam } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { ACTIVE_STATUSES, FOLLOW_UP_DAYS } from "@/lib/applications/status";
 import { daysAgo } from "@/lib/time";
+import { after } from "next/server";
 
 export default function TeamHome({ searchParams }: PageProps<"/team">) {
   return (
@@ -65,6 +66,11 @@ async function Overview({ searchParams }: Pick<PageProps<"/team">, "searchParams
   ]);
 
   const latest = publishedEntries()[0];
+  // Bewerber noch auf dem Discord? Höchstens alle 15 Minuten, nach der Antwort
+  after(async () => {
+    const { scanIfDue } = await import("@/lib/applications/guild-watch");
+    await scanIfDue().catch((e) => console.error("[guild-watch]", e));
+  });
 
   return (
     <div className="space-y-8">

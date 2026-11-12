@@ -95,15 +95,13 @@ async function claim(limit: number, ids?: string[]): Promise<OutboxJobLike[]> {
     take: ids?.length ? ids.length : limit,
     select: JOB_SELECT,
   });
-  const claimed: OutboxJobLike[] = [];
-  for (const job of candidates) {
-    const res = await db.outboxJob.updateMany({
-      where: { id: job.id, status: "PENDING" },
-      data: { status: "PROCESSING", lockedAt: now },
-    });
-    if (res.count === 1) claimed.push(job);
-  }
-  return claimed;
+  // Parallel claimen – jedes Update ist für sich atomar
+  const results = await Promise.all(
+    candidates.map((job) =>
+      db.outboxJob.updateMany({ where: { id: job.id, status: "PENDING" }, data: { status: "PROCESSING", lockedAt: now } }).then((r) => (r.count === 1 ? job : null)),
+    ),
+  );
+  return results.filter((j) => j !== null) as OutboxJobLike[];
 }
 
 /** Hängengebliebene Jobs (Prozess abgestürzt / Funktion abgebrochen) wieder freigeben. */
@@ -124,7 +122,7 @@ export async function runOutbox(opts: { ids?: string[]; limit?: number } = {}) {
     return 0;
   }
   const jobs = await claim(opts.limit ?? 20, opts.ids);
-  for (const job of jobs) {
+  const one = async (job: OutboxJobLike) => {
     try {
       await processJob(job, api, prismaOutboxStore);
     } catch (err) {
@@ -133,6 +131,23 @@ export async function runOutbox(opts: { ids?: string[]; limit?: number } = {}) {
         .update({ where: { id: job.id }, data: { status: "PENDING", lockedAt: null, lastError: String(err) } })
         .catch(() => {});
     }
-  }
+  };
+  // Mehrere Jobs gleichzeitig (Discord-Ratelimits regelt @discordjs/rest selbst)
+  for (let i = 0; i < jobs.length; i += CONCURRENCY) await Promise.all(jobs.slice(i, i + CONCURRENCY).map(one));
   return jobs.length;
+}
+
+const CONCURRENCY = 5;
+
+/**
+ * Sofort zustellen und dabei kurz warten (Nachricht ist dann direkt „zugestellt“).
+ * Dauert es länger als `waitMs`, läuft der Rest nach der Antwort weiter.
+ */
+export async function deliverNow(jobIds: string[], waitMs = 4000) {
+  if (!jobIds.length) return;
+  const { after } = await import("next/server");
+  const run = runOutbox({ ids: jobIds }).catch((e) => console.error("[outbox]", e));
+  await Promise.race([run, new Promise((r) => setTimeout(r, waitMs))]);
+  // Sicherheitsnetz: was noch PENDING ist, nach der Antwort erneut versuchen
+  after(() => runOutbox({ ids: jobIds }).catch((e) => console.error("[outbox]", e)));
 }
