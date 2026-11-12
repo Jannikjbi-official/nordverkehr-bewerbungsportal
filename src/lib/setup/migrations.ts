@@ -408,7 +408,17 @@ const MIGRATIONS: { id: string; run: (db: PrismaClient, opts: Options) => Promis
   { id: "2026-11-explicit-nulls", run: (db, o) => (o.dryRun ? Promise.resolve(0) : backfillNulls(db)) },
   { id: "2026-11-fachfragen-v2", run: addSpecificQuestions },
   { id: "2026-11-szenarien-pro-stelle", run: scenariosPerPosition },
+  // KI-Text-Check wurde wieder entfernt → gespeicherte Ergebnisse und Audit-Einträge löschen
+  { id: "2026-11-remove-textcheck", run: (db, o) => (o.dryRun ? Promise.resolve(0) : removeTextCheckData(db)) },
 ];
+
+async function removeTextCheckData(db: PrismaClient) {
+  await db.$runCommandRaw({
+    update: "Application",
+    updates: [{ q: { $or: [{ aiTextCheck: { $exists: true } }, { aiTextCheckedAt: { $exists: true } }] }, u: { $unset: { aiTextCheck: "", aiTextCheckedAt: "" } }, multi: true }],
+  });
+  return db.auditLog.deleteMany({ where: { action: "application.textcheck" } });
+}
 
 const LOCK_KEY = "lock:migrations";
 const LOCK_TTL_MS = 5 * 60_000;

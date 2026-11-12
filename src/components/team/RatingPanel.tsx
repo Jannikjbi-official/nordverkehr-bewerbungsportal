@@ -173,12 +173,19 @@ function AiBlock({
       });
     };
     return (
-      <div className="space-y-1.5">
-        <p className="text-[0.7rem] text-faint">KI-Punkte gibt es automatisch nur für Bewerbungen ab dem 12.11.2026 (Datenschutz-Einwilligung).</p>
-        {isAdmin && (
-          <button type="button" className="nv-btn nv-btn-quiet nv-btn-sm !px-2" disabled={pending} onClick={override} data-testid="ai-override">
-            {pending ? "Berechne …" : "KI-Punkte trotzdem berechnen (Admin)"}
+      <div className="rounded-xl border border-line bg-surface-2/40 p-3 space-y-2" data-testid="ai-rating-locked">
+        <p className="flex items-center gap-1.5 text-xs font-medium">
+          <Robot size={14} aria-hidden /> KI-Einschätzung
+        </p>
+        <p className="text-xs text-muted">
+          Diese Bewerbung kam vor Einführung der KI-Punkte (12.11.2026). Automatisch bewertet die KI nur neuere Bewerbungen – das deckt die Datenschutz-Einwilligung ab.
+        </p>
+        {isAdmin ? (
+          <button type="button" className="nv-btn nv-btn-ghost nv-btn-sm w-full" disabled={pending} onClick={override} data-testid="ai-override">
+            <Robot size={14} aria-hidden /> {pending ? "KI bewertet … (bis zu 30 s)" : "KI-Punkte freigeben & berechnen"}
           </button>
+        ) : (
+          <p className="text-[0.7rem] text-faint">Ein Admin kann die KI-Punkte freigeben, wenn der Bewerber zugestimmt hat.</p>
         )}
         {error && <p className="nv-error text-xs">{error}</p>}
       </div>

@@ -99,11 +99,7 @@ async function Content() {
           zu festen Kriterien wie Kommunikation, Erfahrung oder Umgang mit Szenarien ab, jeweils mit kurzer Begründung. Diese Punkte
           sind nur eine Orientierung für das Team: Sie werden nicht mit den Bewertungen der Teammitglieder verrechnet, es gibt kein
           Ranking zwischen Bewerbern, und über deine Bewerbung entscheidet immer ein Mensch (keine automatisierte Entscheidung im
-          Sinne von Art. 22 DSGVO). Du kannst jederzeit Auskunft über die Einschätzung verlangen (Datenexport). Außerdem
-          prüft das Portal nach dem Absenden, ob Antworten mit einem KI-Chatbot geschrieben wirken (<strong>KI-Text-Check</strong>):
-          Dafür zählt das Formular, wie viele Zeichen pro Frage eingefügt statt getippt wurden (nur die Anzahl, nicht der
-          Inhalt der Zwischenablage), sucht nach typischen Chatbot-Formulierungen und lässt die Antworten von der KI
-          einschätzen. Das Ergebnis ist nur ein Hinweis für das Team, kein Ausschlussgrund und keine automatische Entscheidung.
+          Sinne von Art. 22 DSGVO). Du kannst jederzeit Auskunft über die Einschätzung verlangen (Datenexport).
           {s["ai.autoReplyEnabled"] && (
             <>
               {" "}

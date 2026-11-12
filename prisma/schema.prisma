@@ -328,9 +328,6 @@ model Application {
   /// Admin hat KI-Punkte trotz älterer Einwilligung freigegeben (Bewerber hat zugestimmt)
   aiConsentOverrideAt   DateTime?
   aiConsentOverrideById String?
-  /// KI-Text-Check: { level, signals[] } – nur Hinweis, kein Beweis
-  aiTextCheck          Json?
-  aiTextCheckedAt      DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

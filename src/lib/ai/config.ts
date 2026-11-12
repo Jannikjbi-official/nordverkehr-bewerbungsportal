@@ -45,7 +45,7 @@ export function isAiConfigured() {
   return !!(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
 }
 
-export type AiFeature = "summary" | "questions" | "hints" | "tags" | "autoreply" | "score" | "textcheck";
+export type AiFeature = "summary" | "questions" | "hints" | "tags" | "autoreply" | "score";
 
 /** Welche Aufgabe nutzt welches Modell, welchen Aufwand und wie viele Ausgabe-Tokens (hartes Limit). */
 export const FEATURE_CONFIG: Record<AiFeature, { tier: "default" | "fast"; effort: "low" | "medium"; maxTokens: number }> = {
@@ -55,7 +55,6 @@ export const FEATURE_CONFIG: Record<AiFeature, { tier: "default" | "fast"; effor
   tags: { tier: "fast", effort: "low", maxTokens: 300 },
   autoreply: { tier: "fast", effort: "low", maxTokens: 350 },
   score: { tier: "default", effort: "medium", maxTokens: 2500 },
-  textcheck: { tier: "fast", effort: "low", maxTokens: 500 },
 };
 
 export function dayStart(now = new Date()) {

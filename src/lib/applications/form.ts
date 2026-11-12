@@ -183,15 +183,14 @@ export const confirmationsSchema = z.object({
 });
 
 /** v2: KI-Punkte im Bewertungsbogen (Datenschutzerklärung entsprechend ergänzt) */
+/** v3: Datenschutzerklärung überarbeitet (KI-Text-Check wieder entfernt) */
 export const CONSENT_VERSION = "2026-11-v3";
 /** Ab dieser Einwilligung dürfen KI-Punkte vergeben werden */
 export const AI_SCORE_CONSENT = "2026-11-v2";
 export const allowsAiScore = (consentVersion: string | null | undefined) => !!consentVersion && consentVersion >= AI_SCORE_CONSENT;
 /** KI-Punkte erlaubt: passende Einwilligung oder Admin-Freigabe (Zustimmung des Bewerbers) */
 export const aiScoreAllowed = (app: { consentVersion: string | null; aiConsentOverrideAt?: Date | null }) => allowsAiScore(app.consentVersion) || !!app.aiConsentOverrideAt;
-/** v3: automatischer KI-Text-Check nach dem Absenden */
-export const AI_TEXTCHECK_CONSENT = "2026-11-v3";
-export const allowsAiTextCheck = (consentVersion: string | null | undefined) => !!consentVersion && consentVersion >= AI_TEXTCHECK_CONSENT;
+
 
 export function formatAnswerForDisplay(type: QuestionType, value: AnswerValue): string {
   if (value === null || value === undefined) return "–";

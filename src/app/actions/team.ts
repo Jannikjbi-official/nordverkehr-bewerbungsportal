@@ -430,21 +430,6 @@ export async function overrideAiConsentAction(applicationId: string): Promise<Ac
   return rescoreAction(applicationId);
 }
 
-/** KI-Text-Check (neu) ausführen – Regeln immer, KI nur mit Einwilligung. */
-export async function textCheckAction(applicationId: string): Promise<ActionResult> {
-  const { user } = await requireTeam();
-  if (!id.safeParse(applicationId).success) return { ok: false, error: "Ungültig." };
-  const { checkApplicationText } = await import("@/lib/ai/textcheck");
-  try {
-    const r = await checkApplicationText(applicationId, { actorId: user.id });
-    if (!r) return { ok: false, error: "Bewerbung nicht gefunden." };
-    revalidatePath(`/team/bewerbungen/${applicationId}`);
-    return { ok: true };
-  } catch (err) {
-    return fail(err);
-  }
-}
-
 /** KI-Punkte (neu) berechnen. */
 export async function rescoreAction(applicationId: string): Promise<ActionResult> {
   const { user } = await requireTeam();

@@ -21,8 +21,6 @@ import { AckWithdrawalButton } from "@/components/team/AckWithdrawalButton";
 import { avatarUrl } from "@/lib/discord/snowflake";
 import { AiPanel } from "@/components/team/AiPanel";
 import { RatingPanel } from "@/components/team/RatingPanel";
-import { TextCheckCard } from "@/components/team/TextCheckCard";
-import { readTextCheck } from "@/lib/ai/textcheck-rules";
 import { OnboardingPanel } from "@/components/team/OnboardingPanel";
 import { onboardingItems, readOnboarding } from "@/lib/team/onboarding";
 import { cleanScores, summarizeRatings } from "@/lib/team/ratings";
@@ -228,8 +226,6 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[1fr_340px]">
         <div className="space-y-6 min-w-0">
-          <TextCheckCard applicationId={app.id} result={readTextCheck(app.aiTextCheck)} checkedAt={app.aiTextCheckedAt?.toISOString() ?? null} />
-
           {aiEnabled && <AiPanel applicationId={app.id} cachedSummary={app.aiSummary} cachedAt={app.aiSummaryAt?.toISOString() ?? null} />}
 
           <section className="nv-card" aria-labelledby="answers">
