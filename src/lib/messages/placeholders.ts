@@ -11,7 +11,8 @@ export const PLACEHOLDERS = [
   { key: "termin", label: "Gesprächstermin" },
   { key: "teammitglied", label: "Dein Name" },
   { key: "grund", label: "Begründung (frei)" },
-  { key: "sperrfrist", label: "Sperrfrist / erneut bewerben ab" },
+  { key: "sperrfrist", label: "Erneut bewerben ab (Datum)" },
+  { key: "sperrfrist_tage", label: "Sperrfrist der Stelle (z. B. „45 Tage“)" },
   { key: "bearbeitungszeit", label: "Ungefähre Bearbeitungszeit" },
   { key: "dashboard_link", label: "Link zum Status" },
 ] as const;
@@ -75,6 +76,7 @@ export interface VarsInput {
   teamMemberName?: string | null;
   reason?: string | null;
   cooldownUntil?: Date | string | null;
+  cooldownDays?: number | null;
   processingTime?: string | null;
   dashboardUrl?: string | null;
 }
@@ -90,6 +92,7 @@ export function buildTemplateVars(input: VarsInput): TemplateVars {
     teammitglied: input.teamMemberName ?? undefined,
     grund: input.reason ?? undefined,
     sperrfrist: input.cooldownUntil ? formatDate(input.cooldownUntil) : undefined,
+    sperrfrist_tage: input.cooldownDays ? `${input.cooldownDays} ${input.cooldownDays === 1 ? "Tag" : "Tage"}` : undefined,
     bearbeitungszeit: input.processingTime ?? undefined,
     dashboard_link: input.dashboardUrl ?? undefined,
   };

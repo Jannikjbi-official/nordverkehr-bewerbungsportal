@@ -144,6 +144,7 @@ export async function getTemplateVarsFor(applicationId: string, teamMember: { gl
     interviewAt: app.interviewAt,
     teamMemberName: teamMember.globalName || teamMember.username,
     cooldownUntil: cooldownUntil(decided, cooldownDays),
+    cooldownDays,
     processingTime: settings["applications.processingTime"],
     dashboardUrl: `${publicEnv.appUrl}/dashboard/${app.id}`,
   });

@@ -93,6 +93,10 @@ async function PositionDetail({ params }: Pick<PageProps<"/positionen/[slug]">, 
                 <dd>TeamSpeak &amp; SaltyChat</dd>
               </div>
               <div className="flex justify-between gap-3">
+                <dt className="text-muted">Sperrfrist nach Absage</dt>
+                <dd>{position.cooldownDays ?? settings["applications.cooldownDays"]} Tage</dd>
+              </div>
+              <div className="flex justify-between gap-3">
                 <dt className="text-muted">Bearbeitung</dt>
                 <dd className="text-right">{settings["applications.processingTime"]}</dd>
               </div>

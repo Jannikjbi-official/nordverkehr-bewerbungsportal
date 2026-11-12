@@ -412,7 +412,50 @@ const MIGRATIONS: { id: string; run: (db: PrismaClient, opts: Options) => Promis
   { id: "2026-11-remove-textcheck", run: (db, o) => (o.dryRun ? Promise.resolve(0) : removeTextCheckData(db)) },
   // Neuer Baustein: Zustimmung zu KI-Punkten (nur anlegen, falls es ihn noch nicht gibt)
   { id: "2026-11-template-ki-zustimmung", run: (db, o) => (o.dryRun ? Promise.resolve(0) : addKiConsentTemplate(db)) },
+  // Eigene Sperrfrist pro Stelle (nur wo noch keine eingetragen ist)
+  { id: "2026-11-sperrfristen-pro-stelle", run: (db, o) => (o.dryRun ? Promise.resolve(0) : setPositionCooldowns(db)) },
+  // Absage-Bausteine nennen die Sperrfrist der Stelle (Tage + Datum)
+  { id: "2026-11-absage-sperrfrist", run: (db, o) => (o.dryRun ? Promise.resolve(0) : rejectionTemplatesWithCooldown(db)) },
 ];
+
+export const COOLDOWN_SENTENCE = "Für {position} gilt nach einer Absage eine Sperrfrist von **{sperrfrist_tage}** – du kannst dich also ab dem **{sperrfrist}** wieder bewerben.";
+const COOLDOWN_REPLACE: [string, string][] = [
+  ["Du kannst dich ab dem {sperrfrist} wieder bewerben.", COOLDOWN_SENTENCE],
+  [
+    "Wenn sich bei dir etwas ändert, bewirb dich gern ab dem {sperrfrist} nochmal.",
+    "Wenn sich bei dir etwas ändert, bewirb dich gern nochmal: Die Sperrfrist für {position} beträgt **{sperrfrist_tage}**, also ab dem **{sperrfrist}**.",
+  ],
+];
+
+/** Neuer Text eines Absage-Bausteins mit Sperrfrist – null, wenn nichts zu tun ist. */
+export function withCooldownInfo(title: string, body: string): string | null {
+  if (body.includes("{sperrfrist_tage}")) return null;
+  if (/mindestalter/i.test(title)) return null; // Alter: erneut bewerben mit 18, nicht nach Frist
+  for (const [from, to] of COOLDOWN_REPLACE) if (body.includes(from)) return body.replace(from, to);
+  return `${body.trimEnd()}\n\n${COOLDOWN_SENTENCE}`;
+}
+
+async function rejectionTemplatesWithCooldown(db: PrismaClient) {
+  const templates = await db.messageTemplate.findMany({ where: { category: "ABLEHNUNG" } });
+  let n = 0;
+  for (const t of templates) {
+    const body = withCooldownInfo(t.title, t.body);
+    if (body === null) continue;
+    await db.messageTemplate.update({ where: { id: t.id }, data: { body } });
+    n++;
+  }
+  return n;
+}
+
+async function setPositionCooldowns(db: PrismaClient) {
+  const { POSITION_COOLDOWNS } = await import("@/lib/setup/seed-data");
+  let n = 0;
+  for (const [slug, days] of Object.entries(POSITION_COOLDOWNS)) {
+    const r = await db.position.updateMany({ where: { slug, OR: [{ cooldownDays: null }, { cooldownDays: { isSet: false } }] }, data: { cooldownDays: days } });
+    n += r.count;
+  }
+  return n;
+}
 
 async function addKiConsentTemplate(db: PrismaClient) {
   const { KI_CONSENT_TEMPLATE_BODY, KI_CONSENT_TEMPLATE_TITLE } = await import("@/lib/setup/seed-data");

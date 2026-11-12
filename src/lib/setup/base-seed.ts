@@ -6,7 +6,7 @@
  * eindeutige Keys (partielle Unique-Indizes), doppelte Anlage scheitert am Index.
  */
 import type { PrismaClient } from "@prisma/client";
-import { GENERAL_SECTIONS, POSITIONS, TEMPLATES, type SeedSection } from "@/lib/setup/seed-data";
+import { GENERAL_SECTIONS, POSITIONS, POSITION_COOLDOWNS, TEMPLATES, type SeedSection } from "@/lib/setup/seed-data";
 import { ensureIndexes } from "@/lib/setup/indexes";
 import { markMigrationsDone, runMigrations } from "@/lib/setup/migrations";
 
@@ -78,6 +78,7 @@ export async function seedBase(db: PrismaClient, log: (m: string) => void = () =
             typeId: type.id,
             slug: p.slug,
             title: p.title,
+            cooldownDays: POSITION_COOLDOWNS[p.slug] ?? null,
             tagline: p.tagline,
             description: p.description,
             icon: p.icon,

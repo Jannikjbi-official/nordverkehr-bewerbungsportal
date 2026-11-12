@@ -137,3 +137,28 @@ describe("KI-Punkte", () => {
   });
 });
 
+
+import { withCooldownInfo } from "@/lib/setup/migrations";
+import { TEMPLATES } from "@/lib/setup/seed-data";
+import { buildTemplateVars, renderTemplate } from "@/lib/messages/placeholders";
+
+describe("Sperrfrist in Absagen", () => {
+  it("Platzhalter für Tage und Datum", () => {
+    const vars = buildTemplateVars({ applicant: { username: "a", globalName: "Anna" }, positionTitle: "Moderator", publicId: "NV-1", submittedAt: null, cooldownUntil: new Date("2027-01-11T12:00:00Z"), cooldownDays: 60 });
+    const r = renderTemplate("{sperrfrist_tage} / ab {sperrfrist}", vars);
+    expect(r.text).toBe("60 Tage / ab 11. Januar 2027");
+    expect(r.missing).toEqual([]);
+  });
+  it("alle Absage-Bausteine (außer Mindestalter) nennen die Frist", () => {
+    for (const t of TEMPLATES.filter((x) => x.category === "ABLEHNUNG")) {
+      if (/mindestalter/i.test(t.title)) expect(t.body).not.toContain("{sperrfrist");
+      else expect(t.body).toContain("{sperrfrist_tage}");
+    }
+  });
+  it("Migration ersetzt alte Sätze, ergänzt eigene Bausteine, lässt Mindestalter in Ruhe", () => {
+    expect(withCooldownInfo("Absage (freundlich)", "A\n\nDu kannst dich ab dem {sperrfrist} wieder bewerben. B")).toContain("Sperrfrist von **{sperrfrist_tage}**");
+    expect(withCooldownInfo("Eigene Absage", "Leider nein.")).toMatch(/Leider nein\.\n\nFür \{position\} gilt/);
+    expect(withCooldownInfo("Absage – Mindestalter", "18+")).toBeNull();
+    expect(withCooldownInfo("X", "schon {sperrfrist_tage} drin")).toBeNull();
+  });
+});

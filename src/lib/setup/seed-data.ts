@@ -18,6 +18,20 @@ export interface SeedPosition {
   sections: SeedSection[];
 }
 
+/**
+ * Sperrfrist nach einer Absage (Tage) je Stelle – je mehr Vertrauen oder
+ * Können die Stelle braucht, desto länger, damit sich bis zur nächsten
+ * Bewerbung wirklich etwas ändern kann.
+ */
+export const POSITION_COOLDOWNS: Record<string, number> = {
+  support: 30, // Einstieg ins Team, schnell dazulernbar
+  eventteam: 30, // Ideen & Engagement, schnell nachweisbar
+  media: 45, // Portfolio ausbauen braucht etwas Zeit
+  mapper: 45, // neue Builds/Projekte zeigen
+  entwickler: 60, // Fachwissen & Projekte brauchen Zeit
+  moderator: 60, // Vertrauensposition – Verhalten über längere Zeit zählt
+};
+
 export const POSITIONS: SeedPosition[] = [
   {
     slug: "support",
@@ -201,12 +215,12 @@ export const TEMPLATES: { category: TemplateCategory; title: string; body: strin
   {
     category: "ABLEHNUNG",
     title: "Absage (freundlich)",
-    body: "Moin {name},\n\ndanke für deine Bewerbung als {position} und die Zeit, die du reingesteckt hast. Diesmal hat es leider nicht gepasst.\n\n{grund}\n\nDu kannst dich ab dem {sperrfrist} wieder bewerben. Wir freuen uns, wenn du weiter auf Nordverkehr spielst.",
+    body: "Moin {name},\n\ndanke für deine Bewerbung als {position} und die Zeit, die du reingesteckt hast. Diesmal hat es leider nicht gepasst.\n\n{grund}\n\nFür {position} gilt nach einer Absage eine Sperrfrist von **{sperrfrist_tage}** – du kannst dich also ab dem **{sperrfrist}** wieder bewerben. Wir freuen uns, wenn du weiter auf Nordverkehr spielst.",
   },
   {
     category: "ABLEHNUNG",
     title: "Absage – zu wenig Zeit",
-    body: "Moin {name},\n\nehrlich gesagt: Für {position} brauchen wir gerade Leute, die regelmäßig mehr Zeit mitbringen, als du angegeben hast. Das ist keine Kritik an dir – es passt nur aktuell nicht.\n\nWenn sich bei dir etwas ändert, bewirb dich gern ab dem {sperrfrist} nochmal.",
+    body: "Moin {name},\n\nehrlich gesagt: Für {position} brauchen wir gerade Leute, die regelmäßig mehr Zeit mitbringen, als du angegeben hast. Das ist keine Kritik an dir – es passt nur aktuell nicht.\n\nWenn sich bei dir etwas ändert, bewirb dich gern nochmal: Die Sperrfrist für {position} beträgt **{sperrfrist_tage}**, also ab dem **{sperrfrist}**.",
   },
   {
     category: "ABLEHNUNG",

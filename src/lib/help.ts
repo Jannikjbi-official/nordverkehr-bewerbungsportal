@@ -225,7 +225,7 @@ export const HELP: HelpSection[] = [
       {
         id: "sperrfrist",
         term: "Sperrfrist nach Ablehnung",
-        text: "So viele Tage nach einer Ablehnung kann sich jemand nicht erneut auf **dieselbe** Position bewerben. Standard in den Einstellungen, pro Position anpassbar. Platzhalter {sperrfrist}.",
+        text: "So viele Tage nach einer Ablehnung kann sich jemand nicht erneut auf **dieselbe** Position bewerben. Standard in den Einstellungen, pro Position anpassbar. In Nachrichten: {sperrfrist_tage} (z. B. „45 Tage“) und {sperrfrist} (Datum, ab dem es wieder geht) – die Absage-Bausteine nutzen beide.",
       },
       {
         id: "mindestalter",
