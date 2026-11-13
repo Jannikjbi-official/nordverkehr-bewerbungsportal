@@ -90,6 +90,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: "2026-11-13",
     items: [
       { kind: "neu", text: "**Im Portal antworten** – am Bot-Log „Neue Antwort von …“ und in Nachrichten-DMs an Bewerber führt ein Knopf direkt zum Nachrichtenfeld im Portal." },
+      { kind: "besser", text: "**Neue Datenbank** – das Portal läuft jetzt auf PostgreSQL (Neon) statt MongoDB. Alle Daten wurden übernommen; für euch ändert sich nichts." },
       { kind: "neu", text: "**Impressum & Fußbereich** – eigenes Impressum im Portal. Der Fußbereich hat jetzt die Gruppen „Mitmachen“ (Idee, Feedback, Fehler melden) und „Rechtliches“ (Impressum, Datenschutz, Quellcode)." },
       { kind: "neu", text: "**Ideen & Fehler** – alle können unter „Ideen & Fehler“ (Fußbereich und Benutzermenü) eine Idee, Feedback oder einen Fehler einreichen. Die Leitung sichtet alles im Admin-Bereich, setzt einen Status und antwortet; bei „Geplant“, „Umgesetzt“ oder „Nicht geplant“ kommt eine DM. Auf der Fehlerseite gibt es dafür jetzt „Fehler melden“." },
       { kind: "neu", text: "**Status per Knopf** – an neuen Bewerbungen im Bewerbungs-Kanal: „In Prüfung“ und „Zum Gespräch“ (3-Sterne-Hürde gilt auch hier)." },

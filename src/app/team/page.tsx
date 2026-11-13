@@ -63,7 +63,7 @@ async function Overview({ searchParams }: Pick<PageProps<"/team">, "searchParams
         withdrawnInReview: true,
         decidedAt: { gte: daysAgo(FOLLOW_UP_DAYS) },
         // noch nicht bestätigt (Feld null oder bei älteren Einträgen gar nicht gesetzt)
-        OR: [{ withdrawAckAt: null }, { withdrawAckAt: { isSet: false } }],
+        OR: [{ withdrawAckAt: null }],
       },
       include: { user: true, position: true },
       orderBy: { decidedAt: "desc" },

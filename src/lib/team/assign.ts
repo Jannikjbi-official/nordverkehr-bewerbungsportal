@@ -60,7 +60,7 @@ export async function autoAssign(db: PrismaClient, applicationId: string, now = 
       isTest: { not: true },
       lastTeamActiveAt: { gte: new Date(now.getTime() - 14 * DAY) },
       // Abwesende bekommen nichts Neues
-      OR: [{ awayUntil: null }, { awayUntil: { isSet: false } }, { awayUntil: { lte: now } }],
+      OR: [{ awayUntil: null }, { awayUntil: { lte: now } }],
     },
     select: { id: true, isAdmin: true, roleIds: true, globalName: true, username: true, discordId: true, avatar: true },
   });
@@ -79,7 +79,7 @@ export async function autoAssign(db: PrismaClient, applicationId: string, now = 
   );
   if (!pick) return null;
   const res = await db.application.updateMany({
-    where: { id: app.id, OR: [{ claimedById: null }, { claimedById: { isSet: false } }] },
+    where: { id: app.id, OR: [{ claimedById: null }] },
     data: { claimedById: pick, claimedAt: now },
   });
   if (!res.count) return null;

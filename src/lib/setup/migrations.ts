@@ -1,5 +1,5 @@
 /**
- * Daten-Migrationen (MongoDB hat keine Schema-Migrationen).
+ * Daten-Migrationen (Inhalte, z. B. Fragen umbauen) – das Schema selbst kommt aus prisma/migrations.
  *
  * Laufen automatisch beim Serverstart (instrumentation.ts), beim täglichen Cron
  * und per CLI (`npm run db:migrate-questions`, Probelauf ohne `--apply`).
@@ -17,7 +17,6 @@ import {
   normalizeLabel,
   type SeedQuestion,
 } from "@/lib/setup/questions";
-import { backfillNulls } from "@/lib/db-nulls";
 import { POSITION_QUIZ } from "@/lib/setup/quiz-questions";
 
 export interface MigrationReport {
@@ -68,17 +67,6 @@ export async function migrateQuestionsV2(db: PrismaClient, opts: Options = {}): 
     updatedContent: [],
     sectionsRenamed: [],
   };
-
-  // Alte Abschnitte ohne `archived`-Feld vereinheitlichen. Läuft auch im Probelauf:
-  // Prisma-Filter wie `NOT: { archived: true }` treffen Dokumente ohne das Feld nicht,
-  // ohne diesen Schritt sähe der Probelauf die Altdaten gar nicht. Es wird nur der
-  // Standardwert ergänzt – inhaltlich ändert sich nichts.
-  const normalized = await db.$runCommandRaw({
-    update: "FormSection",
-    updates: [{ q: { archived: { $exists: false } }, u: { $set: { archived: false } }, multi: true }],
-  });
-  const nNormalized = Number((normalized as { nModified?: number }).nModified ?? 0);
-  if (nNormalized) log(`· ${nNormalized} Abschnitt(e): Standardwert archived=false ergänzt`);
 
   const sections: SectionRow[] = await db.formSection.findMany({
     where: { NOT: { archived: true } },
@@ -259,17 +247,11 @@ export async function migrateQuestionsV2(db: PrismaClient, opts: Options = {}): 
 }
 
 /**
- * Neue Pflichtfelder mit Standardwert in Altdokumenten setzen. Prisma liest
- * fehlende Felder zwar mit Standardwert, Filter (z. B. `withdrawnInReview: true`)
- * treffen solche Dokumente aber nicht.
+ * Früher (MongoDB): Standardwerte in Altdokumenten nachtragen. In Postgres hat
+ * jede Spalte ihren Standardwert – diese Schritte sind leer und bleiben nur,
+ * damit die Liste der erledigten Migrationen stimmt.
  */
-async function backfillClaimFields(db: PrismaClient, opts: Options) {
-  if (opts.dryRun) return;
-  const set = async (collection: string, field: string, value: boolean) =>
-    db.$runCommandRaw({ update: collection, updates: [{ q: { [field]: { $exists: false } }, u: { $set: { [field]: value } }, multi: true }] });
-  await set("Message", "asTeam", false);
-  await set("Application", "withdrawnInReview", false);
-}
+const noop = async () => 0;
 
 /** Neue Fachfragen (11/2026) – werden ergänzt, wenn es den Key noch nicht gibt. */
 const NEW_SPECIFIC_KEYS = [
@@ -432,9 +414,8 @@ async function addPositionQuiz(db: PrismaClient, opts: Options) {
 
 const MIGRATIONS: { id: string; run: (db: PrismaClient, opts: Options) => Promise<unknown> }[] = [
   { id: "2026-11-questions-v2", run: migrateQuestionsV2 },
-  { id: "2026-11-claims", run: backfillClaimFields },
-  // Fehlende optionale Felder → null, damit Filter wie `liftedAt: null` (Sperren!) greifen
-  { id: "2026-11-explicit-nulls", run: (db, o) => (o.dryRun ? Promise.resolve(0) : backfillNulls(db)) },
+  { id: "2026-11-claims", run: noop },
+  { id: "2026-11-explicit-nulls", run: noop },
   { id: "2026-11-fachfragen-v2", run: addSpecificQuestions },
   { id: "2026-11-szenarien-pro-stelle", run: scenariosPerPosition },
   // KI-Text-Check wurde wieder entfernt → gespeicherte Ergebnisse und Audit-Einträge löschen
@@ -445,23 +426,10 @@ const MIGRATIONS: { id: string; run: (db: PrismaClient, opts: Options) => Promis
   { id: "2026-11-sperrfristen-pro-stelle", run: (db, o) => (o.dryRun ? Promise.resolve(0) : setPositionCooldowns(db)) },
   // Absage-Bausteine nennen die Sperrfrist der Stelle (Tage + Datum)
   { id: "2026-11-absage-sperrfrist", run: (db, o) => (o.dryRun ? Promise.resolve(0) : rejectionTemplatesWithCooldown(db)) },
-  // Testbewerbungen: Feld in Altdokumenten setzen (Filter isTest greifen sonst nicht überall)
-  {
-    id: "2026-11-is-test",
-    run: async (db, o) => {
-      if (o.dryRun) return 0;
-      for (const c of ["User", "Application"]) await db.$runCommandRaw({ update: c, updates: [{ q: { isTest: { $exists: false } }, u: { $set: { isTest: false } }, multi: true }] });
-      return 1;
-    },
-  },
+  { id: "2026-11-is-test", run: noop },
   // Regel-Quiz mit passenden Fragen für jede Stelle
   { id: "2026-11-quiz-pro-stelle", run: addPositionQuiz },
-  // Neues Pflichtfeld mit Standardwert: Filter `digestOptOut: false` soll auch Altkonten treffen
-  {
-    id: "2026-11-digest-optout",
-    run: (db, o) =>
-      o.dryRun ? Promise.resolve(0) : db.$runCommandRaw({ update: "User", updates: [{ q: { digestOptOut: { $exists: false } }, u: { $set: { digestOptOut: false } }, multi: true }] }),
-  },
+  { id: "2026-11-digest-optout", run: noop },
   // Bewerbungsgespräche und Support laufen über Discord (TeamSpeak nur Ingame-Voice)
   { id: "2026-11-gespraech-auf-discord", run: (db, o) => (o.dryRun ? Promise.resolve(0) : interviewsOnDiscord(db)) },
   // Einarbeitung: TeamSpeak ist nur Ingame-Voice – Punkt „TeamSpeak-Rechte gesetzt“ entfällt
@@ -590,7 +558,7 @@ async function setPositionCooldowns(db: PrismaClient) {
   const { POSITION_COOLDOWNS } = await import("@/lib/setup/seed-data");
   let n = 0;
   for (const [slug, days] of Object.entries(POSITION_COOLDOWNS)) {
-    const r = await db.position.updateMany({ where: { slug, OR: [{ cooldownDays: null }, { cooldownDays: { isSet: false } }] }, data: { cooldownDays: days } });
+    const r = await db.position.updateMany({ where: { slug, OR: [{ cooldownDays: null }] }, data: { cooldownDays: days } });
     n += r.count;
   }
   return n;
@@ -607,10 +575,7 @@ async function addKiConsentTemplate(db: PrismaClient) {
 }
 
 async function removeTextCheckData(db: PrismaClient) {
-  await db.$runCommandRaw({
-    update: "Application",
-    updates: [{ q: { $or: [{ aiTextCheck: { $exists: true } }, { aiTextCheckedAt: { $exists: true } }] }, u: { $unset: { aiTextCheck: "", aiTextCheckedAt: "" } }, multi: true }],
-  });
+  // Die Felder gibt es in Postgres nicht mehr – nur die Audit-Einträge aufräumen
   return db.auditLog.deleteMany({ where: { action: "application.textcheck" } });
 }
 

@@ -178,7 +178,7 @@ export async function deleteSlotAction(slotId: string): Promise<ActionResult> {
   // Atomar: nur löschen, wenn (noch) frei oder schon vorbei – sonst könnte eine Buchung
   // genau zwischen Prüfung und Löschen verloren gehen
   const res = await db.interviewSlot.deleteMany({
-    where: { id: slotId, OR: [{ applicationId: null }, { applicationId: { isSet: false } }, { startsAt: { lte: new Date() } }] },
+    where: { id: slotId, OR: [{ applicationId: null }, { startsAt: { lte: new Date() } }] },
   });
   if (res.count === 0) {
     const still = await db.interviewSlot.count({ where: { id: slotId } });

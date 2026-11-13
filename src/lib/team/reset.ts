@@ -6,8 +6,8 @@
  * Bleibt erhalten: Nutzerkonten, Positionen & Fragen, Bausteine,
  * Einstellungen, Sperren, Notizen, Audit-Log, Changelog-Markierungen.
  *
- * Die Kinder-Collections werden ausdrücklich gelöscht – bei MongoDB emuliert
- * Prisma die Kaskade nur, darauf verlassen wir uns bei so einer Aktion nicht.
+ * Die Kinder-Tabellen werden ausdrücklich gelöscht (nicht nur über die
+ * Kaskade) – so bleibt die Aktion nachvollziehbar und zählt alles mit.
  */
 import type { PrismaClient } from "@prisma/client";
 

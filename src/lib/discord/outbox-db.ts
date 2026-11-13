@@ -100,8 +100,8 @@ const JOB_SELECT = { id: true, type: true, payload: true, attempts: true, maxAtt
 
 /**
  * Holt fällige Jobs exklusiv. Jeder Job wird per bedingtem Update
- * (status PENDING → PROCESSING) "geclaimt" – das Einzeldokument-Update ist in
- * MongoDB atomar, also verarbeiten parallele Instanzen (Vercel, Worker) einen
+ * (status PENDING → PROCESSING) "geclaimt" – das Zeilen-Update ist in
+ * Postgres atomar, also verarbeiten parallele Instanzen (Vercel, Worker) einen
  * Job nie doppelt.
  */
 async function claim(limit: number, ids?: string[]): Promise<OutboxJobLike[]> {

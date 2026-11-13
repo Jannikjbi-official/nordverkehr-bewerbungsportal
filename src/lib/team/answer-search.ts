@@ -1,10 +1,10 @@
 /**
  * Suche über die Antworten aller eingereichten Bewerbungen („Wer hat schon mal
  * Moderation gemacht?“). Teilwort-Suche ohne Groß-/Kleinschreibung direkt in
- * MongoDB (bei einigen hundert Bewerbungen schnell genug, kein Extra-Index nötig).
+ * Postgres (ILIKE auf dem JSON-Text; bei einigen hundert Bewerbungen schnell genug).
  * Nur für das Team. Suchbegriffe werden bewusst NICHT ins Audit-Log geschrieben.
  */
-import type { PrismaClient } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client";
 
 export interface AnswerHit {
   label: string;
@@ -17,6 +17,8 @@ const CONTEXT = 60;
 const MAX_HITS_PER_APP = 2;
 
 export const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** Platzhalter für LIKE (% _ \\) entschärfen */
+export const escapeLike = (s: string) => s.replace(/[\\%_]/g, "\\$&");
 
 /** Text einer gespeicherten Antwort (String, Liste, Zahl, Ja/Nein). */
 export function answerText(value: unknown): string {
@@ -48,13 +50,12 @@ export async function searchAnswers(db: PrismaClient, query: string, limit = 500
   const q = query.trim();
   const out = new Map<string, AnswerHit[]>();
   if (q.length < 2) return out;
-  const res = (await db.$runCommandRaw({
-    find: "Answer",
-    filter: { value: { $regex: escapeRegex(q), $options: "i" }, type: { $ne: "FILE" } },
-    projection: { applicationId: 1, label: 1, value: 1 },
-    limit,
-  })) as { cursor?: { firstBatch?: { applicationId: string; label: string; value: unknown }[] } };
-  for (const a of res.cursor?.firstBatch ?? []) {
+  const rows = await db.$queryRaw<{ applicationId: string; label: string; value: unknown }[]>(
+    Prisma.sql`SELECT "applicationId", "label", "value" FROM "Answer"
+      WHERE "type" <> 'FILE' AND "value"::text ILIKE ${"%" + escapeLike(q) + "%"}
+      LIMIT ${limit}`,
+  );
+  for (const a of rows) {
     const hits = out.get(a.applicationId) ?? [];
     if (hits.length >= MAX_HITS_PER_APP) continue;
     const s = snippet(answerText(a.value), q);

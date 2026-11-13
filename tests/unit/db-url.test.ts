@@ -1,28 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { resolveDatabaseUrl, withDatabaseName } from "@/lib/db";
+import { hasDatabaseUrl, resolveDatabaseUrl, resolveDirectUrl } from "@/lib/db";
 
-describe("withDatabaseName", () => {
-  it("ergänzt den Datenbanknamen, wenn er fehlt (Vercel-Atlas-Integration)", () => {
-    expect(withDatabaseName("mongodb+srv://u:p@cluster0.abc.mongodb.net/?retryWrites=true&w=majority")).toBe(
-      "mongodb+srv://u:p@cluster0.abc.mongodb.net/nordverkehr?retryWrites=true&w=majority",
-    );
-    expect(withDatabaseName("mongodb+srv://u:p@cluster0.abc.mongodb.net")).toBe("mongodb+srv://u:p@cluster0.abc.mongodb.net/nordverkehr");
-  });
-  it("lässt vorhandene Namen unverändert", () => {
-    const url = "mongodb://127.0.0.1:27017/test?replicaSet=rs0&directConnection=true";
-    expect(withDatabaseName(url)).toBe(url);
-  });
-});
+const PG = "postgresql://u:p@ep-x-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require";
+const PRISMA = "postgres://u:p@ep-x-pooler.eu-central-1.aws.neon.tech/neondb?pgbouncer=true&connect_timeout=15&sslmode=require";
+const DIRECT = "postgresql://u:p@ep-x.eu-central-1.aws.neon.tech/neondb?sslmode=require";
 
-describe("resolveDatabaseUrl", () => {
-  it("nimmt DATABASE_URL, sonst die Variable der Atlas-Integration", () => {
-    expect(resolveDatabaseUrl({ DATABASE_URL: "mongodb://a/x" })).toBe("mongodb://a/x");
-    expect(resolveDatabaseUrl({ DATABASE_URL: "", DATABASE_URL_MONGODB_URI: "mongodb+srv://b.mongodb.net/?w=majority" })).toBe(
-      "mongodb+srv://b.mongodb.net/nordverkehr?w=majority",
-    );
-    expect(resolveDatabaseUrl({ MONGODB_URI: "mongodb://c/y" })).toBe("mongodb://c/y");
+describe("resolveDatabaseUrl (Postgres/Neon)", () => {
+  it("bevorzugt die Prisma-URL der Neon-Integration", () => {
+    expect(resolveDatabaseUrl({ DATABASE_URL: PG, DATABASE_POSTGRES_PRISMA_URL: PRISMA })).toBe(PRISMA);
+    expect(resolveDatabaseUrl({ DATABASE_URL: PG })).toBe(PG);
+    expect(resolveDatabaseUrl({ POSTGRES_URL: PG })).toBe(PG);
   });
-  it("wirft ohne jede Variable", () => {
-    expect(() => resolveDatabaseUrl({})).toThrow(/Keine Datenbank-URL/);
+  it("überspringt alte MongoDB-Adressen", () => {
+    expect(resolveDatabaseUrl({ DATABASE_URL: "mongodb+srv://a.mongodb.net/x", POSTGRES_URL: PG })).toBe(PG);
+    expect(hasDatabaseUrl({ DATABASE_URL: "mongodb://a/x", DATABASE_URL_MONGODB_URI: "mongodb://b/y" })).toBe(false);
+    expect(() => resolveDatabaseUrl({ DATABASE_URL: "mongodb://a/x" })).toThrow(/Keine Postgres/);
+    expect(() => resolveDatabaseUrl({})).toThrow(/Keine Postgres/);
+  });
+  it("Migrationen über die direkte Verbindung", () => {
+    expect(resolveDirectUrl({ DATABASE_URL: PG, DATABASE_URL_UNPOOLED: DIRECT })).toBe(DIRECT);
+    expect(resolveDirectUrl({ DATABASE_URL: PG, DATABASE_POSTGRES_URL_NON_POOLING: DIRECT })).toBe(DIRECT);
+    expect(resolveDirectUrl({ DATABASE_URL: PG })).toBe(PG);
   });
 });

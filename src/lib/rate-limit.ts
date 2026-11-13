@@ -11,7 +11,7 @@ export interface RateLimitResult {
  * Instanzen / Serverless, ohne Redis).
  *
  * Ablauf: atomar hochzählen, solange das Fenster läuft (Einzeldokument-Update
- * ist in MongoDB atomar). Ist es abgelaufen oder neu, wird es zurückgesetzt.
+ * ist in Postgres atomar). Ist es abgelaufen oder neu, wird es zurückgesetzt.
  * Bei gleichzeitigen Fenster-Resets kann ein Zähler minimal zu niedrig sein –
  * für Rate Limiting unkritisch.
  */

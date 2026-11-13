@@ -6,13 +6,11 @@
  *   npm run db:test-features
  */
 import "dotenv/config";
-const url = new URL(process.env.DATABASE_URL!);
-url.pathname = "/nordverkehr_featuretest";
-process.env.DATABASE_URL = url.toString();
+import { freshTestDatabase } from "./test-db";
+const testDb = await freshTestDatabase("features");
 process.env.DISCORD_BOT_TOKEN = ""; // nichts an Discord schicken
 process.env.DISCORD_GUILD_ID ||= "523456789012345678"; // für Rollen-Jobs (werden nur angelegt, nie ausgeführt)
 const { db } = await import("../src/lib/db");
-const { ensureIndexes } = await import("../src/lib/setup/indexes");
 const { bookSlot, sendInterviewReminders, SlotError } = await import("../src/lib/team/slots");
 const { changeStatus } = await import("../src/lib/team/service");
 const { applyPositionSchedule, closeIfFull } = await import("../src/lib/positions/schedule");
@@ -22,8 +20,6 @@ let fails = 0;
 const check = (ok: boolean, m: string) => { console.log(ok ? "✓" : "✗", m); if (!ok) fails++; };
 const H = 3_600_000;
 try {
-  await db.$runCommandRaw({ dropDatabase: 1 });
-  await ensureIndexes(db);
   const type = await db.applicationType.create({ data: { key: "team", name: "Team" } });
   const pos = await db.position.create({ data: { typeId: type.id, slug: "support", title: "Support", tagline: "x", description: "x", maxApplications: 2 } });
   const mk = (n: string, id: string, extra = {}) => db.user.create({ data: { discordId: id, username: n, globalName: n, discordCreatedAt: new Date("2020-01-01"), ...extra } });
@@ -650,8 +646,7 @@ try {
   try { await db.feedback.create({ data: { applicationId: app1.id, rating: 1 } }); } catch { dup = true; }
   check(dup, "Ein Feedback pro Bewerbung");
 } finally {
-  await db.$runCommandRaw({ dropDatabase: 1 }).catch(() => {});
-  await db.$disconnect();
+  await testDb.drop();
 }
 console.log(fails ? `\n${fails} Fehler` : "\nAlles grün");
 process.exit(fails ? 1 : 0);

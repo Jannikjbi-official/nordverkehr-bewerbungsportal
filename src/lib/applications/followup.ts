@@ -33,9 +33,8 @@ export async function sendFollowUpReminders(db: PrismaClient, now = new Date()) 
   const apps = await db.application.findMany({
     where: {
       status: { in: ACTIVE_STATUSES },
-      // not: null ist nötig – bei MongoDB trifft „lte“ sonst auch leere Felder
       awaitingReplySince: { not: null, lte: new Date(now.getTime() - days * DAY) },
-      OR: [{ awaitingRemindedAt: null }, { awaitingRemindedAt: { isSet: false } }],
+      OR: [{ awaitingRemindedAt: null }],
     },
     include: { user: { select: { discordId: true, globalName: true, username: true } }, position: { select: { title: true } } },
     take: 100,
@@ -46,7 +45,7 @@ export async function sendFollowUpReminders(db: PrismaClient, now = new Date()) 
     if (a.applicantAwayUntil && a.applicantAwayUntil.getTime() > now.getTime()) continue;
     // Reservieren: höchstens eine Erinnerung pro Rückfrage
     const claimed = await db.application.updateMany({
-      where: { id: a.id, awaitingReplySince: { equals: a.awaitingReplySince, not: null }, OR: [{ awaitingRemindedAt: null }, { awaitingRemindedAt: { isSet: false } }] },
+      where: { id: a.id, awaitingReplySince: { equals: a.awaitingReplySince, not: null }, OR: [{ awaitingRemindedAt: null }] },
       data: { awaitingRemindedAt: now },
     });
     if (!claimed.count) continue;

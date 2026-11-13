@@ -3,11 +3,10 @@
  * Datenbank-Einrichtung. Von Seed-Skript, Cron und Ersteinrichtung genutzt.
  *
  * Idempotent und sicher bei parallelen Aufrufen: Abschnitte und Fragen haben
- * eindeutige Keys (partielle Unique-Indizes), doppelte Anlage scheitert am Index.
+ * eindeutige Keys (Unique-Indizes), doppelte Anlage scheitert am Index.
  */
 import type { PrismaClient } from "@prisma/client";
 import { GENERAL_SECTIONS, POSITIONS, POSITION_COOLDOWNS, TEMPLATES, type SeedSection } from "@/lib/setup/seed-data";
-import { ensureIndexes } from "@/lib/setup/indexes";
 import { markMigrationsDone, runMigrations } from "@/lib/setup/migrations";
 
 function isUniqueViolation(e: unknown) {
@@ -106,24 +105,21 @@ export async function seedBase(db: PrismaClient, log: (m: string) => void = () =
 }
 
 export interface BootstrapResult {
-  indexes: true;
   seeded: boolean;
   migrations: string[];
 }
 
 /**
- * Indizes sicherstellen, ausstehende Daten-Migrationen ausführen und – nur in
- * einer leeren Datenbank – Basisdaten anlegen. So kommen gelöschte Positionen
- * nicht von selbst zurück.
+ * Ausstehende Daten-Migrationen ausführen und – nur in einer leeren
+ * Datenbank – Basisdaten anlegen. So kommen gelöschte Positionen nicht von
+ * selbst zurück. (Tabellen und Indizes: `prisma migrate deploy` beim Build.)
  */
 export async function bootstrapDatabase(db: PrismaClient): Promise<BootstrapResult> {
   const empty = (await db.applicationType.count()) === 0;
-  // Migrationen vor den Indizes: sie räumen Duplikate auf, die sonst die Unique-Indizes blockieren
   const migrations = empty ? [] : await runMigrations(db);
-  await ensureIndexes(db);
   if (empty) {
     await seedBase(db);
     await markMigrationsDone(db);
   }
-  return { indexes: true, seeded: empty, migrations };
+  return { seeded: empty, migrations };
 }

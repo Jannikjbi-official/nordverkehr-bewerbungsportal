@@ -6,8 +6,8 @@ import { assembleForm } from "@/lib/applications/assemble";
 export async function listPublicPositions() {
   const positions = await queryPublicPositions();
   if (positions.length > 0) return positions;
-  // Frische Datenbank (z. B. direkt nach dem Verbinden von MongoDB Atlas auf Vercel):
-  // Indizes und Basisdaten einmalig anlegen. Läuft nur, solange noch keine Bewerbungsart existiert.
+  // Frische Datenbank (z. B. direkt nach dem Verbinden von Neon auf Vercel):
+  // Basisdaten einmalig anlegen. Läuft nur, solange noch keine Bewerbungsart existiert.
   if ((await db.applicationType.count()) === 0) {
     const { bootstrapDatabase } = await import("@/lib/setup/base-seed");
     await bootstrapDatabase(db).catch((e) => console.error("[setup] Ersteinrichtung fehlgeschlagen", e));

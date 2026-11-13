@@ -32,7 +32,7 @@ export async function sendDraftReminders(db: PrismaClient, opts: { now?: Date; l
     where: {
       status: "DRAFT",
       updatedAt: { lt: new Date(now.getTime() - days * DAY) },
-      OR: [{ draftRemindedAt: null }, { draftRemindedAt: { isSet: false } }],
+      OR: [{ draftRemindedAt: null }],
       position: { status: "OPEN" },
       // Gesperrte gleich in der Abfrage ausschließen – sonst blockieren ihre Entwürfe das Fenster (take)
       user: { bansAbout: { none: { liftedAt: null, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] } } },
@@ -51,7 +51,7 @@ export async function sendDraftReminders(db: PrismaClient, opts: { now?: Date; l
   for (const d of drafts) {
     // Reservieren: auch bei doppeltem Cron höchstens eine Erinnerung pro Entwurf
     const claimed = await db.application.updateMany({
-      where: { id: d.id, status: "DRAFT", OR: [{ draftRemindedAt: null }, { draftRemindedAt: { isSet: false } }] },
+      where: { id: d.id, status: "DRAFT", OR: [{ draftRemindedAt: null }] },
       data: { draftRemindedAt: now },
     });
     if (!claimed.count) continue;

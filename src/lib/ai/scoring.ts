@@ -62,7 +62,7 @@ export async function claimForScoring(applicationId: string, now = new Date()): 
   const app = await db.application.findUnique({ where: { id: applicationId }, select: { aiRating: true, consentVersion: true, aiConsentOverrideAt: true } });
   if (!app || readAiRating(app.aiRating) || !aiScoreAllowed(app)) return null;
   const res = await db.application.updateMany({
-    where: { id: applicationId, OR: [{ aiRatedAt: null }, { aiRatedAt: { isSet: false } }, { aiRatedAt: { lt: new Date(now.getTime() - LOCK_MS) } }] },
+    where: { id: applicationId, OR: [{ aiRatedAt: null }, { aiRatedAt: { lt: new Date(now.getTime() - LOCK_MS) } }] },
     data: { aiRatedAt: now },
   });
   return res.count === 1 ? now : null;

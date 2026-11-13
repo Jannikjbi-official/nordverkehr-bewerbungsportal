@@ -13,7 +13,7 @@ import { audit } from "@/lib/audit";
 import { deliverNow, runOutbox } from "@/lib/discord/outbox-db";
 import { botLog, esc } from "@/lib/discord/botlog";
 import { ACTIVE_STATUSES, isInProcessing } from "@/lib/applications/status";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 export type ActionResult<T = undefined> =
   | ({ ok: true } & (T extends undefined ? object : { data: T }))
@@ -404,8 +404,8 @@ export async function amendAnswersAction(input: z.input<typeof amendSchema>): Pr
   // Bedingt: wurde die Bewerbung gerade geöffnet/übernommen, gilt die Änderung nicht mehr
   const ok = await db.$transaction(async (tx) => {
     const res = await tx.application.updateMany({
-      where: { id: app.id, status: "SUBMITTED", OR: [{ claimedById: null }, { claimedById: { isSet: false } }], AND: [{ OR: [{ firstReviewedAt: null }, { firstReviewedAt: { isSet: false } }] }] },
-      data: { amendedAt: new Date(), flags: flags as unknown as Prisma.InputJsonValue, aiTags: [], aiTaggedAt: null, aiRating: null, aiRatedAt: null, aiSummary: null, aiSummaryAt: null },
+      where: { id: app.id, status: "SUBMITTED", OR: [{ claimedById: null }], AND: [{ OR: [{ firstReviewedAt: null }] }] },
+      data: { amendedAt: new Date(), flags: flags as unknown as Prisma.InputJsonValue, aiTags: [], aiTaggedAt: null, aiRating: Prisma.DbNull, aiRatedAt: null, aiSummary: null, aiSummaryAt: null },
     });
     if (!res.count) return false;
     for (const c of changes) await tx.answer.update({ where: { id: c.id }, data: { value: c.value } });

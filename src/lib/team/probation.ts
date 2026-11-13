@@ -52,7 +52,7 @@ export async function decideProbation(db: PrismaClient, opts: { applicationId: s
   } else {
     const result = opts.decision === "PASSED" ? "PASSED" : "ENDED";
     const res = await db.application.updateMany({
-      where: { id: app.id, OR: [{ probationResult: null }, { probationResult: { isSet: false } }] },
+      where: { id: app.id, OR: [{ probationResult: null }] },
       data: { probationResult: result, probationDecidedAt: now, probationDecidedById: opts.actor.id },
     });
     if (!res.count) throw new Error("Die Probezeit ist schon entschieden.");
@@ -95,7 +95,7 @@ export async function decideProbation(db: PrismaClient, opts: { applicationId: s
 /** Morgens: Probezeit endet (heute/vorbei) → DM an den Betreuer; Pate nach 14 Tagen → DM für die Rückmeldung. */
 export async function sendProbationReminders(db: PrismaClient, now = new Date()) {
   const ids: string[] = [];
-  const base = { status: "ACCEPTED" as const, isTest: { not: true }, OR: [{ probationResult: null }, { probationResult: { isSet: false } }] };
+  const base = { status: "ACCEPTED" as const, isTest: { not: true }, OR: [{ probationResult: null }] };
   const due = await db.application.findMany({
     where: { ...base, probationUntil: { not: null, lte: new Date(now.getTime() + DAY) } },
     include: { user: { select: { globalName: true, username: true } }, position: { select: { title: true } }, claimedBy: { select: { discordId: true } } },
@@ -143,7 +143,7 @@ export async function sendProbationReminders(db: PrismaClient, now = new Date())
     if (a.mentorFeedback || a.mentorRemindedAt || !a.mentorId) continue;
     const mentor = await db.user.findUnique({ where: { id: a.mentorId }, select: { discordId: true } });
     if (!mentor) continue;
-    const marked = await db.application.updateMany({ where: { id: a.id, OR: [{ mentorRemindedAt: null }, { mentorRemindedAt: { isSet: false } }] }, data: { mentorRemindedAt: now } });
+    const marked = await db.application.updateMany({ where: { id: a.id, OR: [{ mentorRemindedAt: null }] }, data: { mentorRemindedAt: now } });
     if (!marked.count) continue;
     const job = await enqueue(
       {

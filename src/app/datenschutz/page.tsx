@@ -127,14 +127,14 @@ async function Content() {
           weiter. Vercel ist unser Auftragsverarbeiter.
         </li>
         <li>
-          <strong>MongoDB Atlas</strong> (MongoDB, Inc., USA) – Datenbank: Hier liegen alle Inhalte des Portals (Account,
-          Bewerbungen, Nachrichten, Bilder). Die Datenbank wird in einem Rechenzentrum in der EU betrieben; MongoDB ist
+          <strong>Neon</strong> (Neon, Inc., USA) – Datenbank (PostgreSQL): Hier liegen alle Inhalte des Portals (Account,
+          Bewerbungen, Nachrichten, Bilder). Die Datenbank wird in einem Rechenzentrum in der EU betrieben; Neon ist
           unser Auftragsverarbeiter.
         </li>
       </ul>
       <p>
         Mit allen genannten Dienstleistern bestehen Verträge zur Auftragsverarbeitung bzw. entsprechende Vereinbarungen.
-        Soweit Daten in die USA übermittelt werden (Discord, Anthropic, Vercel, ggf. Support-Zugriffe von MongoDB),
+        Soweit Daten in die USA übermittelt werden (Discord, Anthropic, Vercel, ggf. Support-Zugriffe von Neon),
         erfolgt dies auf Grundlage des EU-US Data Privacy Framework bzw. der EU-Standardvertragsklauseln.
       </p>
 

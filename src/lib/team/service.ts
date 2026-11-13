@@ -219,10 +219,9 @@ export async function setClaim(opts: { applicationId: string; actor: Actor; acti
     if (app.claimedById === opts.actor.id) return { jobIds };
     // Bedingtes Update: niemand claimt versehentlich über einen gleichzeitigen Claim hinweg
     const res = await db.application.updateMany({
-      // Ungeclaimt heißt in MongoDB: Feld null ODER gar nicht gesetzt
       where: app.claimedById
         ? { id: app.id, claimedById: app.claimedById }
-        : { id: app.id, OR: [{ claimedById: null }, { claimedById: { isSet: false } }] },
+        : { id: app.id, OR: [{ claimedById: null }] },
       data: { claimedById: opts.actor.id, claimedAt: new Date() },
     });
     if (res.count === 0) throw new UserFacingError("Gerade hat jemand anderes geclaimt. Lade die Seite neu.");
@@ -354,7 +353,7 @@ export async function acknowledgeWithdrawal(opts: { applicationId: string; actor
   return db.$transaction(async (tx) => {
     // Bedingt setzen: zwei gleichzeitige Klicks erzeugen nur eine Bestätigung
     const res = await tx.application.updateMany({
-      where: { id: app.id, OR: [{ withdrawAckAt: null }, { withdrawAckAt: { isSet: false } }] },
+      where: { id: app.id, OR: [{ withdrawAckAt: null }] },
       data: { withdrawAckAt: new Date(), withdrawAckById: opts.actor.id },
     });
     if (res.count === 0) return { jobIds: [] as string[] };

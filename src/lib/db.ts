@@ -1,46 +1,51 @@
 import { PrismaClient } from "@prisma/client";
-import { explicitNulls } from "@/lib/db-nulls";
 
 /**
  * Eine PrismaClient-Instanz pro Prozess (auch über Hot-Reloads hinweg).
  * Wird lazy erzeugt, damit `next build` ohne Datenbank durchläuft.
- * Datenbank: MongoDB (Replica Set, z. B. MongoDB Atlas) über DATABASE_URL
- * (oder die Variable der Vercel-Atlas-Integration, siehe resolveDatabaseUrl).
+ * Datenbank: PostgreSQL (z. B. Neon über die Vercel-Integration).
  */
 const globalForPrisma = globalThis as unknown as { __nvPrisma?: PrismaClient };
 
-export const DEFAULT_DB_NAME = "nordverkehr";
+const isPostgres = (url: string) => /^postgres(ql)?:\/\//i.test(url);
 
 /**
- * Prisma braucht einen Datenbanknamen im Connection String. Die Vercel-Atlas-
- * Integration liefert oft `…mongodb.net/?retryWrites=true` ohne Namen –
- * dann wird `nordverkehr` ergänzt.
+ * Verbindung zur Laufzeit (über den Verbindungs-Pool). Reihenfolge:
+ * Neon-Integration für Prisma (mit pgbouncer=true) → Standard-Variablen.
+ * MongoDB-Adressen (alte Einrichtung) werden übersprungen.
  */
-export function withDatabaseName(url: string, name = DEFAULT_DB_NAME): string {
-  const match = url.match(/^(mongodb(?:\+srv)?:\/\/[^/?#]+)(\/[^?#]*)?(\?[^#]*)?(#.*)?$/);
-  if (!match) return url;
-  const [, base, path, query = ""] = match;
-  if (path && path !== "/") return url;
-  return `${base}/${name}${query}`;
+export const DATABASE_URL_KEYS = ["DATABASE_POSTGRES_PRISMA_URL", "POSTGRES_PRISMA_URL", "DATABASE_URL", "POSTGRES_URL", "DATABASE_POSTGRES_URL"] as const;
+
+/** Direkte Verbindung ohne Pool – für Migrationen (prisma migrate deploy). */
+export const DIRECT_URL_KEYS = ["DATABASE_URL_UNPOOLED", "DATABASE_POSTGRES_URL_NON_POOLING", "POSTGRES_URL_NON_POOLING", "DIRECT_URL"] as const;
+
+function firstPostgres(env: Record<string, string | undefined>, keys: readonly string[]): string | null {
+  for (const key of keys) {
+    const v = env[key]?.trim();
+    if (v && isPostgres(v)) return v;
+  }
+  return null;
 }
 
-/** Variablennamen, unter denen die Verbindung stehen darf (Vercel-Atlas-Integration legt eigene an). */
-export const DATABASE_URL_KEYS = ["DATABASE_URL", "DATABASE_URL_MONGODB_URI", "MONGODB_URI"] as const;
-
-/** Verbindungs-URL finden und um den Datenbanknamen ergänzen. */
+/** Verbindungs-URL für die App finden. */
 export function resolveDatabaseUrl(env: Record<string, string | undefined> = process.env): string {
-  for (const key of DATABASE_URL_KEYS) {
-    const v = env[key];
-    if (v && v.trim()) return withDatabaseName(v.trim());
-  }
-  throw new Error(`Keine Datenbank-URL gesetzt (${DATABASE_URL_KEYS.join(" / ")}).`);
+  const url = firstPostgres(env, DATABASE_URL_KEYS);
+  if (url) return url;
+  throw new Error(`Keine Postgres-Datenbank-URL gesetzt (${DATABASE_URL_KEYS.join(" / ")}).`);
+}
+
+/** URL für Migrationen: direkte Verbindung, sonst die normale. */
+export function resolveDirectUrl(env: Record<string, string | undefined> = process.env): string {
+  return firstPostgres(env, DIRECT_URL_KEYS) ?? resolveDatabaseUrl(env);
+}
+
+/** Ist eine Datenbank eingerichtet? (ohne Fehler) */
+export function hasDatabaseUrl(env: Record<string, string | undefined> = process.env): boolean {
+  return !!firstPostgres(env, DATABASE_URL_KEYS);
 }
 
 export function getDb(): PrismaClient {
-  if (!globalForPrisma.__nvPrisma) {
-    // Query-Extension ändert keine Typen – der Cast ist sicher (siehe db-nulls.ts)
-    globalForPrisma.__nvPrisma = new PrismaClient({ datasourceUrl: resolveDatabaseUrl() }).$extends(explicitNulls) as unknown as PrismaClient;
-  }
+  globalForPrisma.__nvPrisma ??= new PrismaClient({ datasourceUrl: resolveDatabaseUrl() });
   return globalForPrisma.__nvPrisma;
 }
 

@@ -71,7 +71,7 @@ export async function handleVoiceState(db: PrismaClient, ev: { discordId: string
   if (waitingCh && ev.to === waitingCh && !forThisInterview(app.waitingPingAt, at)) {
     // Einmal pro Termin (bedingt, falls zwei Ereignisse parallel kommen)
     const marked = await db.application.updateMany({
-      where: { id: app.id, OR: [{ waitingPingAt: null }, { waitingPingAt: { isSet: false } }, { waitingPingAt: { lt: new Date(at.getTime() - 3 * HOUR) } }] },
+      where: { id: app.id, OR: [{ waitingPingAt: null }, { waitingPingAt: { lt: new Date(at.getTime() - 3 * HOUR) } }] },
       data: { waitingPingAt: now },
     });
     if (!marked.count) return null;

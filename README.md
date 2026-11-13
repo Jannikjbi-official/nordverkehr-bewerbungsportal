@@ -60,9 +60,9 @@ Zusammenfassungen, Fragen-Vorschläge, beschreibende Kategorien, Punkte als Orie
 
 ## Technik
 
-Next.js 16 (App Router, Cache Components) · TypeScript · Tailwind CSS 4 · MongoDB + Prisma 6 · Auth.js v5 (Discord) · Discord REST & Gateway · zod · Anthropic SDK · Vitest
+Next.js 16 (App Router, Cache Components) · TypeScript · Tailwind CSS 4 · PostgreSQL (Neon) + Prisma 6 · Auth.js v5 (Discord) · Discord REST & Gateway · zod · Anthropic SDK · Vitest
 
-Läuft auf **Vercel** (Serverless, Cron) mit **MongoDB Atlas** – oder komplett selbst gehostet mit **Docker**. Ein optionaler **Worker** hält die Discord-Gateway-Verbindung.
+Läuft auf **Vercel** (Serverless, Cron) mit **Neon** (Postgres) – oder komplett selbst gehostet mit **Docker**. Ein optionaler **Worker** hält die Discord-Gateway-Verbindung.
 
 ---
 
@@ -71,8 +71,7 @@ Läuft auf **Vercel** (Serverless, Cron) mit **MongoDB Atlas** – oder komplett
 ```bash
 npm install
 cp .env.example .env          # Werte eintragen (siehe Einrichtung)
-npm run db:dev                # lokale MongoDB als Replica Set (eigenes Terminal)
-npm run db:push               # Schema + Indizes
+npm run db:dev                # lokale Postgres-Datenbank (eigenes Terminal, spielt das Schema ein)
 npm run db:seed               # Positionen, Fragen, Bausteine, Demo-Bewerbungen
 npm run dev                   # http://localhost:3000
 ```
@@ -99,14 +98,13 @@ npm run dev                   # http://localhost:3000
 
 > Der Bot kann nur Nutzern schreiben, die mit ihm einen Server teilen und DMs zulassen. Schlägt eine DM fehl, steht die Nachricht trotzdem im Portal.
 
-### 2. Datenbank (MongoDB Atlas)
+### 2. Datenbank (Neon / PostgreSQL)
 
-Das Portal nutzt Transaktionen – MongoDB muss als **Replica Set** laufen. Atlas erfüllt das immer, auch der Gratis-Cluster.
-
-- Cluster in der **EU** anlegen (z. B. Frankfurt), Nutzer mit `readWrite`, Netzwerkzugriff `0.0.0.0/0` für Vercel.
-- Oder in Vercel die [MongoDB-Atlas-Integration](https://vercel.com/marketplace/mongodbatlas) nutzen.
-- Das Portal akzeptiert `DATABASE_URL`, `DATABASE_URL_MONGODB_URI` und `MONGODB_URI`; ein fehlender Datenbankname wird ergänzt.
-- **Ersteinrichtung:** Beim ersten Aufruf einer leeren Datenbank legt das Portal Indizes und Basisdaten (Positionen, Fragen, Bausteine – ohne Demo-Bewerbungen) selbst an. Alternativ einmalig: `npm run db:push` und `SEED_DEMO=false npm run db:seed`.
+- Am einfachsten: in Vercel die [Neon-Integration](https://vercel.com/marketplace/neon) verbinden (Region **EU**, z. B. Frankfurt). Sie setzt `DATABASE_URL`, `DATABASE_URL_UNPOOLED` und `DATABASE_POSTGRES_PRISMA_URL` – das Portal erkennt alle selbst.
+- Neon von Hand oder ein anderes Postgres: `DATABASE_URL` (bei Neon die „pooled“ Verbindung) und für Migrationen `DATABASE_URL_UNPOOLED` („direct“).
+- **Schema:** `npm run build` spielt ausstehende Migrationen aus `prisma/migrations` automatisch ein (`prisma migrate deploy`) – auf Vercel bei jedem Deploy.
+- **Ersteinrichtung:** Beim ersten Aufruf einer leeren Datenbank legt das Portal Basisdaten (Positionen, Fragen, Bausteine – ohne Demo-Bewerbungen) selbst an. Alternativ einmalig: `SEED_DEMO=false npm run db:seed`.
+- **Umzug von MongoDB:** Solange `DATABASE_URL_MONGODB_URI` gesetzt ist, zeigt der Admin-Bereich die Karte „Daten aus MongoDB übernehmen“ – einmal ausführen, danach die alte Variable entfernen.
 
 ### 3. Umgebungsvariablen
 
@@ -118,7 +116,7 @@ Vorlage: [`.env.example`](.env.example). Die wichtigsten:
 | `NEXT_PUBLIC_MAIN_SITE_URL` | Hauptseite eures Servers (Footer, erlaubte Links für die KI) |
 | `NEXT_PUBLIC_DISCORD_INVITE` | Dauerhafter Einladungslink |
 | `NEXT_PUBLIC_RULES_URL` | Regelwerk (optional, Standard `<Hauptseite>/regeln`) |
-| `DATABASE_URL` | MongoDB-Verbindung |
+| `DATABASE_URL` | Postgres-Verbindung (bei Neon automatisch, dazu `DATABASE_URL_UNPOOLED` für Migrationen) |
 | `AUTH_SECRET`, `AUTH_DISCORD_ID`, `AUTH_DISCORD_SECRET`, `AUTH_TRUST_HOST` | Login |
 | `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, `TEAM_ROLE_ID`, `ADMIN_ROLE_ID` | Bot & Rollen |
 | `CRON_SECRET` | Schutz der Cron-Routen (zufällig, ≥ 16 Zeichen) |
@@ -135,8 +133,8 @@ Kanäle (Bewerbungen, Bot-Log, Teamchat, Leitung, Changelog …) werden **im Por
 
 ```bash
 cp .env.example .env
-docker compose up -d --build      # MongoDB (Replica Set) + Portal + Worker
-docker compose run --rm setup     # Schema, Indizes, Basisdaten (einmalig)
+docker compose up -d --build      # Postgres + Portal + Worker
+docker compose run --rm setup     # Schema (Migrationen) + Basisdaten (einmalig)
 ```
 
 ### 5. KI (optional)
@@ -178,7 +176,7 @@ Das Portal ist auf Nordverkehr zugeschnitten, lässt sich aber für euren Server
 ### Cron-Jobs (Vercel)
 - `/api/cron/outbox` – Zustellung ausstehender Discord-Nachrichten, Changelog-Post, nachts Stellen-Zeitplan und Prüfungen. Läuft um 0/1 Uhr und stündlich von 5 bis 13 Uhr (deutsche Zeit) – passt zu kleinen Vercel-Plänen.
 - `/api/cron/summary` – 8 Uhr: Team-Übersicht, Erinnerungen, Probezeit, Entwürfe.
-- `/api/cron/retention` – Löschfristen und Indizes.
+- `/api/cron/retention` – Löschfristen und Datenbank-Einrichtung.
 
 Vercel rechnet in UTC; Einträge stehen deshalb für Sommer- und Winterzeit doppelt drin, nur der passende Lauf arbeitet. Nachrichten gehen zusätzlich **sofort** nach jeder Aktion raus.
 
@@ -222,9 +220,9 @@ src/
     ai/           Claude-Anbindung, Schutzschicht, Einordnung, Auto-Antwort
     setup/        Startdaten, Migrationen, Testbewerbungen
   proxy.ts        Zugriffsschutz vor jeder geschützten Route
-prisma/           Schema (MongoDB)
+prisma/           Schema + Migrationen (PostgreSQL)
 worker/           optionaler Dauerprozess (Gateway, Outbox, Löschfristen)
-scripts/          lokale MongoDB, Indizes, Integrationstests
+scripts/          lokale Postgres-Datenbank, Migrationen, Integrationstests
 tests/unit/       Vitest
 ```
 
@@ -236,10 +234,11 @@ tests/unit/       Vitest
 | `npm run build` / `npm start` | Produktion |
 | `npm test` | Unit-Tests |
 | `npm run lint` / `npm run typecheck` | Qualität |
-| `npm run db:dev` | lokale MongoDB (Replica Set) |
-| `npm run db:push` | Schema + Indizes |
+| `npm run db:dev` | lokale Postgres-Datenbank (ohne Installation, Port 5433) |
+| `npm run db:push` | Migrationen einspielen (`prisma migrate deploy`) |
+| `npm run db:migrate:new -- <name>` | nach Schema-Änderungen eine neue Migration anlegen |
 | `npm run db:seed` | Basisdaten (+ Demo, außer `SEED_DEMO=false`) |
-| `npm run db:test-features` / `db:test-workflow` | Integrationstests gegen eine Wegwerf-Datenbank (`npm run db:dev` vorher starten) |
+| `npm run db:test-features` / `db:test-workflow` / `db:test-migration` | Integrationstests, jeweils mit eigener Wegwerf-Datenbank (`npm run db:dev` vorher starten) |
 | `npm run worker` | optionaler Worker |
 
 ### Fragen-Struktur

@@ -60,7 +60,7 @@ async function markBanned(
   const flags = ((app.flags as { code: string; message: string }[]) ?? []).filter((f) => f.code !== "guild_banned");
   flags.push({ code: "guild_banned", message: `Auf dem Nordverkehr-Discord gebannt${reason ? ` (Grund: ${reason.slice(0, 120)})` : ""}.` });
   const res = await db.application.updateMany({
-    where: { id: app.id, OR: [{ guildBannedAt: null }, { guildBannedAt: { isSet: false } }] },
+    where: { id: app.id, OR: [{ guildBannedAt: null }] },
     data: { guildBannedAt: now, guildBanReason: reason, guildLeftNotifiedAt: now, flags: flags as never },
   });
   if (!res.count) return null;
@@ -113,7 +113,7 @@ export async function applyGuildState(applicationId: string, inGuild: boolean): 
   if (ban) return markBanned(app, ban.reason, now);
   // Reservieren: nur eine Instanz verschickt die Nachricht
   const claimed = await db.application.updateMany({
-    where: { id: app.id, OR: [{ guildLeftNotifiedAt: null }, { guildLeftNotifiedAt: { isSet: false } }] },
+    where: { id: app.id, OR: [{ guildLeftNotifiedAt: null }] },
     data: { guildLeftNotifiedAt: now },
   });
   if (!claimed.count) return null;

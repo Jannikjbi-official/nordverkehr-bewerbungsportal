@@ -10,7 +10,6 @@ import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { resolveDatabaseUrl } from "../src/lib/db";
 import { migrateQuestionsV2, runMigrations } from "../src/lib/setup/migrations";
-import { ensureIndexes } from "../src/lib/setup/indexes";
 
 const apply = process.argv.includes("--apply");
 const db = new PrismaClient({ datasourceUrl: resolveDatabaseUrl() });
@@ -20,7 +19,6 @@ try {
     await migrateQuestionsV2(db, { dryRun: true, log: console.log });
   } else {
     const done = await runMigrations(db, { log: console.log });
-    await ensureIndexes(db);
     console.log(done.length ? `✓ Ausgeführt: ${done.join(", ")}` : "Nichts zu tun (bereits ausgeführt oder gesperrt).");
   }
 } finally {

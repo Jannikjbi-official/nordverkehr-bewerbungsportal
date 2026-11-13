@@ -36,7 +36,7 @@ export function canRebook(current: { startsAt: Date } | null, now: Date) {
 /** Freie, buchbare Termine (ab jetzt + Vorlauf). */
 export function listFreeSlots(db: PrismaClient, now = new Date()) {
   return db.interviewSlot.findMany({
-    where: { startsAt: { gte: new Date(now.getTime() + BOOK_MIN_LEAD_HOURS * HOUR) }, OR: [{ applicationId: null }, { applicationId: { isSet: false } }] },
+    where: { startsAt: { gte: new Date(now.getTime() + BOOK_MIN_LEAD_HOURS * HOUR) }, OR: [{ applicationId: null }] },
     orderBy: { startsAt: "asc" },
     take: 60,
   });
@@ -60,7 +60,7 @@ export async function bookSlot(db: PrismaClient, opts: { userId: string; applica
     if (!target || target.startsAt.getTime() < now.getTime() + BOOK_MIN_LEAD_HOURS * HOUR) throw new SlotError("Dieser Termin ist nicht mehr buchbar.");
     if (app.slot) await tx.interviewSlot.update({ where: { id: app.slot.id }, data: { applicationId: null, bookedAt: null } });
     const res = await tx.interviewSlot.updateMany({
-      where: { id: opts.slotId, OR: [{ applicationId: null }, { applicationId: { isSet: false } }] },
+      where: { id: opts.slotId, OR: [{ applicationId: null }] },
       data: { applicationId: app.id, bookedAt: now },
     });
     if (!res.count) throw new SlotError("Den Termin hat gerade jemand anderes gebucht. Such dir einen anderen aus.");
@@ -119,7 +119,7 @@ export async function sendInterviewReminders(db: PrismaClient, now = new Date())
   for (const a of apps) {
     if (!a.interviewAt || a.interviewRemindedFor?.getTime() === a.interviewAt.getTime()) continue;
     const claimed = await db.application.updateMany({
-      where: { id: a.id, interviewAt: a.interviewAt, OR: [{ interviewRemindedFor: null }, { interviewRemindedFor: { isSet: false } }, { interviewRemindedFor: { not: a.interviewAt } }] },
+      where: { id: a.id, interviewAt: a.interviewAt, OR: [{ interviewRemindedFor: null }, { interviewRemindedFor: { not: a.interviewAt } }] },
       data: { interviewRemindedFor: a.interviewAt },
     });
     if (!claimed.count) continue;

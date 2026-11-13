@@ -10,6 +10,8 @@ import { isNight, nightEndsAt } from "@/lib/night";
 import { formatDayTime } from "@/components/ui";
 import { CHANGELOG, isPublished, publishTimeLabel, todayBerlin } from "@/lib/changelog";
 import { ChangelogPublishCard } from "@/components/team/ChangelogPublishCard";
+import { MongoImportPanel } from "@/components/team/MongoImportPanel";
+import { IMPORT_MARKER, resolveMongoUrl } from "@/lib/setup/mongo-import-shared";
 
 export default function AdminOverviewPage() {
   return (
@@ -24,13 +26,16 @@ async function Overview() {
   const props = await loadSettingsProps();
   const s = props.settings;
   const now = new Date();
-  const [pending, failed, waiting, tests, newIdeas] = await Promise.all([
+  const [pending, failed, waiting, tests, newIdeas, imported] = await Promise.all([
     db.outboxJob.count({ where: { status: "PENDING", runAt: { lte: now } } }),
     db.outboxJob.count({ where: { status: "FAILED" } }),
     db.outboxJob.count({ where: { status: "PENDING", runAt: { gt: now } } }),
     db.application.count({ where: { isTest: true } }),
     db.suggestion.count({ where: { status: "NEW" } }),
+    db.setting.findUnique({ where: { key: IMPORT_MARKER } }),
   ]);
+  // Umzug auf Neon: Karte nur, solange die alte MongoDB verbunden und noch nichts übernommen ist
+  const showImport = !!resolveMongoUrl() && !imported;
   const night = isNight(s, now);
   // Changelog des laufenden Tages: veröffentlicht oder noch ausstehend?
   const rule = { time: s["changelog.publishTime"], through: s["changelog.publishedThrough"] };
@@ -69,6 +74,19 @@ async function Overview() {
           </Link>
         </div>
       </section>
+
+      {showImport && (
+        <section className="nv-card p-5 sm:p-6 space-y-3 border-[var(--tone-warn)]/50">
+          <div>
+            <h2 className="font-semibold text-lg">Umzug auf Neon: Daten aus MongoDB übernehmen</h2>
+            <p className="text-sm text-muted mt-1 max-w-3xl">
+              Das Portal läuft jetzt auf Postgres (Neon). Die bisherigen Daten – Bewerbungen, Konten, Nachrichten, Einstellungen, Stellen, Ideen – liegen noch in der alten
+              MongoDB. Einmal übernehmen, danach verschwindet diese Karte.
+            </p>
+          </div>
+          <MongoImportPanel />
+        </section>
+      )}
 
       <ChangelogPublishCard status={clStatus} version={todayEntries.length ? [...todayEntries].reverse().map((e) => e.version).join(" & ") : null} timeLabel={publishTimeLabel(rule)} />
 

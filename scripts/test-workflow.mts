@@ -1,22 +1,19 @@
 /**
  * Integrationstest gegen eine Wegwerf-DB: Claimen/Übernehmen/Freigeben,
  * Senden als Team bzw. persönlich, Components-V2-Payloads, Bot-Logs und
- * explizite null-Felder (Sperr-Filter).
+ * Sperr-Filter.
  *
  *   npm run db:dev
  *   npm run db:test-workflow
  */
 import "dotenv/config";
-const url = new URL(process.env.DATABASE_URL!);
-url.pathname = "/nordverkehr_claimtest";
-process.env.DATABASE_URL = url.toString();
+import { freshTestDatabase } from "./test-db";
+const testDb = await freshTestDatabase("workflow");
 const { db } = await import("../src/lib/db");
 const { setClaim, sendTeamMessage, changeStatus, acknowledgeWithdrawal } = await import("../src/lib/team/service");
-const { backfillNulls } = await import("../src/lib/db-nulls");
 let fails = 0;
 const check = (ok: boolean, m: string) => { console.log(ok ? "✓" : "✗", m); if (!ok) fails++; };
 try {
-  await db.$runCommandRaw({ dropDatabase: 1 });
   const type = await db.applicationType.create({ data: { key: "team", name: "Team" } });
   const pos = await db.position.create({ data: { typeId: type.id, slug: "support", title: "Support", tagline: "x", description: "x" } });
   const mk = (n: string, id: string, isAdmin = false) => db.user.create({ data: { discordId: id, username: n, globalName: n, discordCreatedAt: new Date("2020-01-01"), isTeam: true, isAdmin } });
@@ -28,13 +25,11 @@ try {
   const lea = await mk("Lea", "100000000000000012");
   const app = await db.application.create({ data: { userId: applicant.id, positionId: pos.id, status: "SUBMITTED", publicId: "NV-T-1", submittedAt: new Date() } });
 
-  // Explizite nulls & Sperr-Filter
+  // Sperr-Filter (null-Felder)
   const ban = await db.userBan.create({ data: { subjectId: applicant.id, reason: "Test" } });
   check((await db.userBan.count({ where: { id: ban.id, liftedAt: null, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] } })) === 1, "Sperre wird mit liftedAt:null/expiresAt:null gefunden");
-  await db.$runCommandRaw({ insert: "UserBan", documents: [{ _id: "legacyban000000000000000001", subjectId: applicant.id, reason: "alt", createdAt: { $date: new Date().toISOString() } }] });
-  check((await db.userBan.count({ where: { liftedAt: null } })) === 1, "Altdokument ohne Feld wird vorher nicht gefunden (Bug bestätigt)");
-  const n = await backfillNulls(db);
-  check((await db.userBan.count({ where: { liftedAt: null } })) === 2 && n > 0, `Backfill ergänzt fehlende Felder (${n} Dokumente)`);
+  await db.userBan.create({ data: { subjectId: applicant.id, reason: "alt" } });
+  check((await db.userBan.count({ where: { liftedAt: null } })) === 2, "Beide offenen Sperren werden gefunden");
 
   await setClaim({ applicationId: app.id, actor: jonas, action: "claim" });
   check((await db.application.findUnique({ where: { id: app.id } }))?.claimedById === jonas.id, "Jonas claimt");
@@ -94,6 +89,5 @@ try {
 
   console.log(fails ? `${fails} fehlgeschlagen` : "Alle Prüfungen bestanden.");
 } finally {
-  await db.$runCommandRaw({ dropDatabase: 1 }).catch(() => {});
-  await db.$disconnect();
+  await testDb.drop();
 }

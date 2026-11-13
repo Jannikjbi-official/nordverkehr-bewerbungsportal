@@ -1,14 +1,13 @@
-// Nordverkehr Bewerbungsportal – Datenmodell (MongoDB)
-// Nach jeder Änderung: `npm run db:push` (überträgt Schema + Indizes)
-// MongoDB muss als Replica Set laufen (Atlas: immer; lokal: `npm run db:dev`),
-// weil das Portal Transaktionen nutzt.
+// Nordverkehr Bewerbungsportal – Datenmodell (PostgreSQL, z. B. Neon)
+// Nach jeder Änderung: `npm run db:migrate:new -- <name>` (legt eine Migration
+// in prisma/migrations an). Beim Deploy spielt `npm run build` sie automatisch ein.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "mongodb"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -98,7 +97,7 @@ enum OutboxStatus {
 // ─────────────────────────────────────────────────────────────
 
 model User {
-  id               String   @id @default(cuid()) @map("_id")
+  id               String   @id @default(cuid())
   discordId        String   @unique
   username         String
   globalName       String?
@@ -160,7 +159,7 @@ model User {
 /// Allgemeine Angaben eines Bewerbers (einmal ausgefüllt, für weitere Bewerbungen wiederverwendet).
 /// answers: { [Fragen-Key]: Wert } – Keys statt IDs, damit Umbauten im Formular nichts kaputt machen.
 model ApplicantProfile {
-  id        String   @id @default(cuid()) @map("_id")
+  id        String   @id @default(cuid())
   userId    String   @unique
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   age       Int?
@@ -170,7 +169,7 @@ model ApplicantProfile {
 }
 
 model UserNote {
-  id        String   @id @default(cuid()) @map("_id")
+  id        String   @id @default(cuid())
   subjectId String
   subject   User     @relation("NoteSubject", fields: [subjectId], references: [id], onDelete: Cascade)
   authorId  String?
@@ -182,7 +181,7 @@ model UserNote {
 }
 
 model UserBan {
-  id          String    @id @default(cuid()) @map("_id")
+  id          String    @id @default(cuid())
   subjectId   String
   subject     User      @relation("BanSubject", fields: [subjectId], references: [id], onDelete: Cascade)
   reason      String
@@ -203,7 +202,7 @@ model UserBan {
 
 /// Bewerbungsart (heute nur "team", später z. B. "whitelist", "fraktion")
 model ApplicationType {
-  id          String        @id @default(cuid()) @map("_id")
+  id          String        @id @default(cuid())
   key         String        @unique
   name        String
   description String?
@@ -214,7 +213,7 @@ model ApplicationType {
 }
 
 model Position {
-  id                   String          @id @default(cuid()) @map("_id")
+  id                   String          @id @default(cuid())
   typeId               String
   type                 ApplicationType @relation(fields: [typeId], references: [id], onDelete: Restrict)
   slug                 String          @unique
@@ -260,9 +259,9 @@ model Position {
 
 /// Formular-Schritt. positionId = null → allgemeiner Schritt (für alle Positionen, nur einmal pro Person).
 model FormSection {
-  id          String          @id @default(cuid()) @map("_id")
-  /// Eindeutiger Schlüssel (z. B. "about", "support.fach") – partieller Unique-Index in setup/indexes.ts
-  key         String?
+  id          String          @id @default(cuid())
+  /// Eindeutiger Schlüssel (z. B. "about", "support.fach") – eindeutig, sobald gesetzt
+  key         String?         @unique
   archived    Boolean         @default(false)
   typeId      String
   type        ApplicationType @relation(fields: [typeId], references: [id], onDelete: Cascade)
@@ -278,9 +277,9 @@ model FormSection {
 }
 
 model Question {
-  id            String       @id @default(cuid()) @map("_id")
-  /// Eindeutiger Schlüssel (z. B. "about_me", "support.newbie") – partieller Unique-Index in setup/indexes.ts
-  key           String?
+  id            String       @id @default(cuid())
+  /// Eindeutiger Schlüssel (z. B. "about_me", "support.newbie") – eindeutig, sobald gesetzt
+  key           String?      @unique
   sectionId     String
   section       FormSection  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   label         String
@@ -308,10 +307,10 @@ model Question {
 // ─────────────────────────────────────────────────────────────
 
 model Application {
-  id         String            @id @default(cuid()) @map("_id")
-  /// Eindeutig, sobald gesetzt – partieller Unique-Index in scripts/mongo-indexes.ts
-  /// (ein normales @unique würde in MongoDB mehrere Entwürfe ohne ID blockieren)
-  publicId   String?
+  id         String            @id @default(cuid())
+  /// Eindeutig, sobald gesetzt (Entwürfe haben noch keine – NULL zählt in Postgres nicht als Duplikat).
+  /// Zusätzlich in der Migration: höchstens eine offene Bewerbung pro Person und Position.
+  publicId   String?           @unique
   userId     String
   user       User              @relation("Applicant", fields: [userId], references: [id], onDelete: Cascade)
   positionId String
@@ -443,7 +442,7 @@ model Application {
 
 /// Eingereichte Antwort inkl. Snapshot der Frage (Formular-Änderungen verfälschen alte Bewerbungen nicht)
 model Answer {
-  id            String       @id @default(cuid()) @map("_id")
+  id            String       @id @default(cuid())
   applicationId String
   application   Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   questionId    String?
@@ -459,7 +458,7 @@ model Answer {
 }
 
 model Upload {
-  id            String       @id @default(cuid()) @map("_id")
+  id            String       @id @default(cuid())
   ownerId       String
   owner         User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   applicationId String?
@@ -480,7 +479,7 @@ model Upload {
 }
 
 model StatusChange {
-  id            String             @id @default(cuid()) @map("_id")
+  id            String             @id @default(cuid())
   applicationId String
   application   Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   from          ApplicationStatus?
@@ -494,7 +493,7 @@ model StatusChange {
 }
 
 model Vote {
-  id            String      @id @default(cuid()) @map("_id")
+  id            String      @id @default(cuid())
   applicationId String
   application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   userId        String
@@ -508,7 +507,7 @@ model Vote {
 
 /// Bewertungsbogen: Punkte 1–5 pro Kriterium, eine Bewertung pro Teammitglied und Bewerbung
 model Rating {
-  id            String      @id @default(cuid()) @map("_id")
+  id            String      @id @default(cuid())
   applicationId String
   application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   userId        String
@@ -524,7 +523,7 @@ model Rating {
 
 /// Freier Gesprächstermin, den Bewerber im Status „Gespräch“ selbst buchen
 model InterviewSlot {
-  id            String       @id @default(cuid()) @map("_id")
+  id            String       @id @default(cuid())
   startsAt      DateTime
   durationMin   Int          @default(30)
   note          String?
@@ -540,7 +539,7 @@ model InterviewSlot {
 
 /// Gesprächsprotokoll: Notiz zu einer Frage (question = "" → Gesamtfazit). Mehrere Teammitglieder ergänzen, nichts wird überschrieben.
 model InterviewNote {
-  id            String      @id @default(cuid()) @map("_id")
+  id            String      @id @default(cuid())
   applicationId String
   application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   question      String
@@ -554,7 +553,7 @@ model InterviewNote {
 
 /// Gesprächsprotokoll: Frage abgehakt (eine pro Bewerbung und Frage)
 model InterviewCheck {
-  id            String      @id @default(cuid()) @map("_id")
+  id            String      @id @default(cuid())
   applicationId String
   application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   question      String
@@ -567,7 +566,7 @@ model InterviewCheck {
 
 /// Rückmeldung des Bewerbers zum Ablauf (nach der Entscheidung, freiwillig)
 model Feedback {
-  id            String      @id @default(cuid()) @map("_id")
+  id            String      @id @default(cuid())
   applicationId String      @unique
   application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   rating        Int
@@ -576,7 +575,7 @@ model Feedback {
 }
 
 model Comment {
-  id            String      @id @default(cuid()) @map("_id")
+  id            String      @id @default(cuid())
   applicationId String
   application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   authorId      String?
@@ -588,7 +587,7 @@ model Comment {
 }
 
 model Message {
-  id             String           @id @default(cuid()) @map("_id")
+  id             String           @id @default(cuid())
   applicationId  String
   application    Application      @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   direction      MessageDirection
@@ -611,7 +610,7 @@ model Message {
 }
 
 model MessageTemplate {
-  id          String           @id @default(cuid()) @map("_id")
+  id          String           @id @default(cuid())
   category    TemplateCategory
   title       String
   body        String
@@ -630,14 +629,14 @@ model MessageTemplate {
 // ─────────────────────────────────────────────────────────────
 
 model Setting {
-  key         String   @id @map("_id")
+  key         String   @id
   value       Json
   updatedById String?
   updatedAt   DateTime @updatedAt
 }
 
 model AuditLog {
-  id         String   @id @default(cuid()) @map("_id")
+  id         String   @id @default(cuid())
   actorId    String?
   actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
   action     String
@@ -652,7 +651,7 @@ model AuditLog {
 }
 
 model AiUsage {
-  id           String   @id @default(cuid()) @map("_id")
+  id           String   @id @default(cuid())
   userId       String?
   user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   feature      String
@@ -670,13 +669,13 @@ model AiUsage {
 }
 
 model RateLimit {
-  key     String   @id @map("_id")
+  key     String   @id
   count   Int
   resetAt DateTime
 }
 
 model OutboxJob {
-  id            String       @id @default(cuid()) @map("_id")
+  id            String       @id @default(cuid())
   type          OutboxType
   payload       Json
   status        OutboxStatus @default(PENDING)
@@ -696,13 +695,13 @@ model OutboxJob {
 }
 
 model Counter {
-  key   String @id @map("_id")
+  key   String @id
   value Int
 }
 
 /// Bewerbungsrunde: Zeitraum (optional nur eine Stelle) mit Zielanzahl – für die Auswertung
 model ApplicationRound {
-  id          String   @id @default(cuid()) @map("_id")
+  id          String   @id @default(cuid())
   name        String
   /// leer = alle Stellen
   positionId  String?
@@ -733,7 +732,7 @@ enum SuggestionStatus {
 }
 
 model Suggestion {
-  id          String           @id @default(cuid()) @map("_id")
+  id          String           @id @default(cuid())
   kind        SuggestionKind
   title       String
   body        String

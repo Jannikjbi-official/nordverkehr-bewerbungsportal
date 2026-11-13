@@ -40,7 +40,7 @@ export async function collectWeeklyStats(db: PrismaClient, now = new Date()): Pr
     db.application.findMany({ where: { ...real, status: { in: ["ACCEPTED", "REJECTED"] }, decidedAt: { gte: from, lt: now } }, select: { status: true, positionId: true, rejectionCategory: true, submittedAt: true, decidedAt: true } }),
     db.application.count({ where: { ...real, status: "WITHDRAWN", decidedAt: { gte: from, lt: now } } }),
     db.application.count({ where: { ...real, status: { in: ACTIVE_STATUSES } } }),
-    db.application.count({ where: { ...real, status: { in: ACTIVE_STATUSES }, OR: [{ claimedById: null }, { claimedById: { isSet: false } }] } }),
+    db.application.count({ where: { ...real, status: { in: ACTIVE_STATUSES }, OR: [{ claimedById: null }] } }),
     db.feedback.findMany({ where: { createdAt: { gte: from, lt: now } }, select: { rating: true } }),
   ]);
   const days = decided.filter((d) => d.submittedAt && d.decidedAt).map((d) => (d.decidedAt!.getTime() - d.submittedAt!.getTime()) / DAY);

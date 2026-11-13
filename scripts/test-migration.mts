@@ -5,22 +5,19 @@
  * Entwürfe auf Duplikaten. Prüft, dass danach nichts doppelt ist und keine
  * Antwort verloren geht.
  *
- *   npm run db:dev                 # lokale MongoDB (Replica Set)
- *   npx tsx scripts/test-migration.mts
+ *   npm run db:dev                 # lokale Postgres-Datenbank
+ *   npm run db:test-migration
  */
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
-import { PrismaClient } from "@prisma/client";
-import { resolveDatabaseUrl } from "../src/lib/db";
+import type { PrismaClient, QuestionType } from "@prisma/client";
 import { migrateQuestionsV2, runMigrations } from "../src/lib/setup/migrations";
-import { ensureIndexes } from "../src/lib/setup/indexes";
+import { freshTestDatabase } from "./test-db";
 import { assembleForm, duplicateCheck } from "../src/lib/applications/assemble";
 import { POSITIONS } from "../src/lib/setup/seed-data";
 
-const url = new URL(resolveDatabaseUrl());
-if (!["127.0.0.1", "localhost"].includes(url.hostname)) throw new Error("Nur gegen eine lokale Datenbank ausführen.");
-url.pathname = "/nordverkehr_migtest";
-const db = new PrismaClient({ datasourceUrl: url.toString() });
+const testDb = await freshTestDatabase("migration");
+const db: PrismaClient = (await import("../src/lib/db")).db;
 
 const id = () => randomUUID().replace(/-/g, "").slice(0, 25);
 let failures = 0;
@@ -32,31 +29,14 @@ function check(ok: boolean, msg: string) {
 type Q = { label: string; type?: string; options?: string[] };
 async function legacySection(typeId: string, positionId: string | null, title: string, sortOrder: number, questions: Q[]) {
   const sectionId = id();
-  // Alte Dokumente: ohne `key` und ohne `archived` (wie vor der Bereinigung)
-  await db.$runCommandRaw({
-    insert: "FormSection",
-    documents: [{ _id: sectionId, typeId, positionId, title, description: null, sortOrder, createdAt: { $date: new Date().toISOString() } }],
-  });
+  // Altbestand: ohne `key` (wie vor der Bereinigung)
+  await db.formSection.create({ data: { id: sectionId, typeId, positionId, title, description: null, sortOrder } });
   const ids: string[] = [];
   for (const [i, q] of questions.entries()) {
     const qid = id();
     ids.push(qid);
-    await db.$runCommandRaw({
-      insert: "Question",
-      documents: [
-        {
-          _id: qid,
-          sectionId,
-          label: q.label,
-          type: q.type ?? "LONG_TEXT",
-          required: true,
-          options: q.options ?? [],
-          sortOrder: i,
-          archived: false,
-          createdAt: { $date: new Date().toISOString() },
-          updatedAt: { $date: new Date().toISOString() },
-        },
-      ],
+    await db.question.create({
+      data: { id: qid, sectionId, label: q.label, type: (q.type ?? "LONG_TEXT") as QuestionType, required: true, options: q.options ?? [], sortOrder: i, archived: false },
     });
   }
   return ids;
@@ -92,7 +72,6 @@ const GENERAL_OLD: [string, Q[]][] = [
 ];
 
 try {
-  await db.$runCommandRaw({ dropDatabase: 1 });
   const type = await db.applicationType.create({ data: { key: "team", name: "Team-Bewerbung" } });
   const pos: Record<string, string> = {};
   for (const p of POSITIONS) {
@@ -152,7 +131,6 @@ try {
   // 2) Ausführen (wie beim Serverstart)
   const done = await runMigrations(db, { log: () => {} });
   check(done.includes("2026-11-questions-v2"), `Migrationen ausgeführt: ${done.join(", ")}`);
-  await ensureIndexes(db);
   check(true, "Unique-Indizes ließen sich anlegen (keine doppelten Keys mehr)");
 
   // 3) Formulare je Position: keine Duplikate
@@ -217,6 +195,5 @@ try {
   console.log(failures ? `\n${failures} Prüfung(en) fehlgeschlagen.` : "\nAlle Prüfungen bestanden.");
   process.exitCode = failures ? 1 : 0;
 } finally {
-  await db.$runCommandRaw({ dropDatabase: 1 }).catch(() => {});
-  await db.$disconnect();
+  await testDb.drop();
 }

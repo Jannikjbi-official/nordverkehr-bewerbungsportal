@@ -56,7 +56,8 @@ export type AuditAction =
   | "export.csv"
   | "retention.cleanup"
   | "suggestion.update"
-  | "suggestion.delete";
+  | "suggestion.delete"
+  | "data.import";
 
 export async function audit(
   action: AuditAction,
@@ -139,4 +140,5 @@ export const AUDIT_LABELS: Record<string, string> = {
   "retention.cleanup": "Löschfristen",
   "suggestion.update": "Idee/Meldung bearbeitet",
   "suggestion.delete": "Idee/Meldung gelöscht",
+  "data.import": "Daten aus MongoDB übernommen",
 };

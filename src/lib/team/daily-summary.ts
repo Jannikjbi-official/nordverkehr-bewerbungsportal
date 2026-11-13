@@ -58,7 +58,7 @@ export async function collectDailySummary(db: PrismaClient, opts: { now?: Date; 
         status: "WITHDRAWN",
         withdrawnInReview: true,
         decidedAt: { gte: new Date(now.getTime() - FOLLOW_UP_DAYS * DAY) },
-        OR: [{ withdrawAckAt: null }, { withdrawAckAt: { isSet: false } }],
+        OR: [{ withdrawAckAt: null }],
       },
       include: userAndPos,
       orderBy: { decidedAt: "asc" },
@@ -68,7 +68,7 @@ export async function collectDailySummary(db: PrismaClient, opts: { now?: Date; 
         status: "ACCEPTED",
         probationUntil: { gte: now, lt: new Date(now.getTime() + 3 * DAY) },
         // schon entschieden (bestanden/beendet) → nicht mehr anzeigen
-        OR: [{ probationResult: null }, { probationResult: { isSet: false } }],
+        OR: [{ probationResult: null }],
       },
       include: userAndPos,
       orderBy: { probationUntil: "asc" },
@@ -210,7 +210,7 @@ export async function sendPersonalDigests(db: PrismaClient, opts: { now?: Date; 
   const groups = groupByClaimer(summary);
   if (!groups.size) return 0;
   const users = await db.user.findMany({
-    where: { id: { in: [...groups.keys()] }, isTeam: true, digestOptOut: false, OR: [{ awayUntil: null }, { awayUntil: { isSet: false } }, { awayUntil: { lte: new Date() } }] },
+    where: { id: { in: [...groups.keys()] }, isTeam: true, digestOptOut: false, OR: [{ awayUntil: null }, { awayUntil: { lte: new Date() } }] },
     select: { id: true, discordId: true, globalName: true, username: true },
   });
   const date = todayBerlin(now);

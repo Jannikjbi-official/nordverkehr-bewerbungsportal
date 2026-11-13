@@ -44,7 +44,7 @@ export async function nudgeIdleClaims(db: PrismaClient, now = new Date()) {
     if (!idleSinceClaim(a.claimedAt, [a.statusChanges[0]?.createdAt, a.comments[0]?.createdAt, a.messages[0]?.createdAt])) continue;
     // Einmal markieren (bedingt, falls zwei Läufe parallel)
     const marked = await db.application.updateMany({
-      where: { id: a.id, claimedAt: a.claimedAt, OR: [{ claimRemindedAt: null }, { claimRemindedAt: { isSet: false } }, { claimRemindedAt: { lt: a.claimedAt } }] },
+      where: { id: a.id, claimedAt: a.claimedAt, OR: [{ claimRemindedAt: null }, { claimRemindedAt: { lt: a.claimedAt } }] },
       data: { claimRemindedAt: now },
     });
     if (!marked.count) continue;
