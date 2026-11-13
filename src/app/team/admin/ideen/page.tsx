@@ -99,23 +99,21 @@ async function Ideas({ searchParams }: Pick<PageProps<"/team/admin/ideen">, "sea
             const name = s.author ? s.author.globalName || s.author.username : "Gelöschtes Konto";
             return (
               <li key={s.id} id={s.id} className="nv-card p-5 scroll-mt-28 target:ring-2 target:ring-[var(--nv-red)]">
-                <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-semibold">
                       {KIND_EMOJI[s.kind]} {s.title}
                     </p>
-                    <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
-                      {s.author && <Avatar discordId={s.author.discordId} avatar={s.author.avatar} size={18} />}
+                    <p className="mt-1 flex items-start gap-2 text-xs text-muted">
+                      {s.author && <Avatar discordId={s.author.discordId} avatar={s.author.avatar} size={18} className="shrink-0" />}
                       <span>
-                        {name}
-                        {s.author?.isTeam ? " · Team" : ""}
+                        {[name + (s.author?.isTeam ? " (Team)" : ""), KIND_LABEL[s.kind], formatDayTime(s.createdAt), s.handledBy && `bearbeitet von ${s.handledBy.globalName || s.handledBy.username}`]
+                          .filter(Boolean)
+                          .join(" · ")}
                       </span>
-                      <span>· {KIND_LABEL[s.kind]}</span>
-                      <span>· {formatDayTime(s.createdAt)}</span>
-                      {s.handledBy && <span>· bearbeitet von {s.handledBy.globalName || s.handledBy.username}</span>}
                     </p>
                   </div>
-                  <span className={cn("nv-pill !text-[0.7rem] !py-0.5", `nv-tone-${STATUS_TONE[s.status]}`)}>{STATUS_LABEL[s.status]}</span>
+                  <span className={cn("nv-pill !text-[0.7rem] !py-0.5 shrink-0", `nv-tone-${STATUS_TONE[s.status]}`)}>{STATUS_LABEL[s.status]}</span>
                 </div>
                 <p className="mt-3 text-sm text-fg-2 whitespace-pre-line break-words">{s.body}</p>
                 {s.location && (

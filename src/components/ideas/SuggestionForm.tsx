@@ -65,7 +65,7 @@ export function SuggestionForm({ initialKind = "IDEA", from = "" }: { initialKin
     >
       <fieldset>
         <legend className="nv-field-label">Was möchtest du einreichen?</legend>
-        <div className="grid gap-2 sm:grid-cols-3" role="radiogroup">
+        <div className="grid grid-cols-3 gap-2" role="radiogroup">
           {KINDS.map((k) => (
             <button
               key={k}
@@ -73,10 +73,10 @@ export function SuggestionForm({ initialKind = "IDEA", from = "" }: { initialKin
               role="radio"
               aria-checked={kind === k}
               onClick={() => setKind(k)}
-              className={cn("rounded-xl border px-3 py-2.5 text-left text-sm transition-colors", kind === k ? "border-[var(--nv-red)] bg-red-soft" : "border-line hover:bg-surface-2/50")}
+              className={cn("rounded-xl border px-2 py-2.5 text-center text-sm transition-colors sm:px-3 sm:text-left", kind === k ? "border-[var(--nv-red)] bg-red-soft" : "border-line hover:bg-surface-2/50")}
             >
-              <span className="font-medium">
-                {KIND_EMOJI[k]} {KIND_LABEL[k]}
+              <span className="font-medium flex flex-col items-center gap-0.5 sm:flex-row sm:gap-1.5">
+                <span aria-hidden>{KIND_EMOJI[k]}</span> {KIND_LABEL[k]}
               </span>
             </button>
           ))}
