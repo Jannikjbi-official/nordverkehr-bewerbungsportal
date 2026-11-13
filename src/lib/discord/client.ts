@@ -116,14 +116,21 @@ export interface GuildEventInput {
   name: string;
   description?: string;
   location: string;
+  /** Sprachkanal: Event hängt direkt am Kanal (Ein-Klick-Beitreten), sonst externer Ort */
+  channelId?: string | null;
   start: Date;
   end: Date;
 }
 
-const eventBody = (e: Partial<GuildEventInput>) => ({
+export const eventBody = (e: Partial<GuildEventInput>) => ({
   ...(e.name !== undefined ? { name: e.name.slice(0, 100) } : {}),
   ...(e.description !== undefined ? { description: e.description.slice(0, 1000) } : {}),
-  ...(e.location !== undefined ? { entity_metadata: { location: e.location.slice(0, 100) } } : {}),
+  // Sprachkanal (entity_type 2) oder externer Ort (3) – beim Ändern wird ggf. umgestellt
+  ...(e.channelId
+    ? { entity_type: 2, channel_id: e.channelId, entity_metadata: null }
+    : e.location !== undefined
+      ? { entity_type: 3, channel_id: null, entity_metadata: { location: e.location.slice(0, 100) } }
+      : {}),
   ...(e.start ? { scheduled_start_time: e.start.toISOString() } : {}),
   ...(e.end ? { scheduled_end_time: e.end.toISOString() } : {}),
 });
@@ -215,7 +222,7 @@ export function createDiscordApi(token: string, opts: { timeoutMs?: number } = {
     async createEvent(guildId, event) {
       try {
         const ev = (await rest.post(Routes.guildScheduledEvents(guildId), {
-          body: { ...eventBody(event), privacy_level: 2, entity_type: 3 },
+          body: { privacy_level: 2, entity_type: 3, ...eventBody(event) },
         })) as { id: string };
         return ev.id;
       } catch (err) {

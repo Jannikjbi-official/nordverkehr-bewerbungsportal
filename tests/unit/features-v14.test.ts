@@ -173,7 +173,9 @@ import { CONFIRMATIONS } from "@/lib/applications/form";
 describe("Gespräch & Support auf Discord, ehrenamtlich", () => {
   it("alte Standardtexte werden umgestellt, eigene bleiben", () => {
     expect(replaceDiscordTexts("**Termin:** x\\n**Wo:** TeamSpeak, Warteraum Bewerbungsgespräche")).toContain("**Wo:** Discord");
-    expect(replaceDiscordTexts("Funktionierendes Mikrofon, TeamSpeak & SaltyChat")).toBe("Funktionierendes Mikrofon – Gespräch & Support auf Discord");
+    const req = "Funktionierendes Mikrofon – Discord (Gespräch & Support), TeamSpeak & SaltyChat (Ingame)";
+    expect(replaceDiscordTexts("Funktionierendes Mikrofon, TeamSpeak & SaltyChat")).toBe(req);
+    expect(replaceDiscordTexts("Funktionierendes Mikrofon – Gespräch & Support auf Discord")).toBe(req);
     expect(replaceDiscordTexts("Wir treffen uns im TS-Raum 3")).toBe("Wir treffen uns im TS-Raum 3");
   });
   it("Standard-Bestätigung nennt Discord, nicht TeamSpeak", () => {
@@ -190,4 +192,20 @@ describe("Einarbeitung ohne TeamSpeak", () => {
   it("Standard-Checkliste ohne TeamSpeak-Rechte", () => expect(settingsSchema.parse({})["onboarding.items"]).not.toContain("TeamSpeak"));
   it("gespeicherte Liste: nur genau dieser Punkt fällt weg", () =>
     expect(removeTeamspeakItem("Regelwerk gelesen\nTeamSpeak-Rechte gesetzt\nEinweisung gemacht")).toBe("Regelwerk gelesen\nEinweisung gemacht"));
+});
+
+import { noteOnDiscord } from "@/lib/setup/migrations";
+import { eventBody } from "@/lib/discord/client";
+
+describe("Kommende Gespräche auf Discord", () => {
+  it("Termin-Notizen", () => {
+    expect(noteOnDiscord("TeamSpeak-Channel „Bewerbungsgespräche“")).toBe("Discord-Sprachkanal „Bewerbungsgespräche“");
+    expect(noteOnDiscord("Bitte pünktlich im TeamSpeak sein")).toBe("Bitte pünktlich im Discord sein");
+  });
+  it("Server-Event: Sprachkanal oder externer Ort", () => {
+    const base = { name: "x", location: "Discord", start: new Date(0), end: new Date(1) };
+    expect(eventBody({ ...base, channelId: "123456789012345678" })).toMatchObject({ entity_type: 2, channel_id: "123456789012345678", entity_metadata: null });
+    expect(eventBody({ ...base, channelId: null })).toMatchObject({ entity_type: 3, channel_id: null, entity_metadata: { location: "Discord" } });
+  });
+  it("Einarbeitung: einziger Punkt entfernt → leer (Migration löscht dann die Einstellung)", () => expect(removeTeamspeakItem("TeamSpeak-Rechte gesetzt").trim()).toBe(""));
 });

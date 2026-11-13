@@ -466,7 +466,33 @@ const MIGRATIONS: { id: string; run: (db: PrismaClient, opts: Options) => Promis
   { id: "2026-11-gespraech-auf-discord", run: (db, o) => (o.dryRun ? Promise.resolve(0) : interviewsOnDiscord(db)) },
   // Einarbeitung: TeamSpeak ist nur Ingame-Voice – Punkt „TeamSpeak-Rechte gesetzt“ entfällt
   { id: "2026-11-einarbeitung-ohne-teamspeak", run: (db, o) => (o.dryRun ? Promise.resolve(0) : onboardingWithoutTeamspeak(db)) },
+  // Moderator/Support: Ingame-Voice wieder in der Anforderung (Zwischenstand korrigieren)
+  { id: "2026-11-anforderung-ingame-voice", run: (db, o) => (o.dryRun ? Promise.resolve(0) : interviewsOnDiscord(db)) },
+  // Kommende Gespräche: Termin-Notizen und Discord-Events auf Discord umstellen
+  { id: "2026-11-kommende-gespraeche-discord", run: (db, o) => (o.dryRun ? Promise.resolve(0) : upcomingInterviewsOnDiscord(db)) },
 ];
+
+/** „TeamSpeak-Channel …“ in Notizen → Discord-Sprachkanal (rein, für Tests) */
+export const noteOnDiscord = (note: string) => note.replace(/TeamSpeak[- ]?(?:Channel|Kanal)/gi, "Discord-Sprachkanal").replace(/TeamSpeak/gi, "Discord");
+
+async function upcomingInterviewsOnDiscord(db: PrismaClient, now = new Date()) {
+  let changed = 0;
+  for (const slot of await db.interviewSlot.findMany({ where: { startsAt: { gt: now }, note: { contains: "TeamSpeak", mode: "insensitive" } }, select: { id: true, note: true } })) {
+    await db.interviewSlot.update({ where: { id: slot.id }, data: { note: noteOnDiscord(slot.note ?? "") } });
+    changed++;
+  }
+  const apps = await db.application.findMany({ where: { status: "INTERVIEW", interviewAt: { not: null, gt: now } }, select: { id: true, interviewNote: true, discordEventId: true } });
+  const { syncInterview } = await import("@/lib/team/interview-sync");
+  for (const a of apps) {
+    if (a.interviewNote && /teamspeak/i.test(a.interviewNote)) {
+      await db.application.update({ where: { id: a.id }, data: { interviewNote: noteOnDiscord(a.interviewNote) } });
+      changed++;
+    }
+    // Bestehendes Server-Event bekommt den neuen Ort (bzw. den Sprachkanal)
+    if (a.discordEventId) await syncInterview(a.id, now).catch(() => {});
+  }
+  return changed;
+}
 
 export const removeTeamspeakItem = (items: string) =>
   items
@@ -479,7 +505,9 @@ async function onboardingWithoutTeamspeak(db: PrismaClient) {
   if (!s || typeof s.value !== "string") return 0; // Standard aus dem Code gilt – dort schon entfernt
   const value = removeTeamspeakItem(s.value);
   if (value === s.value) return 0;
-  await db.setting.update({ where: { key: s.key }, data: { value } });
+  // War das der einzige Punkt: Einstellung löschen → Standardliste gilt (statt leerer Checkliste)
+  if (!value.trim()) await db.setting.delete({ where: { key: s.key } });
+  else await db.setting.update({ where: { key: s.key }, data: { value } });
   return 1;
 }
 
@@ -488,7 +516,9 @@ export const DISCORD_TEXT_REPLACE: [string, string][] = [
   ["**Wo:** TeamSpeak, Warteraum Bewerbungsgespräche", "**Wo:** Discord, Sprachkanal „Bewerbungsgespräche“"],
   ["Dein Gespräch ist am **{termin}** auf TeamSpeak. Bis dann!", "Dein Gespräch ist am **{termin}** auf unserem Discord. Bis dann!"],
   ["laden wir dich zu einem kurzen Gespräch auf TeamSpeak ein.", "laden wir dich zu einem kurzen Gespräch auf unserem Discord ein."],
-  ["Funktionierendes Mikrofon, TeamSpeak & SaltyChat", "Funktionierendes Mikrofon – Gespräch & Support auf Discord"],
+  ["Funktionierendes Mikrofon, TeamSpeak & SaltyChat", "Funktionierendes Mikrofon – Discord (Gespräch & Support), TeamSpeak & SaltyChat (Ingame)"],
+  // Zwischenstand (kurz ausgeliefert) ohne Ingame-Voice
+  ["Funktionierendes Mikrofon – Gespräch & Support auf Discord", "Funktionierendes Mikrofon – Discord (Gespräch & Support), TeamSpeak & SaltyChat (Ingame)"],
 ];
 export const replaceDiscordTexts = (text: string) => DISCORD_TEXT_REPLACE.reduce((t, [a, b]) => t.split(a).join(b), text);
 

@@ -85,6 +85,17 @@ export const versionLabel = (e: Pick<ChangelogEntry, "version">) => `Version ${e
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "v1.2",
+    version: "1.2",
+    date: "2026-11-13",
+    items: [
+      { kind: "besser", text: "**Einarbeitung ohne TeamSpeak** – der Punkt „TeamSpeak-Rechte gesetzt“ entfällt, TeamSpeak ist nur noch fürs Ingame-Voice." },
+      { kind: "besser", text: "**Gespräch im Sprachkanal** – Admins können einen Discord-Sprachkanal fürs Gespräch eintragen, das Server-Event hängt dann direkt daran. Bestehende Termine und Events zeigen jetzt Discord statt TeamSpeak." },
+      { kind: "besser", text: "**Anforderungen** – Support und Moderator brauchen weiter TeamSpeak & SaltyChat fürs Ingame-Voice, Gespräch & Support laufen über Discord." },
+      { kind: "fix", text: "**Richtigstellung zu 1.1** – bei einer Wiederbewerbung sehen Bewerber keinen Absagegrund (der ist intern), sondern einen Link zu ihrer alten Bewerbung und den Nachrichten von damals." },
+    ],
+  },
+  {
     id: "v1.1",
     version: "1.1",
     date: "2026-11-12",
@@ -94,7 +105,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       { kind: "neu", text: "**Phase 2 erst ab 3 Sternen** – ins Bewerbungsgespräch geht es nur mit einem Team-Schnitt von mindestens 3 Sternen im Bewertungsbogen. Grenze im Admin-Bereich einstellbar." },
       { kind: "neu", text: "**Gespräch absagen** – Bewerber sagen mit „Ich kann nicht“ direkt in der Erinnerungs-DM oder im Portal ab, das Team bekommt Bescheid." },
       { kind: "neu", text: "**/offen und /claim** – offene Bewerbungen deiner Stellen sehen und übernehmen, direkt in Discord." },
-      { kind: "besser", text: "**Wiederbewerbung** – wer es nach einer Absage nochmal versucht, sieht den damaligen Grund und kann gezielt nachbessern." },
+      { kind: "besser", text: "**Wiederbewerbung** – wer es nach einer Absage nochmal versucht, bekommt einen Hinweis mit Link zur alten Bewerbung und den Nachrichten von damals." },
       { kind: "besser", text: "**Einarbeitung sofort** – Haken in der Checkliste erscheinen ohne Wartezeit." },
       { kind: "neu", text: "**Bewertungsbogen pro Stelle** – Admins legen eigene Kriterien fest (z. B. Regelkenntnis), sonst gelten die Standard-Kriterien." },
       { kind: "neu", text: "**Freie Plätze** – jede Annahme belegt einen Platz, sind alle vergeben, schließt die Stelle automatisch. Bewerber sehen „Noch 2 Plätze frei“." },

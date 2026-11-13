@@ -37,6 +37,7 @@ export async function syncInterview(applicationId: string, now = new Date()) {
         name: `Bewerbungsgespräch · ${app.position.title}`,
         description: `Bewerbung ${app.publicId ?? ""} – Details im Team-Bereich: ${publicEnv.appUrl}/team/bewerbungen/${app.id}`,
         location: "Discord – Sprachkanal Bewerbungsgespräche",
+        channelId: s["interview.voiceChannelId"] || null,
         start: start!,
         end: end!,
       };

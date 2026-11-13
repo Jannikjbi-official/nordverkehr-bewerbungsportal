@@ -51,7 +51,7 @@ export const POSITIONS: SeedPosition[] = [
     requirements: [
       "Mindestalter 18 Jahre",
       "Geduld und ein freundlicher, klarer Ton",
-      "Funktionierendes Mikrofon – Gespräch & Support auf Discord",
+      "Funktionierendes Mikrofon – Discord (Gespräch & Support), TeamSpeak & SaltyChat (Ingame)",
       "Regelmäßige Verfügbarkeit (mind. 5 Std./Woche)",
     ],
     sections: [...(POSITION_SECTIONS["support"] ?? []), ...(POSITION_QUIZ["support"] ? [POSITION_QUIZ["support"]] : [])],
@@ -74,7 +74,7 @@ export const POSITIONS: SeedPosition[] = [
       "Mindestalter 18 Jahre",
       "Sehr gute Kenntnis des Regelwerks",
       "Neutralität – auch bei Freunden",
-      "Funktionierendes Mikrofon – Gespräch & Support auf Discord",
+      "Funktionierendes Mikrofon – Discord (Gespräch & Support), TeamSpeak & SaltyChat (Ingame)",
     ],
     sections: [...(POSITION_SECTIONS["moderator"] ?? []), ...(POSITION_QUIZ["moderator"] ? [POSITION_QUIZ["moderator"]] : [])],
   },
