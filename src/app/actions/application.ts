@@ -11,7 +11,9 @@ import { getEligibility, submitApplication, UserFacingError } from "@/lib/applic
 import { rateLimit } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
 import { deliverNow, runOutbox } from "@/lib/discord/outbox-db";
+import { replyCustomId } from "@/lib/discord/interactions";
 import { botLog, esc } from "@/lib/discord/botlog";
+import { getSettings } from "@/lib/settings";
 import { ACTIVE_STATUSES, canFollowUp, isInProcessing } from "@/lib/applications/status";
 import type { Prisma } from "@prisma/client";
 
@@ -311,6 +313,8 @@ export async function replyToTeamAction(input: z.input<typeof replySchema>): Pro
     : await botLog(`💬 Neue Antwort von ${esc(user.globalName || user.username)} zu **${app.publicId}** (${app.position.title})`, {
         applicationId: app.id,
         url: `${publicEnv.appUrl}/team/bewerbungen/${app.id}`,
+        // Direkt aus Discord antworten (Fenster), wenn der Knopf „Übernehmen“ eingerichtet ist
+        actions: (await getSettings())["discord.claimButton"] ? [{ label: "Antworten", customId: replyCustomId(app.id), emoji: "✉️", style: 1 }] : undefined,
       });
   if (job) await deliverNow([job]);
   revalidatePath(`/dashboard/${app.id}`);

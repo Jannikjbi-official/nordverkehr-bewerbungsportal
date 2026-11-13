@@ -85,6 +85,15 @@ export const versionLabel = (e: Pick<ChangelogEntry, "version">) => `Version ${e
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "v1.3",
+    version: "1.3",
+    date: "2026-11-13",
+    items: [
+      { kind: "neu", text: "**Antworten aus Discord** – am Bot-Log „Neue Antwort von …“ hängt ein Knopf „Antworten“: Text eintippen, geht als deine Nachricht per DM und ins Portal." },
+      { kind: "neu", text: "**Status per Knopf** – an neuen Bewerbungen im Bewerbungs-Kanal: „In Prüfung“ und „Zum Gespräch“ (3-Sterne-Hürde gilt auch hier)." },
+    ],
+  },
+  {
     id: "v1.2",
     version: "1.2",
     date: "2026-11-13",

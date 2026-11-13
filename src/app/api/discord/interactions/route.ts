@@ -6,6 +6,9 @@ import {
   STATUS_COMMAND,
   cancelConfirmReply,
   ephemeral,
+  modalValue,
+  replyModal,
+  type StatusButtonTarget,
   getDiscordPublicKey,
   normalizePublicId,
   openListReply,
@@ -23,7 +26,7 @@ export const maxDuration = 10;
 
 interface Interaction {
   type: number;
-  data?: { custom_id?: string; name?: string; options?: { name: string; value: string | number | boolean }[] };
+  data?: { custom_id?: string; name?: string; options?: { name: string; value: string | number | boolean }[]; components?: unknown[] };
   member?: { roles: string[]; user: { id: string; username: string; global_name?: string | null; avatar?: string | null } };
   /** Bei Interaktionen außerhalb eines Servers (DM) */
   user?: { id: string };
@@ -71,7 +74,8 @@ export async function POST(req: Request) {
     return Response.json(ephemeral(await claimFromDiscord({ publicId }, team)));
   }
 
-  if (i.type !== 3 || !i.data?.custom_id) return Response.json(ephemeral("Diese Aktion kenne ich nicht."));
+  // 3 = Knopf, 5 = abgeschicktes Fenster (Modal)
+  if ((i.type !== 3 && i.type !== 5) || !i.data?.custom_id) return Response.json(ephemeral("Diese Aktion kenne ich nicht."));
   const action = parseCustomId(i.data.custom_id);
   if (!action) return Response.json(ephemeral("Dieser Knopf ist veraltet."));
 
@@ -96,6 +100,17 @@ export async function POST(req: Request) {
   const team = await teamContext(i.member);
   if (!team.ok) return Response.json(ephemeral(team.error));
   if (action.kind === "claim") return Response.json(ephemeral(await claimFromDiscord({ id: action.applicationId }, team)));
+  if (action.kind === "status") return Response.json(ephemeral(await statusFromDiscord(action.applicationId, action.to, team)));
+  if (action.kind === "reply") {
+    const app = await teamApp(action.applicationId, team);
+    if (typeof app === "string") return Response.json(ephemeral(app));
+    return Response.json(replyModal(app.id, app.publicId));
+  }
+  if (action.kind === "replySubmit") {
+    const app = await teamApp(action.applicationId, team);
+    if (typeof app === "string") return Response.json(ephemeral(app));
+    return Response.json(ephemeral(await replyFromDiscord(app, modalValue(i.data, "body"), team)));
+  }
   return Response.json(ephemeral("Unbekannte Aktion."));
 }
 
@@ -161,14 +176,52 @@ async function claimFromDiscord(by: { id: string } | { publicId: string }, team:
   if (["ACCEPTED", "REJECTED", "WITHDRAWN"].includes(app.status)) return `**${app.publicId}** ist schon abgeschlossen. ${link}`;
   try {
     const { setClaim } = await import("@/lib/team/service");
-    const u = team.user;
-    const { jobIds } = await setClaim({
-      applicationId: app.id,
-      actor: { id: u.id, globalName: u.globalName, username: u.username, discordId: u.discordId, avatar: u.avatar, isAdmin: team.isAdmin },
-      action: "claim",
-    });
+    const { jobIds } = await setClaim({ applicationId: app.id, actor: actorOf(team), action: "claim" });
     if (jobIds.length) after(() => runOutbox({ ids: jobIds }).catch(() => {}));
     return `📌 Du betreust jetzt **${app.publicId}**. ${link}`;
+  } catch (e) {
+    return e instanceof Error ? e.message : "Hat nicht geklappt – versuch es im Portal.";
+  }
+}
+
+/** Bewerbung für eine Team-Aktion laden – mit Zuständigkeit pro Stelle. Gibt sonst den Fehlertext zurück. */
+async function teamApp(applicationId: string, team: Extract<TeamCtx, { ok: true }>) {
+  const app = await db.application.findUnique({ where: { id: applicationId }, select: { id: true, publicId: true, status: true, position: { select: { teamRoleIds: true } } } });
+  if (!app || app.status === "DRAFT") return "Die Bewerbung gibt es nicht mehr.";
+  const { canSeePosition } = await import("@/lib/team/visibility");
+  if (!canSeePosition({ isAdmin: team.isAdmin, roleIds: team.roleIds }, app.position)) return "Für diese Stelle bist du nicht zuständig.";
+  return app;
+}
+
+const actorOf = (team: Extract<TeamCtx, { ok: true }>) => {
+  const u = team.user;
+  return { id: u.id, globalName: u.globalName, username: u.username, discordId: u.discordId, avatar: u.avatar, isAdmin: team.isAdmin };
+};
+
+/** Status per Knopf – gleiche Regeln wie im Portal (Übergänge, Phase-2-Hürde). */
+async function statusFromDiscord(applicationId: string, to: StatusButtonTarget, team: Extract<TeamCtx, { ok: true }>): Promise<string> {
+  const app = await teamApp(applicationId, team);
+  if (typeof app === "string") return app;
+  const link = `${publicEnv.appUrl}/team/bewerbungen/${app.id}`;
+  if (app.status === to) return `**${app.publicId}** steht schon auf „${STATUS_LABEL[to]}“. ${link}`;
+  try {
+    const { changeStatus } = await import("@/lib/team/service");
+    const { jobIds } = await changeStatus({ applicationId: app.id, to, actorId: team.user.id });
+    if (jobIds.length) after(() => runOutbox({ ids: jobIds }).catch(() => {}));
+    return `✅ **${app.publicId}** ist jetzt „${STATUS_LABEL[to]}“. Denk an eine Nachricht an den Bewerber: ${link}?status=${to}#nachricht`;
+  } catch (e) {
+    return e instanceof Error ? e.message : "Hat nicht geklappt – versuch es im Portal.";
+  }
+}
+
+/** Antwort aus dem Discord-Fenster als persönliche Team-Nachricht (Portal + DM). */
+async function replyFromDiscord(app: { id: string; publicId: string | null }, body: string, team: Extract<TeamCtx, { ok: true }>): Promise<string> {
+  if (body.trim().length < 2) return "Die Nachricht ist leer.";
+  try {
+    const { sendTeamMessage } = await import("@/lib/team/service");
+    const { jobIds } = await sendTeamMessage({ applicationId: app.id, actor: actorOf(team), title: "Nachricht vom Nordverkehr-Team", body: body.slice(0, 2000), templateIds: [] });
+    if (jobIds.length) after(() => runOutbox({ ids: jobIds }).catch(() => {}));
+    return `✉️ Nachricht an **${app.publicId}** ist raus (Portal + DM). Verlauf: ${publicEnv.appUrl}/team/bewerbungen/${app.id}#nachricht`;
   } catch (e) {
     return e instanceof Error ? e.message : "Hat nicht geklappt – versuch es im Portal.";
   }

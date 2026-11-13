@@ -9,7 +9,7 @@
 import type { Prisma } from "@prisma/client";
 import { enqueue } from "@/lib/discord/outbox-db";
 import { getSettings } from "@/lib/settings";
-import { buildBotLogMessage } from "@/lib/messages/embed";
+import { buildBotLogMessage, type ActionButton } from "@/lib/messages/embed";
 
 export async function channelIds() {
   const s = await getSettings();
@@ -22,13 +22,13 @@ export async function channelIds() {
 /** Kurze Zeile in den Bot-Log-Kanal (über die Outbox). Gibt die Job-ID zurück oder null. */
 export async function botLog(
   text: string,
-  opts: { applicationId?: string; tx?: Prisma.TransactionClient; tone?: "default" | "warn"; url?: string | null } = {},
+  opts: { applicationId?: string; tx?: Prisma.TransactionClient; tone?: "default" | "warn"; url?: string | null; actions?: ActionButton[] } = {},
 ) {
   const { botLog: channelId } = await channelIds();
   if (!channelId) return null;
   const job = await enqueue(
     // Components V2; Namen/Erwähnungen werden angezeigt, pingen aber niemanden
-    { type: "CHANNEL_MESSAGE", kind: "botlog", channelId, message: buildBotLogMessage(text, { tone: opts.tone, url: opts.url }) },
+    { type: "CHANNEL_MESSAGE", kind: "botlog", channelId, message: buildBotLogMessage(text, { tone: opts.tone, url: opts.url, actions: opts.actions }) },
     { applicationId: opts.applicationId, tx: opts.tx },
   );
   return job.id;

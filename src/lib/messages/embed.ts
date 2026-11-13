@@ -162,22 +162,52 @@ export function buildLogMessage(input: LogEmbedInput): RESTPostAPIChannelMessage
   ]);
 }
 
-/** Link „Öffnen“ + Knopf „Übernehmen“ (Interaktion, siehe lib/discord/interactions.ts). */
+/** „Übernehmen“, „In Prüfung“, „Zum Gespräch“ (Interaktionen, siehe lib/discord/interactions.ts) + Link. */
 function claimRow(url: string, customId: string): APIActionRowComponent<APIButtonComponent> {
-  const components: APIButtonComponent[] = [{ type: 2, style: 1, label: "Übernehmen", custom_id: customId, emoji: { name: "📌" } }];
-  if (/^https:\/\//.test(url)) components.push({ type: 2, style: 5, label: "Im Team-Bereich öffnen", url });
-  return { type: 1, components };
+  const id = customId.slice(customId.lastIndexOf(":") + 1);
+  return buttonRow(
+    [
+      { label: "Übernehmen", customId, emoji: "📌", style: 1 },
+      { label: "In Prüfung", customId: `nv:status:IN_REVIEW:${id}`, emoji: "🔎" },
+      { label: "Zum Gespräch", customId: `nv:status:INTERVIEW:${id}`, emoji: "🎙️" },
+    ],
+    { label: "Öffnen", url },
+  );
 }
 
 // ─── Bot-Log & Changelog ──────────────────────────────────────
 
 /** Eine Protokollzeile im Bot-Log-Kanal. */
-export function buildBotLogMessage(line: string, opts: { tone?: "default" | "warn"; url?: string | null } = {}): RESTPostAPIChannelMessageJSONBody {
+export interface ActionButton {
+  label: string;
+  customId: string;
+  emoji?: string;
+  /** 1 = blau (primär), 2 = grau */
+  style?: 1 | 2;
+}
+
+export function buildBotLogMessage(
+  line: string,
+  opts: { tone?: "default" | "warn"; url?: string | null; actions?: ActionButton[] } = {},
+): RESTPostAPIChannelMessageJSONBody {
   return v2Message(opts.tone === "warn" ? WARN_COLOR : NEUTRAL_COLOR, [
     text(truncate(line, 1800)),
     text(`-# ${discordTime(new Date())}`),
-    linkButtons([{ label: "Öffnen", url: opts.url }]),
+    opts.actions?.length ? buttonRow(opts.actions, { label: "Öffnen", url: opts.url }) : linkButtons([{ label: "Öffnen", url: opts.url }]),
   ]);
+}
+
+/** Interaktions-Knöpfe (max. 4) + Link-Knopf in einer Zeile. */
+export function buttonRow(actions: ActionButton[], link?: { label: string; url: string | null | undefined }): APIActionRowComponent<APIButtonComponent> {
+  const components: APIButtonComponent[] = actions.slice(0, 4).map((a) => ({
+    type: 2,
+    style: a.style ?? 2,
+    label: a.label.slice(0, 80),
+    custom_id: a.customId,
+    ...(a.emoji ? { emoji: { name: a.emoji } } : {}),
+  }));
+  if (link?.url && /^https:\/\//.test(link.url)) components.push({ type: 2, style: 5, label: link.label.slice(0, 80), url: link.url });
+  return { type: 1, components };
 }
 
 export const formatDateDe = (iso: string) =>

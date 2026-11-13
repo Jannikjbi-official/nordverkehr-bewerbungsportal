@@ -84,7 +84,7 @@ describe("Discord-Knöpfe", () => {
     const base = { positionTitle: "Support", applicantDiscordId: "1", applicantName: "Jonas", applicantAvatarUrl: null, publicId: "NV-1", age: 20, teamUrl: "https://bewerbung.nordverkehr.xyz/team/bewerbungen/x", flags: [] };
     const withBtn = JSON.stringify(buildLogMessage({ ...base, claimCustomId: claimCustomId("abcdefghijkl") }));
     expect(withBtn).toContain('"custom_id":"nv:claim:abcdefghijkl"');
-    expect(withBtn).toContain("Im Team-Bereich öffnen");
+    expect(withBtn).toContain("bewerbungen/x");
     expect(JSON.stringify(buildLogMessage(base))).not.toContain("custom_id");
     expect(v2Text(buildLogMessage(base))).toContain("Neue Bewerbung");
   });
