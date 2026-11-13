@@ -55,7 +55,13 @@ export async function autoAssign(db: PrismaClient, applicationId: string, now = 
   if (!app || app.claimedById || app.status !== "SUBMITTED" || app.isTest) return null;
   // Aktiv = in den letzten 14 Tagen im Team-Bereich gewesen
   const team = await db.user.findMany({
-    where: { isTeam: true, isTest: { not: true }, lastTeamActiveAt: { gte: new Date(now.getTime() - 14 * DAY) } },
+    where: {
+      isTeam: true,
+      isTest: { not: true },
+      lastTeamActiveAt: { gte: new Date(now.getTime() - 14 * DAY) },
+      // Abwesende bekommen nichts Neues
+      OR: [{ awayUntil: null }, { awayUntil: { isSet: false } }, { awayUntil: { lte: now } }],
+    },
     select: { id: true, isAdmin: true, roleIds: true, globalName: true, username: true, discordId: true, avatar: true },
   });
   const eligible = team.filter((u) => canSeePosition({ isAdmin: u.isAdmin, roleIds: u.roleIds ?? [] }, app.position));

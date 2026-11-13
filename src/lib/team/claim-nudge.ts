@@ -29,7 +29,7 @@ export async function nudgeIdleClaims(db: PrismaClient, now = new Date()) {
       claimedAt: true,
       claimRemindedAt: true,
       position: { select: { title: true } },
-      claimedBy: { select: { discordId: true, globalName: true, username: true } },
+      claimedBy: { select: { discordId: true, globalName: true, username: true, awayUntil: true } },
       statusChanges: { orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } },
       comments: { orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } },
       messages: { where: { direction: "TEAM_TO_APPLICANT" }, orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } },
@@ -39,6 +39,7 @@ export async function nudgeIdleClaims(db: PrismaClient, now = new Date()) {
   const ids: string[] = [];
   for (const a of apps) {
     if (!a.claimedAt || !a.claimedBy) continue;
+    if (a.claimedBy.awayUntil && a.claimedBy.awayUntil.getTime() > now.getTime()) continue; // Betreuer abwesend
     if (a.claimRemindedAt && a.claimRemindedAt.getTime() >= a.claimedAt.getTime()) continue; // für diesen Claim schon erinnert
     if (!idleSinceClaim(a.claimedAt, [a.statusChanges[0]?.createdAt, a.comments[0]?.createdAt, a.messages[0]?.createdAt])) continue;
     // Einmal markieren (bedingt, falls zwei Läufe parallel)

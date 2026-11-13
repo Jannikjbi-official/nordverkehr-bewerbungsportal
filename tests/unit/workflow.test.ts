@@ -71,14 +71,15 @@ describe("Changelog: Veröffentlichung um 0 Uhr", () => {
     expect(todayBerlin(new Date("2026-07-01T21:59:00Z"))).toBe("2026-07-01");
     expect(todayBerlin(new Date("2026-07-01T22:00:00Z"))).toBe("2026-07-02");
   });
-  it("Versionen eindeutig, neueste zuerst (mehrere am selben Tag erlaubt)", () => {
+  it("Versionen eindeutig, neueste zuerst, eine Version pro Tag", () => {
     expect(new Set(CHANGELOG.map((e) => e.version)).size).toBe(CHANGELOG.length);
     expect(new Set(CHANGELOG.map((e) => e.id)).size).toBe(CHANGELOG.length);
+    expect(new Set(CHANGELOG.map((e) => e.date)).size).toBe(CHANGELOG.length);
     const num = (v: string) => v.split(".").map(Number);
     for (let i = 1; i < CHANGELOG.length; i++) {
       const [a, b] = [num(CHANGELOG[i - 1].version), num(CHANGELOG[i].version)];
       expect(a[0] > b[0] || (a[0] === b[0] && a[1] > b[1]), `${CHANGELOG[i - 1].version} vor ${CHANGELOG[i].version}`).toBe(true);
-      expect(CHANGELOG[i - 1].date >= CHANGELOG[i].date).toBe(true);
+      expect(CHANGELOG[i - 1].date > CHANGELOG[i].date).toBe(true);
     }
     for (const e of CHANGELOG) expect(e.version).toMatch(/^\d+\.\d+$/);
   });

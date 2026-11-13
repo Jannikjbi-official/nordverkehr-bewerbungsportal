@@ -41,6 +41,8 @@ export async function sendFollowUpReminders(db: PrismaClient, now = new Date()) 
   });
   const ids: string[] = [];
   for (const a of apps) {
+    // Bewerber hat Abwesenheit gemeldet → bis dahin keine Erinnerung
+    if (a.applicantAwayUntil && a.applicantAwayUntil.getTime() > now.getTime()) continue;
     // Reservieren: höchstens eine Erinnerung pro Rückfrage
     const claimed = await db.application.updateMany({
       where: { id: a.id, awaitingReplySince: { equals: a.awaitingReplySince, not: null }, OR: [{ awaitingRemindedAt: null }, { awaitingRemindedAt: { isSet: false } }] },

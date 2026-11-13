@@ -215,6 +215,19 @@ export async function setDigestOptOutAction(optOut: boolean): Promise<ActionResu
   return { ok: true };
 }
 
+/** Teammitglied: abwesend bis (Datum, max. 60 Tage) oder zurück (null). Keine Zuteilung/Erinnerungen solange. */
+export async function setTeamAwayAction(until: string | null): Promise<ActionResult> {
+  const user = await requireUser();
+  if (!user.isTeam) return { ok: false, error: "Nur fürs Team." };
+  if (until !== null && !/^\d{4}-\d{2}-\d{2}$/.test(until)) return { ok: false, error: "Bitte ein gültiges Datum wählen." };
+  const date = until ? new Date(`${until}T22:59:00Z`) : null;
+  if (date && (date.getTime() <= Date.now() || date.getTime() > Date.now() + 61 * 86_400_000)) return { ok: false, error: "Höchstens 60 Tage im Voraus." };
+  await db.user.update({ where: { id: user.id }, data: { awayUntil: date } });
+  await audit("user.digest", { actorId: user.id, targetType: "user", targetId: user.id, meta: { awayUntil: until } });
+  revalidatePath("/konto");
+  return { ok: true };
+}
+
 /** Discord-Mitgliedschaft neu prüfen (Knopf „Ich bin beigetreten“ im Formular). */
 export async function checkGuildAction(): Promise<ActionResult<{ inGuild: boolean }>> {
   const user = await requireUser();
@@ -465,4 +478,37 @@ export async function createCalendarTokenAction(): Promise<ActionResult<{ url: s
   await audit("user.calendar", { actorId: user.id, targetType: "user", targetId: user.id });
   revalidatePath("/konto");
   return { ok: true, data: { url: `${publicEnv.appUrl}/api/calendar/${token}.ics` } };
+}
+
+const awaySchema = z.object({ applicationId: idSchema, until: z.iso.date().nullable() });
+
+/** Bewerber: „bis … nicht erreichbar“ (max. 30 Tage) – Rückfrage-Frist pausiert, Team sieht einen Hinweis. */
+export async function setApplicantAwayAction(input: z.input<typeof awaySchema>): Promise<ActionResult> {
+  const user = await requireUser();
+  const p = awaySchema.safeParse(input);
+  if (!p.success) return { ok: false, error: "Bitte ein gültiges Datum wählen." };
+  const app = await db.application.findFirst({
+    where: { id: p.data.applicationId, userId: user.id, status: { in: ACTIVE_STATUSES } },
+    select: { id: true, publicId: true, awaitingReplySince: true, position: { select: { title: true } } },
+  });
+  if (!app) return { ok: false, error: "Bewerbung nicht gefunden." };
+  const now = Date.now();
+  // Ende des gewählten Tages (deutsche Zeit, grob 23:59)
+  const until = p.data.until ? new Date(`${p.data.until}T22:59:00Z`) : null;
+  if (until && (until.getTime() <= now || until.getTime() > now + 31 * 86_400_000)) return { ok: false, error: "Höchstens 30 Tage im Voraus." };
+  await db.application.update({
+    where: { id: app.id },
+    // Offene Rückfrage: Frist beginnt erst nach der Rückkehr neu
+    data: { applicantAwayUntil: until, ...(until && app.awaitingReplySince ? { awaitingReplySince: until, awaitingRemindedAt: null } : {}) },
+  });
+  await audit("application.amend", { actorId: user.id, targetType: "application", targetId: app.id, meta: { awayUntil: p.data.until } });
+  const job = await botLog(
+    until
+      ? `🏖️ ${esc(user.globalName || user.username)} (**${app.publicId}**, ${app.position.title}) ist bis ${p.data.until!.split("-").reverse().join(".")} nicht erreichbar`
+      : `👋 ${esc(user.globalName || user.username)} (**${app.publicId}**) ist wieder erreichbar`,
+    { applicationId: app.id, url: `${publicEnv.appUrl}/team/bewerbungen/${app.id}` },
+  );
+  if (job) await deliverNow([job]);
+  revalidatePath(`/dashboard/${app.id}`);
+  return { ok: true };
 }

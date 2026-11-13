@@ -85,8 +85,8 @@ export const versionLabel = (e: Pick<ChangelogEntry, "version">) => `Version ${e
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    id: "v1.3",
-    version: "1.3",
+    id: "v1.2",
+    version: "1.2",
     date: "2026-11-13",
     items: [
       { kind: "neu", text: "**Antworten aus Discord** – am Bot-Log „Neue Antwort von …“ hängt ein Knopf „Antworten“: Text eintippen, geht als deine Nachricht per DM und ins Portal." },
@@ -97,13 +97,6 @@ export const CHANGELOG: ChangelogEntry[] = [
       { kind: "neu", text: "**Pate** – neuen Teammitgliedern einen Paten zuteilen; nach zwei Wochen fragt der Bot nach einer kurzen Rückmeldung („läuft gut“ / „braucht Hilfe“)." },
       { kind: "neu", text: "**Team-Verzeichnis** – wer ist in welcher Stelle, seit wann, Probezeit-Status und Pate." },
       { kind: "neu", text: "**Junior-Team** – eine Discord-Rolle (Admin-Bereich) darf lesen, kommentieren, bewerten und abstimmen, aber keinen Status ändern, nicht claimen und Bewerbern nicht schreiben." },
-    ],
-  },
-  {
-    id: "v1.2",
-    version: "1.2",
-    date: "2026-11-13",
-    items: [
       { kind: "besser", text: "**Einarbeitung ohne TeamSpeak** – der Punkt „TeamSpeak-Rechte gesetzt“ entfällt, TeamSpeak ist nur noch fürs Ingame-Voice." },
       { kind: "besser", text: "**Gespräch im Sprachkanal** – Admins können einen Discord-Sprachkanal fürs Gespräch eintragen, das Server-Event hängt dann direkt daran. Bestehende Termine und Events zeigen jetzt Discord statt TeamSpeak." },
       { kind: "besser", text: "**Anforderungen** – Support und Moderator brauchen weiter TeamSpeak & SaltyChat fürs Ingame-Voice, Gespräch & Support laufen über Discord." },

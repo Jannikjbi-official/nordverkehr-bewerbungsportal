@@ -1,0 +1,30 @@
+# Release samt Tag löschen – nur von Hand: Actions → „Release löschen“ → Version eintragen.
+name: Release löschen
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version, z. B. v1.2"
+        required: true
+      confirm:
+        description: "Zum Bestätigen LÖSCHEN eintippen"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  delete:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Release und Tag löschen
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.inputs.version }}
+          CONFIRM: ${{ github.event.inputs.confirm }}
+        run: |
+          [ "$CONFIRM" = "LÖSCHEN" ] || { echo "Nicht bestätigt – nichts gelöscht."; exit 1; }
+          [[ "$TAG" =~ ^v[0-9]+(\.[0-9]+){0,2}$ ]] || { echo "Ungültige Version: $TAG"; exit 1; }
+          gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes
+          echo "Release $TAG und Tag gelöscht."

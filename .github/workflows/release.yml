@@ -1,5 +1,5 @@
-# Release nur bei großen Änderungen – nie automatisch pro Tag:
-#  - Tag pushen:            git tag v1.1 && git push origin v1.1
+# Release nur für große Versionen (v1, v2, …) – auf Ansage, nie automatisch pro Tag:
+#  - Tag pushen:            git tag v2 && git push origin v2
 #  - oder in GitHub:        Actions → Release → „Run workflow“ → Version eintragen
 # Ergebnis: GitHub-Release mit allen Changelog-Einträgen seit dem letzten Release.
 name: Release
@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version (z. B. v1.1)"
+        description: "Große Version (z. B. v2)"
         required: true
 
 permissions:
@@ -32,7 +32,8 @@ jobs:
         id: tag
         run: |
           TAG="${{ github.event.inputs.version || github.ref_name }}"
-          [[ "$TAG" =~ ^v[0-9]+(\.[0-9]+){0,2}$ ]] || { echo "Ungültige Version: $TAG (erwartet z. B. v1.1)"; exit 1; }
+          # Nur große Versionen (v2, v3 …); kleine Stände stehen im Changelog des Portals
+          [[ "$TAG" =~ ^v[0-9]+(\.0)?$ ]] || { echo "Nur große Versionen wie v2 – kleine Änderungen stehen im Changelog."; exit 1; }
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-node@v4

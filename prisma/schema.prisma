@@ -110,6 +110,8 @@ model User {
   // Rollen-Cache (kurzlebig, siehe src/lib/auth/access.ts)
   inGuild       Boolean   @default(false)
   isTeam        Boolean   @default(false)
+  /// Abwesend (Urlaub o. Ä.) bis: keine automatische Zuteilung, keine Claim-Erinnerung/Morgen-DM
+  awayUntil     DateTime?
   isAdmin       Boolean   @default(false)
   guildJoinedAt DateTime?
   roleCheckedAt DateTime?
@@ -379,6 +381,8 @@ model Application {
   voiceLeftAt          DateTime?
   /// Warteraum-Ping an den Betreuer verschickt (einmal pro Termin)
   waitingPingAt        DateTime?
+  /// Bewerber hat gemeldet: bis dahin nicht erreichbar (Rückfrage-Erinnerung und Frist pausieren)
+  applicantAwayUntil   DateTime?
   /// Probezeit-Abschluss: PASSED (bestanden) | ENDED (beendet); verlängern setzt nur probationUntil neu
   probationResult      String?
   probationDecidedAt   DateTime?

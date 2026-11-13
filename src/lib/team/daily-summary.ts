@@ -35,7 +35,7 @@ export function lastTeamActivity(a: { submittedAt: Date | null; createdAt: Date;
 export async function collectDailySummary(db: PrismaClient, opts: { now?: Date; staleDays: number; escalateDays: number; closeDays?: number }): Promise<DailySummary> {
   const now = opts.now ?? new Date();
   const user = { select: { globalName: true, username: true } } as const;
-  const userAndPos = { user, position: { select: { title: true } }, claimedBy: user } as const;
+  const userAndPos = { user, position: { select: { title: true } }, claimedBy: { select: { globalName: true, username: true, awayUntil: true } } } as const;
 
   const [active, withdrawn, probation] = await Promise.all([
     db.application.findMany({
@@ -86,7 +86,7 @@ export async function collectDailySummary(db: PrismaClient, opts: { now?: Date; 
     publicId: a.publicId ?? a.id.slice(-6),
     name: nameOf(a.user) ?? "Unbekannt",
     position: a.position.title,
-    claimer: nameOf(a.claimedBy),
+    claimer: a.claimedBy ? `${nameOf(a.claimedBy)}${a.claimedBy.awayUntil && a.claimedBy.awayUntil.getTime() > now.getTime() ? " (abwesend)" : ""}` : null,
     claimerId: a.claimedById,
     at,
   });
@@ -205,7 +205,7 @@ export async function sendPersonalDigests(db: PrismaClient, opts: { now?: Date; 
   const groups = groupByClaimer(summary);
   if (!groups.size) return 0;
   const users = await db.user.findMany({
-    where: { id: { in: [...groups.keys()] }, isTeam: true, digestOptOut: false },
+    where: { id: { in: [...groups.keys()] }, isTeam: true, digestOptOut: false, OR: [{ awayUntil: null }, { awayUntil: { isSet: false } }, { awayUntil: { lte: new Date() } }] },
     select: { id: true, discordId: true, globalName: true, username: true },
   });
   const date = todayBerlin(now);

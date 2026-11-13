@@ -185,12 +185,12 @@ Bewerbungsarten sind ein eigenes Modell (`ApplicationType`, heute nur `team`). F
 
 ## Releases
 
-Releases gibt es nur bei größeren Änderungen – nie automatisch pro Tag:
+GitHub-Releases gibt es nur für **große Versionen** (v1, v2, …) – auf Ansage, nie automatisch. Kleinere Stände (1.1, 1.2 …) stehen nur im Changelog des Portals.
 
 ```bash
-git tag v1.1 && git push origin v1.1
+git tag v2 && git push origin v2
 ```
 
-oder in GitHub unter *Actions → Release → Run workflow*. Der Workflow (`.github/workflows/release.yml`) legt ein GitHub-Release mit allen Changelog-Einträgen seit dem letzten Release an.
+oder in GitHub unter *Actions → Release → Run workflow*. Der Workflow (`.github/workflows/release.yml`) legt ein GitHub-Release mit allen Changelog-Einträgen seit dem letzten Release an. Ein Release samt Tag entfernt *Actions → Release löschen* (Version eintragen, mit „LÖSCHEN“ bestätigen).
 
 # abonieren sie cisko
