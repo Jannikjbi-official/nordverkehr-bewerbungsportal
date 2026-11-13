@@ -238,6 +238,13 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {num("team.staleDays", "„Liegengeblieben“ ab (Tagen)", "So lange ohne Statuswechsel, Nachricht oder Kommentar vom Team.")}
             {num("team.escalateDays", "Leitung informieren ab (Tagen)", "Dann kommt zusätzlich ein Hinweis in den Leitungs-Chat (leere Kanal-ID = aus).")}
+            <div>
+              <label htmlFor="junior" className="nv-field-label">
+                Junior-Rollen (nur lesen, kommentieren, bewerten)
+              </label>
+              <input id="junior" className="nv-input font-mono text-sm" inputMode="numeric" placeholder="Rollen-IDs, durch Komma getrennt" value={s["team.juniorRoleIds"]} onChange={(e) => set("team.juniorRoleIds", e.target.value)} />
+              <p className="nv-help mt-1">Wer eine dieser Rollen hat (und kein Admin ist), kann keinen Status ändern, nicht claimen und Bewerbern nicht schreiben – auch nicht per Discord-Knopf.</p>
+            </div>
             {num("team.claimNudgeDays", "Claim-Erinnerung nach (Tagen)", "Übernommen, aber seitdem nichts passiert? Der Betreuer bekommt einmal eine DM (bearbeiten oder freigeben). 0 = aus.")}
             {num("applications.draftReminderDays", "Erinnerung an Entwürfe nach (Tagen)", "Einmalige DM mit Link zum Weitermachen. 0 = aus.")}
             {num("followup.reminderDays", "Rückfrage: Erinnerung nach (Tagen)", "Hat das Team „Antwort erwartet“ markiert, erinnert der Bot den Bewerber einmal. 0 = aus.")}

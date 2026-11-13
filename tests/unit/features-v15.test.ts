@@ -65,3 +65,15 @@ describe("Probezeit & Pate", () => {
     expect(readMentorFeedback(null)).toBeNull();
   });
 });
+
+import { isJunior } from "@/lib/team/rights";
+
+describe("Junior-Team", () => {
+  const J = "111111111111111111";
+  it("Rolle aus den Einstellungen", () => {
+    expect(isJunior([J, "222222222222222222"], false, `${J}`)).toBe(true);
+    expect(isJunior(["222222222222222222"], false, `${J}`)).toBe(false);
+    expect(isJunior([J], false, "")).toBe(false);
+  });
+  it("Admins sind nie Junior", () => expect(isJunior([J], true, J)).toBe(false));
+});

@@ -121,6 +121,8 @@ export const settingsSchema = z.object({
   "discord.leadChannelId": channel("1569736564433494167"),
   /** Ab wie vielen Tagen ohne Team-Aktivität eine Bewerbung als „liegengeblieben“ gilt */
   "team.staleDays": z.coerce.number().int().min(1).max(30).default(3),
+  /** Junior-Team: Discord-Rollen (IDs, Komma-getrennt) – nur lesen, kommentieren, bewerten */
+  "team.juniorRoleIds": z.string().trim().regex(/^[\d\s,]*$/, "Nur Rollen-IDs, durch Komma getrennt.").max(300).default(""),
   /** Betreuer bekommt eine DM, wenn seit dem Claim so viele Tage nichts passiert ist (0 = aus) */
   "team.claimNudgeDays": z.coerce.number().int().min(0).max(30).default(3),
   /** Ab wie vielen Tagen die Leitung Bescheid bekommt */

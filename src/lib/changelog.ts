@@ -96,6 +96,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       { kind: "neu", text: "**Probezeit-Abschluss** – am Ende der Probezeit entscheidet die Leitung: bestanden, +14 Tage oder beenden (Rollen und Präfix werden entfernt). Der Betreuer wird vorher erinnert." },
       { kind: "neu", text: "**Pate** – neuen Teammitgliedern einen Paten zuteilen; nach zwei Wochen fragt der Bot nach einer kurzen Rückmeldung („läuft gut“ / „braucht Hilfe“)." },
       { kind: "neu", text: "**Team-Verzeichnis** – wer ist in welcher Stelle, seit wann, Probezeit-Status und Pate." },
+      { kind: "neu", text: "**Junior-Team** – eine Discord-Rolle (Admin-Bereich) darf lesen, kommentieren, bewerten und abstimmen, aber keinen Status ändern, nicht claimen und Bewerbern nicht schreiben." },
     ],
   },
   {

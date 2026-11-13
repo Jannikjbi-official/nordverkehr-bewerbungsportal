@@ -25,6 +25,7 @@ import { Tabs } from "@/components/Tabs";
 import { QuizPill } from "@/components/team/QuizPill";
 import { NoShowButton } from "@/components/team/NoShowButton";
 import { noShowSuspected, voiceSummary } from "@/lib/team/voice";
+import { isJunior } from "@/lib/team/rights";
 import { InterviewProtocol } from "@/components/team/InterviewProtocol";
 import { buildProtocol, protocolQuestions, suggestFollowUps } from "@/lib/team/interview";
 import { testScenarioLabel } from "@/lib/setup/test-applications";
@@ -133,6 +134,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
   const accountAgeDays = Math.floor((nowMs() - app.user.discordCreatedAt.getTime()) / 86_400_000);
   const replyOverdue = !!app.awaitingReplySince && nowMs() - app.awaitingReplySince.getTime() >= settings["followup.closeDays"] * 86_400_000;
   const interviewPast = !!app.interviewAt && app.interviewAt.getTime() < nowMs();
+  const junior = isJunior(me.roleIds, !!access?.isAdmin, settings["team.juniorRoleIds"]);
   // Sprachkanal-Erkennung (Worker): Anwesenheit im Gesprächskanal, Hinweis „Nicht erschienen?“
   const voiceInfo = voiceSummary(app.voiceJoinedAt, app.voiceLeftAt, app.interviewAt);
   const suspectNoShow = app.status === "INTERVIEW" && noShowSuspected({ interviewAt: app.interviewAt, voiceJoinedAt: app.voiceJoinedAt, now: nowMs(), tracking: !!settings["interview.voiceChannelId"] });
@@ -219,6 +221,11 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
   return (
     <div className="space-y-6">
       <LiveRefresh scope="team-app" id={app.id} />
+      {junior && (
+        <Notice tone="info" title="Junior-Zugang">
+          Du kannst lesen, kommentieren, bewerten und abstimmen. Status, Claims und Nachrichten an Bewerber macht das reguläre Team.
+        </Notice>
+      )}
       <Link href="/team/bewerbungen" className="nv-btn nv-btn-quiet nv-btn-sm -ml-3">
         <ArrowLeft size={14} aria-hidden /> Alle Bewerbungen
       </Link>

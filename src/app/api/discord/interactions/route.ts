@@ -17,6 +17,7 @@ import {
   verifyDiscordSignature,
 } from "@/lib/discord/interactions";
 import { env } from "@/lib/env";
+import { JUNIOR_DENIED } from "@/lib/team/rights";
 import { STATUS_LABEL } from "@/lib/applications/status";
 import { evaluateRoles } from "@/lib/auth/access";
 import { runOutbox } from "@/lib/discord/outbox-db";
@@ -68,6 +69,7 @@ export async function POST(req: Request) {
     const team = await teamContext(i.member);
     if (!team.ok) return Response.json(ephemeral(team.error));
     if (i.data.name === OPEN_COMMAND.name) return Response.json(ephemeral(await openList(team)));
+    if (team.isJunior) return Response.json(ephemeral(JUNIOR_DENIED));
     const raw = String(i.data.options?.find((o) => o.name === "id")?.value ?? "");
     const publicId = normalizePublicId(raw, new Date().getFullYear(), env().PUBLIC_ID_PREFIX);
     if (!publicId) return Response.json(ephemeral("Unbekannte Bewerbungs-ID. Beispiel: `/claim id:NV-2026-0012` oder `/claim id:12`."));
@@ -99,6 +101,7 @@ export async function POST(req: Request) {
   if (!i.member) return Response.json(ephemeral("Das geht nur auf dem Server."));
   const team = await teamContext(i.member);
   if (!team.ok) return Response.json(ephemeral(team.error));
+  if (team.isJunior) return Response.json(ephemeral(JUNIOR_DENIED));
   if (action.kind === "claim") return Response.json(ephemeral(await claimFromDiscord({ id: action.applicationId }, team)));
   if (action.kind === "status") return Response.json(ephemeral(await statusFromDiscord(action.applicationId, action.to, team)));
   if (action.kind === "reply") {
@@ -115,7 +118,7 @@ export async function POST(req: Request) {
 }
 
 type Member = NonNullable<Interaction["member"]>;
-type TeamCtx = { ok: true; isAdmin: boolean; roleIds: string[]; user: NonNullable<Awaited<ReturnType<typeof db.user.findUnique>>> } | { ok: false; error: string };
+type TeamCtx = { ok: true; isAdmin: boolean; isJunior: boolean; roleIds: string[]; user: NonNullable<Awaited<ReturnType<typeof db.user.findUnique>>> } | { ok: false; error: string };
 
 /** Team-Rolle aus der signierten Interaktion + Portal-Konto. */
 async function teamContext(member: Member): Promise<TeamCtx> {
@@ -123,7 +126,9 @@ async function teamContext(member: Member): Promise<TeamCtx> {
   if (!isTeam) return { ok: false, error: "Das geht nur fürs Team." };
   const user = await db.user.findUnique({ where: { discordId: member.user.id } });
   if (!user) return { ok: false, error: `Du warst noch nie im Portal eingeloggt. Melde dich einmal an: ${publicEnv.appUrl}/team – danach klappt es.` };
-  return { ok: true, isAdmin, roleIds: member.roles, user };
+  const { isJunior } = await import("@/lib/team/rights");
+  const { getSettings } = await import("@/lib/settings");
+  return { ok: true, isAdmin, isJunior: isJunior(member.roles, isAdmin, (await getSettings())["team.juniorRoleIds"]), roleIds: member.roles, user };
 }
 
 /** /offen: offene Bewerbungen der Stellen, für die die Person zuständig ist. */

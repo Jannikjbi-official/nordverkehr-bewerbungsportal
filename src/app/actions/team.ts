@@ -16,6 +16,13 @@ const id = z.string().min(10).max(40);
 const STATUS = z.enum(["SUBMITTED", "IN_REVIEW", "INTERVIEW", "ACCEPTED", "REJECTED"]);
 const CATEGORY = z.enum(["EINGANG", "RUECKFRAGE", "EINLADUNG", "ANNAHME", "ABLEHNUNG", "ERINNERUNG", "SONSTIGES"]);
 
+/** Junior-Teammitglieder dürfen nur lesen, kommentieren und bewerten (lib/team/rights.ts). */
+async function juniorDenied(user: { roleIds?: string[] | null }, access: { isAdmin: boolean } | null | undefined): Promise<{ ok: false; error: string } | null> {
+  const { isJunior, JUNIOR_DENIED } = await import("@/lib/team/rights");
+  const { getSettings } = await import("@/lib/settings");
+  return isJunior(user.roleIds, !!access?.isAdmin, (await getSettings())["team.juniorRoleIds"]) ? { ok: false, error: JUNIOR_DENIED } : null;
+}
+
 function fail(err: unknown): { ok: false; error: string } {
   if (err instanceof UserFacingError) return { ok: false, error: err.message };
   console.error("[team-action]", err);
@@ -39,6 +46,10 @@ const statusSchema = z.object({
 
 export async function changeStatusAction(input: z.input<typeof statusSchema>): Promise<ActionResult> {
   const { user, access } = await requireTeam();
+  {
+    const j = await juniorDenied(user, access);
+    if (j) return j;
+  }
   const p = statusSchema.safeParse(input);
   if (!p.success) return { ok: false, error: "Ungültige Eingabe." };
   {
@@ -64,6 +75,10 @@ const interviewSchema = z.object({
 
 export async function setInterviewAction(input: z.input<typeof interviewSchema>): Promise<ActionResult> {
   const { user, access } = await requireTeam();
+  {
+    const j = await juniorDenied(user, access);
+    if (j) return j;
+  }
   const p = interviewSchema.safeParse(input);
   if (!p.success) return { ok: false, error: "Bitte ein gültiges Datum wählen." };
   {
@@ -130,7 +145,11 @@ const slotSchema = z.object({
 
 /** Freie Gesprächstermine anlegen (mehrere am Stück). */
 export async function createSlotsAction(input: z.input<typeof slotSchema>): Promise<ActionResult<{ count: number }>> {
-  const { user } = await requireTeam();
+  const { user, access } = await requireTeam();
+  {
+    const j = await juniorDenied(user, access);
+    if (j) return j;
+  }
   const p = slotSchema.safeParse(input);
   if (!p.success) return { ok: false, error: "Bitte Startzeit, Anzahl und Dauer prüfen." };
   if (p.data.start.getTime() < Date.now()) return { ok: false, error: "Der Termin liegt in der Vergangenheit." };
@@ -148,7 +167,11 @@ export async function createSlotsAction(input: z.input<typeof slotSchema>): Prom
 
 /** Freien Termin löschen (gebuchte nur, wenn sie vorbei sind). */
 export async function deleteSlotAction(slotId: string): Promise<ActionResult> {
-  const { user } = await requireTeam();
+  const { user, access } = await requireTeam();
+  {
+    const j = await juniorDenied(user, access);
+    if (j) return j;
+  }
   if (!id.safeParse(slotId).success) return { ok: false, error: "Ungültig." };
   const slot = await db.interviewSlot.findUnique({ where: { id: slotId } });
   if (!slot) return { ok: true };
@@ -170,6 +193,10 @@ export async function deleteSlotAction(slotId: string): Promise<ActionResult> {
 /** Einarbeitungs-Punkt abhaken / zurücknehmen. */
 export async function toggleOnboardingAction(applicationId: string, item: string, done: boolean): Promise<ActionResult<{ state: Record<string, { at: string; by: string }> }>> {
   const { user, access } = await requireTeam();
+  {
+    const j = await juniorDenied(user, access);
+    if (j) return j;
+  }
   if (!id.safeParse(applicationId).success || typeof item !== "string" || item.length > 200) return { ok: false, error: "Ungültig." };
   {
     const denied = await guardApp(user, access, applicationId);
@@ -190,6 +217,10 @@ export async function toggleOnboardingAction(applicationId: string, item: string
 /** Probezeit-Ende setzen oder entfernen. */
 export async function setProbationAction(applicationId: string, until: string | null): Promise<ActionResult> {
   const { user, access } = await requireTeam();
+  {
+    const j = await juniorDenied(user, access);
+    if (j) return j;
+  }
   {
     const denied = await guardApp(user, access, applicationId);
     if (denied) return denied;
@@ -283,6 +314,10 @@ const messageSchema = z.object({
 
 export async function sendMessageAction(input: z.input<typeof messageSchema>): Promise<ActionResult<{ missing: string[] }>> {
   const { user, access } = await requireTeam();
+  {
+    const j = await juniorDenied(user, access);
+    if (j) return j;
+  }
   const p = messageSchema.safeParse(input);
   if (!p.success) return { ok: false, error: "Nachricht ist leer oder zu lang (max. 3800 Zeichen)." };
   {
@@ -324,6 +359,10 @@ export async function sendMessageAction(input: z.input<typeof messageSchema>): P
 export async function claimAction(applicationId: string, action: "claim" | "release"): Promise<ActionResult> {
   const { user, access } = await requireTeam();
   {
+    const j = await juniorDenied(user, access);
+    if (j) return j;
+  }
+  {
     const denied = await guardApp(user, access, applicationId);
     if (denied) return denied;
   }
@@ -363,7 +402,11 @@ const templateSchema = z.object({
 });
 
 export async function saveTemplateAction(input: z.input<typeof templateSchema>): Promise<ActionResult<{ id: string }>> {
-  const { user } = await requireTeam();
+  const { user, access } = await requireTeam();
+  {
+    const j = await juniorDenied(user, access);
+    if (j) return j;
+  }
   const p = templateSchema.safeParse(input);
   if (!p.success) return { ok: false, error: "Titel (2–80) und Text (2–3500 Zeichen) ausfüllen." };
   const { id: tid, ...data } = p.data;
@@ -381,7 +424,11 @@ export async function saveTemplateAction(input: z.input<typeof templateSchema>):
 }
 
 export async function deleteTemplateAction(templateId: string): Promise<ActionResult> {
-  const { user } = await requireTeam();
+  const { user, access } = await requireTeam();
+  {
+    const j = await juniorDenied(user, access);
+    if (j) return j;
+  }
   if (!id.safeParse(templateId).success) return { ok: false, error: "Ungültig." };
   await db.messageTemplate.delete({ where: { id: templateId } }).catch(() => null);
   await audit("template.delete", { actorId: user.id, targetType: "template", targetId: templateId });
@@ -390,7 +437,11 @@ export async function deleteTemplateAction(templateId: string): Promise<ActionRe
 }
 
 export async function reorderTemplatesAction(ids: string[]): Promise<ActionResult> {
-  const { user } = await requireTeam();
+  const { user, access } = await requireTeam();
+  {
+    const j = await juniorDenied(user, access);
+    if (j) return j;
+  }
   const p = z.array(id).max(500).safeParse(ids);
   if (!p.success) return { ok: false, error: "Ungültig." };
   await db.$transaction(p.data.map((tid, i) => db.messageTemplate.update({ where: { id: tid }, data: { sortOrder: i } })));
@@ -428,7 +479,11 @@ const banSchema = z.object({
 });
 
 export async function banUserAction(input: z.input<typeof banSchema>): Promise<ActionResult> {
-  const { user } = await requireTeam();
+  const { user, access } = await requireTeam();
+  {
+    const j = await juniorDenied(user, access);
+    if (j) return j;
+  }
   const p = banSchema.safeParse(input);
   if (!p.success) return { ok: false, error: "Bitte einen Grund (mind. 3 Zeichen) angeben." };
   if (p.data.subjectId === user.id) return { ok: false, error: "Du kannst dich nicht selbst sperren." };
@@ -446,7 +501,11 @@ export async function banUserAction(input: z.input<typeof banSchema>): Promise<A
 }
 
 export async function liftBanAction(banId: string): Promise<ActionResult> {
-  const { user } = await requireTeam();
+  const { user, access } = await requireTeam();
+  {
+    const j = await juniorDenied(user, access);
+    if (j) return j;
+  }
   const ban = await db.userBan.update({ where: { id: banId }, data: { liftedAt: new Date(), liftedById: user.id } }).catch(() => null);
   if (!ban) return { ok: false, error: "Nicht gefunden." };
   await audit("user.unban", { actorId: user.id, targetType: "user", targetId: ban.subjectId });
@@ -528,6 +587,10 @@ export async function rescoreAction(applicationId: string): Promise<ActionResult
 /** Rückzug während der Bearbeitung bestätigen (raus aus dem Dashboard, Bewerber wird informiert). */
 export async function acknowledgeWithdrawalAction(applicationId: string): Promise<ActionResult> {
   const { user, access } = await requireTeam();
+  {
+    const j = await juniorDenied(user, access);
+    if (j) return j;
+  }
   if (!id.safeParse(applicationId).success) return { ok: false, error: "Ungültig." };
   {
     const denied = await guardApp(user, access, applicationId);
@@ -641,6 +704,10 @@ export async function addInterviewQuestionsAction(applicationId: string, text: s
  */
 export async function markNoShowAction(applicationId: string): Promise<ActionResult> {
   const { user, access } = await requireTeam();
+  {
+    const j = await juniorDenied(user, access);
+    if (j) return j;
+  }
   if (!id.safeParse(applicationId).success) return { ok: false, error: "Ungültig." };
   {
     const denied = await guardApp(user, access, applicationId);
@@ -704,6 +771,10 @@ async function guardApp(user: { id: string; roleIds?: string[] }, access: { isAd
 /** Bewerbung stummschalten: neue Bewerber-Nachrichten erzeugen so lange keinen Bot-Log (0 = aufheben). */
 export async function setMuteAction(applicationId: string, hours: number): Promise<ActionResult<{ until: string | null }>> {
   const { user, access } = await requireTeam();
+  {
+    const j = await juniorDenied(user, access);
+    if (j) return j;
+  }
   if (!id.safeParse(applicationId).success || ![0, 1, 8, 24, 72].includes(hours)) return { ok: false, error: "Ungültig." };
   {
     const denied = await guardApp(user, access, applicationId);
@@ -736,6 +807,10 @@ export async function decideProbationAction(applicationId: string, decision: "PA
 /** Paten zuteilen bzw. entfernen (Teammitglied). */
 export async function setMentorAction(applicationId: string, mentorId: string | null): Promise<ActionResult> {
   const { user, access } = await requireTeam();
+  {
+    const j = await juniorDenied(user, access);
+    if (j) return j;
+  }
   if (!id.safeParse(applicationId).success || (mentorId !== null && !id.safeParse(mentorId).success)) return { ok: false, error: "Ungültig." };
   {
     const denied = await guardApp(user, access, applicationId);
