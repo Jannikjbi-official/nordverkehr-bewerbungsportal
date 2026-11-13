@@ -27,6 +27,7 @@ export function SiteFooter() {
           <Link className="block text-fg-2 hover:text-fg" href="/passt-zu-mir">Welche Stelle passt zu mir?</Link>
           <Link className="block text-fg-2 hover:text-fg" href="/gespraech">So läuft das Gespräch</Link>
           <Link className="block text-fg-2 hover:text-fg" href="/dashboard">Meine Bewerbungen</Link>
+          <Link className="block text-fg-2 hover:text-fg" href="/ideen">Idee oder Fehler melden</Link>
           <Link className="block text-fg-2 hover:text-fg" href="/konto">Konto &amp; Daten</Link>
           <Link className="block text-fg-2 hover:text-fg" href="/datenschutz">Datenschutz</Link>
         </nav>

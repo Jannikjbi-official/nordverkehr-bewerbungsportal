@@ -1,8 +1,13 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 
 export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  const path = usePathname();
+  // „Wo“ für die Fehlermeldung vorausfüllen: Seite + Fehler-ID
+  const where = `${path}${error.digest ? ` (Fehler-ID ${error.digest})` : ""}`;
   useEffect(() => {
     console.error(error);
   }, [error]);
@@ -18,9 +23,14 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
             Versuch es gleich nochmal. Deine Entwürfe sind gespeichert.
             {error.digest && <span className="block mt-2 font-mono text-xs text-faint">Fehler-ID: {error.digest}</span>}
           </p>
-          <button type="button" onClick={reset} className="nv-btn nv-btn-primary mt-8">
-            Nochmal versuchen
-          </button>
+          <div className="mt-8 flex flex-wrap gap-2">
+            <button type="button" onClick={reset} className="nv-btn nv-btn-primary">
+              Nochmal versuchen
+            </button>
+            <Link href={`/ideen?art=fehler&von=${encodeURIComponent(where)}`} className="nv-btn nv-btn-ghost">
+              Fehler melden
+            </Link>
+          </div>
         </div>
       </div>
     </section>

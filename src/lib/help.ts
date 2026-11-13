@@ -158,6 +158,12 @@ export const HELP: HelpSection[] = [
         text: "Nach der Entscheidung können Bewerber freiwillig 1–5 Sterne und einen Kommentar zum Ablauf abgeben. Das Feedback steht in der Bewerbung und gesammelt unter „Statistiken“ – es fließt nicht in Entscheidungen ein.",
       },
       {
+        id: "ideen",
+        term: "Ideen & Fehler",
+        short: "Ideen, Feedback und Fehlermeldungen von allen – Admins entscheiden.",
+        text: "Unter **/ideen** (Fußbereich, Benutzermenü) können alle Eingeloggten – Bewerber und Team – eine Idee, Feedback oder einen Fehler einreichen. Die Leitung sieht alles unter *Admin-Bereich → Ideen & Fehler*, setzt den Status (Neu, Wird geprüft, Geplant, Umgesetzt, Nicht geplant) und kann kurz antworten. Bei Geplant, Umgesetzt und Nicht geplant bekommt die Person auf Wunsch eine DM. Neue Einreichungen meldet der Bot im Leitungs-Chat (sonst im Bot-Log).",
+      },
+      {
         id: "kommentare",
         term: "Kommentare & Notizen",
         text: "**Kommentare** gehören zu einer Bewerbung, **Notizen** zu einer Person (unter „Nutzer & Sperren“). Beides ist intern. Fordert ein Bewerber seine Daten an, sind sie im Export enthalten – ohne den Namen des Teammitglieds. Also sachlich formulieren.",
@@ -238,7 +244,7 @@ export const HELP: HelpSection[] = [
         id: "antworten-discord",
         term: "Antworten & Status aus Discord",
         short: "Knöpfe „Antworten“, „In Prüfung“ und „Zum Gespräch“ direkt in Discord.",
-        text: "Am Bot-Log „Neue Antwort von …“ öffnet **Antworten** ein Fenster – der Text geht als deine Nachricht per DM und ins Portal. An neuen Bewerbungen im Bewerbungs-Kanal setzen **In Prüfung** und **Zum Gespräch** den Status (Zuständigkeit und 3-Sterne-Hürde gelten). Juniors können die Knöpfe nicht nutzen.",
+        text: "Am Bot-Log „Neue Antwort von …“ öffnet **Antworten** ein Fenster – der Text geht als deine Nachricht per DM und ins Portal. An neuen Bewerbungen im Bewerbungs-Kanal setzen **In Prüfung** und **Zum Gespräch** den Status (Zuständigkeit und 3-Sterne-Hürde gelten). Juniors können die Knöpfe nicht nutzen. Bewerber haben in Nachrichten-DMs den Knopf **Zurückschreiben**: Ihre Antwort landet im Portal wie dort geschrieben. Daneben führt **Im Portal antworten** direkt zum Antwortfeld.",
       },
       {
         id: "befehle",

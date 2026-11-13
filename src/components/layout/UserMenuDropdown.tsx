@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
-import { CaretDown, ClipboardText, Gear, ShieldCheck, SignOut, UserCircle } from "@phosphor-icons/react/ssr";
+import { CaretDown, ClipboardText, Gear, Lightbulb, ShieldCheck, SignOut, UserCircle } from "@phosphor-icons/react/ssr";
 import { signOutAction } from "@/app/actions/auth";
 
 interface Props {
@@ -81,6 +81,9 @@ export function UserMenuDropdown({ name, username, avatar, isTeam, isAdmin }: Pr
               <Gear size={17} aria-hidden /> Admin-Bereich
             </Link>
           )}
+          <Link href="/ideen" className={item} role="menuitem" onClick={() => setOpen(false)}>
+            <Lightbulb size={17} aria-hidden /> Ideen &amp; Fehler
+          </Link>
           <Link href="/konto" className={item} role="menuitem" onClick={() => setOpen(false)}>
             <UserCircle size={17} aria-hidden /> Konto &amp; Daten
           </Link>

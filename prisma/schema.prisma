@@ -132,27 +132,29 @@ model User {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  applications  Application[]     @relation("Applicant")
-  decisions     Application[]     @relation("Decider")
-  claims        Application[]     @relation("Claimer")
-  votes         Vote[]
-  comments      Comment[]
-  messages      Message[]
-  statusChanges StatusChange[]
-  uploads       Upload[]
-  notesAbout    UserNote[]        @relation("NoteSubject")
-  notesWritten  UserNote[]        @relation("NoteAuthor")
-  bansAbout     UserBan[]         @relation("BanSubject")
-  bansCreated   UserBan[]         @relation("BanCreator")
-  bansLifted    UserBan[]         @relation("BanLifter")
-  templates     MessageTemplate[]
-  auditLogs     AuditLog[]
-  aiUsage       AiUsage[]
-  profile       ApplicantProfile?
-  ratings       Rating[]
-  slotsCreated  InterviewSlot[]   @relation("SlotCreator")
-  interviewNotes  InterviewNote[]  @relation("InterviewNoteAuthor")
-  interviewChecks InterviewCheck[] @relation("InterviewCheckAuthor")
+  applications       Application[]     @relation("Applicant")
+  decisions          Application[]     @relation("Decider")
+  claims             Application[]     @relation("Claimer")
+  votes              Vote[]
+  comments           Comment[]
+  messages           Message[]
+  statusChanges      StatusChange[]
+  uploads            Upload[]
+  notesAbout         UserNote[]        @relation("NoteSubject")
+  notesWritten       UserNote[]        @relation("NoteAuthor")
+  bansAbout          UserBan[]         @relation("BanSubject")
+  bansCreated        UserBan[]         @relation("BanCreator")
+  bansLifted         UserBan[]         @relation("BanLifter")
+  templates          MessageTemplate[]
+  auditLogs          AuditLog[]
+  aiUsage            AiUsage[]
+  profile            ApplicantProfile?
+  ratings            Rating[]
+  slotsCreated       InterviewSlot[]   @relation("SlotCreator")
+  interviewNotes     InterviewNote[]   @relation("InterviewNoteAuthor")
+  interviewChecks    InterviewCheck[]  @relation("InterviewCheckAuthor")
+  suggestions        Suggestion[]      @relation("SuggestionAuthor")
+  suggestionsHandled Suggestion[]      @relation("SuggestionHandler")
 }
 
 /// Allgemeine Angaben eines Bewerbers (einmal ausgefüllt, für weitere Bewerbungen wiederverwendet).
@@ -212,43 +214,43 @@ model ApplicationType {
 }
 
 model Position {
-  id              String          @id @default(cuid()) @map("_id")
-  typeId          String
-  type            ApplicationType @relation(fields: [typeId], references: [id], onDelete: Restrict)
-  slug            String          @unique
-  title           String
-  tagline         String
-  description     String
-  tasks           String[]
-  requirements    String[]
-  icon            String          @default("users")
-  status          PositionStatus  @default(OPEN)
-  sortOrder       Int             @default(0)
-  minAge          Int?
-  cooldownDays    Int?
-  acceptRoleId    String?
+  id                   String          @id @default(cuid()) @map("_id")
+  typeId               String
+  type                 ApplicationType @relation(fields: [typeId], references: [id], onDelete: Restrict)
+  slug                 String          @unique
+  title                String
+  tagline              String
+  description          String
+  tasks                String[]
+  requirements         String[]
+  icon                 String          @default("users")
+  status               PositionStatus  @default(OPEN)
+  sortOrder            Int             @default(0)
+  minAge               Int?
+  cooldownDays         Int?
+  acceptRoleId         String?
   /// Automatisch öffnen/schließen (täglicher Cron) und Höchstzahl an Bewerbungen
-  opensAt         DateTime?
-  closesAt        DateTime?
-  maxApplications Int?
+  opensAt              DateTime?
+  closesAt             DateTime?
+  maxApplications      Int?
   /// Regel-Quiz: Mindestpunktzahl (nur Hinweis fürs Team, kein Ausschluss)
-  quizMinScore    Int?
+  quizMinScore         Int?
   /// Vorlage fürs Gesprächsprotokoll (leer = Standard aus den Einstellungen)
-  interviewQuestions String[] @default([])
+  interviewQuestions   String[]        @default([])
   /// Vier-Augen-Prinzip: Annahme erst ab so vielen Pro-Stimmen (null = aus)
-  minProVotes     Int?
+  minProVotes          Int?
   /// Vier-Augen-Prinzip: Annahme nur durch Admins
-  requireAdminApproval Boolean @default(false)
+  requireAdminApproval Boolean         @default(false)
   /// Zuständigkeit: nur Teammitglieder mit einer dieser Discord-Rollen sehen die Bewerbungen (leer = alle)
-  teamRoleIds     String[]   @default([])
+  teamRoleIds          String[]        @default([])
   /// Eigener Bewertungsbogen: je Zeile „Kriterium | Hinweis“ (leer = Standard-Kriterien)
-  ratingCriteria  String[]   @default([])
+  ratingCriteria       String[]        @default([])
   /// Kontingent: so viele Plätze – sind sie mit Annahmen belegt, schließt die Stelle automatisch (null = unbegrenzt)
-  seats           Int?
+  seats                Int?
   /// Bei Annahme vor den Discord-Namen setzen, z. B. „[Support]“ (leer = Name bleibt)
-  nickPrefix      String?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  nickPrefix           String?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
 
   sections     FormSection[]
   applications Application[]
@@ -276,27 +278,27 @@ model FormSection {
 }
 
 model Question {
-  id          String       @id @default(cuid()) @map("_id")
+  id            String       @id @default(cuid()) @map("_id")
   /// Eindeutiger Schlüssel (z. B. "about_me", "support.newbie") – partieller Unique-Index in setup/indexes.ts
-  key         String?
-  sectionId   String
-  section     FormSection  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-  label       String
-  helpText    String?
-  placeholder String?
-  type        QuestionType
-  required    Boolean      @default(true)
-  minLength   Int?
-  maxLength   Int?
-  minValue    Int?
-  maxValue    Int?
-  options     String[]
+  key           String?
+  sectionId     String
+  section       FormSection  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  label         String
+  helpText      String?
+  placeholder   String?
+  type          QuestionType
+  required      Boolean      @default(true)
+  minLength     Int?
+  maxLength     Int?
+  minValue      Int?
+  maxValue      Int?
+  options       String[]
   /// Nur bei QUIZ: die richtige Option – wird NIE an Bewerber ausgeliefert
   correctOption String?
-  sortOrder   Int          @default(0)
-  archived    Boolean      @default(false)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  sortOrder     Int          @default(0)
+  archived      Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   @@index([sectionId])
 }
@@ -316,103 +318,103 @@ model Application {
   position   Position          @relation(fields: [positionId], references: [id], onDelete: Restrict)
   status     ApplicationStatus @default(DRAFT)
 
-  age            Int?
+  age             Int?
   /// Entwurfsdaten (Autosave): { [questionId]: value }
-  draftData      Json      @default("{}")
-  draftStep      Int       @default(0)
+  draftData       Json      @default("{}")
+  draftStep       Int       @default(0)
   /// Erinnerung an den liegengebliebenen Entwurf wurde verschickt (höchstens einmal)
   draftRemindedAt DateTime?
-  confirmations  Json?
-  consentVersion String?
-  consentAt      DateTime?
+  confirmations   Json?
+  consentVersion  String?
+  consentAt       DateTime?
 
-  submittedAt          DateTime?
-  firstReviewedAt      DateTime?
-  decidedAt            DateTime?
-  decidedById          String?
-  decidedBy            User?     @relation("Decider", fields: [decidedById], references: [id], onDelete: SetNull)
+  submittedAt             DateTime?
+  firstReviewedAt         DateTime?
+  decidedAt               DateTime?
+  decidedById             String?
+  decidedBy               User?     @relation("Decider", fields: [decidedById], references: [id], onDelete: SetNull)
   /// Teammitglied, das die Bewerbung betreut ("geclaimt")
-  claimedById          String?
-  claimedBy            User?     @relation("Claimer", fields: [claimedById], references: [id], onDelete: SetNull)
-  claimedAt            DateTime?
+  claimedById             String?
+  claimedBy               User?     @relation("Claimer", fields: [claimedById], references: [id], onDelete: SetNull)
+  claimedAt               DateTime?
   /// Rückzug während der Bearbeitung: Grund des Bewerbers, Team kann noch nachfragen
-  withdrawReason       String?
-  withdrawnInReview    Boolean   @default(false)
+  withdrawReason          String?
+  withdrawnInReview       Boolean   @default(false)
   /// Team hat den Rückzug bestätigt (danach keine Rückfragen mehr, raus aus dem Dashboard)
-  withdrawAckAt        DateTime?
-  withdrawAckById      String?
-  interviewAt          DateTime?
-  interviewNote        String?
+  withdrawAckAt           DateTime?
+  withdrawAckById         String?
+  interviewAt             DateTime?
+  interviewNote           String?
   /// Für diesen Termin wurde die Erinnerungs-DM schon verschickt
-  interviewRemindedFor DateTime?
+  interviewRemindedFor    DateTime?
   /// Bewerber hat den Discord verlassen – Bot hat im Portal Bescheid gegeben (zurückgesetzt, wenn wieder da)
-  guildLeftNotifiedAt  DateTime?
+  guildLeftNotifiedAt     DateTime?
   /// Discord-Thread zur Bewerbung im Bewerbungs-Kanal (Team-Diskussion)
-  discordThreadId      String?
+  discordThreadId         String?
   /// Testbewerbung (Admin → Testbewerbungen): keine DMs, nicht in Statistik/Höchstzahl
-  isTest               Boolean   @default(false)
+  isTest                  Boolean   @default(false)
   /// Szenario der Testbewerbung (lib/setup/test-applications.ts)
-  testScenario         String?
+  testScenario            String?
   /// Rückfrage mit Frist: Team wartet seit … auf eine Antwort (null = keine offene Rückfrage)
-  awaitingReplySince   DateTime?
-  awaitingRemindedAt   DateTime?
+  awaitingReplySince      DateTime?
+  awaitingRemindedAt      DateTime?
   /// Nicht zum Gespräch erschienen (Anzahl)
-  noShowCount          Int       @default(0)
+  noShowCount             Int       @default(0)
   /// Discord-Server-Event zum Gespräch
-  discordEventId       String?
+  discordEventId          String?
   /// Geplante Erinnerungs-DM an den Betreuer vor dem Gespräch (Outbox-Job)
-  teamReminderJobId    String?
+  teamReminderJobId       String?
   /// Auf dem Discord gebannt (erkannt bei der Mitgliedschaftsprüfung)
-  guildBannedAt        DateTime?
-  guildBanReason       String?
+  guildBannedAt           DateTime?
+  guildBanReason          String?
   /// Bewerber hat Antworten nachgereicht
-  amendedAt            DateTime?
+  amendedAt               DateTime?
   /// Einarbeitung nach der Annahme: { [Punkt]: { at, by } }
-  onboarding           Json      @default("{}")
-  probationUntil       DateTime?
+  onboarding              Json      @default("{}")
+  probationUntil          DateTime?
   /// Pings (Bot-Log/Thread) zu neuen Bewerber-Nachrichten bis dahin stumm
-  mutedUntil           DateTime?
+  mutedUntil              DateTime?
   /// Erinnerung an den Betreuer wegen liegengebliebenem Claim (einmal pro Claim)
-  claimRemindedAt      DateTime?
+  claimRemindedAt         DateTime?
   /// Annahme hat einen „freien Platz“ der Stelle belegt (nur dann gibt Zurücknehmen ihn wieder frei)
-  seatTakenAt          DateTime?
+  seatTakenAt             DateTime?
   /// Sprachkanal-Erkennung (Worker): Bewerber erstmals im Gesprächskanal / zuletzt verlassen
-  voiceJoinedAt        DateTime?
-  voiceLeftAt          DateTime?
+  voiceJoinedAt           DateTime?
+  voiceLeftAt             DateTime?
   /// Warteraum-Ping an den Betreuer verschickt (einmal pro Termin)
-  waitingPingAt        DateTime?
+  waitingPingAt           DateTime?
   /// Bewerber hat gemeldet: bis dahin nicht erreichbar (Rückfrage-Erinnerung und Frist pausieren)
-  applicantAwayUntil   DateTime?
+  applicantAwayUntil      DateTime?
   /// Probezeit-Abschluss: PASSED (bestanden) | ENDED (beendet); verlängern setzt nur probationUntil neu
-  probationResult      String?
-  probationDecidedAt   DateTime?
-  probationDecidedById String?
+  probationResult         String?
+  probationDecidedAt      DateTime?
+  probationDecidedById    String?
   /// Erinnerung „Probezeit endet“ an Betreuer verschickt (für dieses Enddatum)
-  probationRemindedFor DateTime?
+  probationRemindedFor    DateTime?
   /// Pate für neue Teammitglieder (User-ID) + Rückmeldung nach 14 Tagen { rating: "good" | "help", note, by, at }
-  mentorId             String?
-  mentorFeedback       Json?
-  mentorRemindedAt     DateTime?
-  rejectionReason      String?
+  mentorId                String?
+  mentorFeedback          Json?
+  mentorRemindedAt        DateTime?
+  rejectionReason         String?
   /// Feste Kategorie des Absagegrunds (lib/applications/rejection.ts) – für die Statistik
-  rejectionCategory    String?
+  rejectionCategory       String?
   /// Regel-Quiz: richtige Antworten / Anzahl Quizfragen (beim Absenden ausgewertet)
-  quizCorrect          Int?
-  quizTotal            Int?
+  quizCorrect             Int?
+  quizTotal               Int?
   /// Zusätzliche Gesprächsfragen nur für diese Bewerbung (z. B. aus den KI-Gesprächsfragen)
-  interviewExtraQuestions String[] @default([])
+  interviewExtraQuestions String[]  @default([])
 
-  confirmationDmStatus DeliveryStatus?
+  confirmationDmStatus  DeliveryStatus?
   /// Automatische Hinweise (kein Score!): [{ code, message }]
-  flags                Json            @default("[]")
-  aiSummary            String?
-  aiSummaryAt          DateTime?
+  flags                 Json            @default("[]")
+  aiSummary             String?
+  aiSummaryAt           DateTime?
   /// KI-Einordnung (beschreibende Kategorien, kein Ranking)
-  aiTags               String[]        @default([])
-  aiTaggedAt           DateTime?
+  aiTags                String[]        @default([])
+  aiTaggedAt            DateTime?
   /// KI-Punkte für den Bewertungsbogen: { scores, reasons, fazit } oder { blocked } – nur Einschätzung
-  aiRating             Json?
-  aiRatedAt            DateTime?
+  aiRating              Json?
+  aiRatedAt             DateTime?
   /// Admin hat KI-Punkte trotz älterer Einwilligung freigegeben (Bewerber hat zugestimmt)
   aiConsentOverrideAt   DateTime?
   aiConsentOverrideById String?
@@ -420,15 +422,15 @@ model Application {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  answers       Answer[]
-  uploads       Upload[]
-  statusChanges StatusChange[]
-  votes         Vote[]
-  comments      Comment[]
-  messages      Message[]
-  ratings       Rating[]
-  slot          InterviewSlot?
-  feedback      Feedback?
+  answers         Answer[]
+  uploads         Upload[]
+  statusChanges   StatusChange[]
+  votes           Vote[]
+  comments        Comment[]
+  messages        Message[]
+  ratings         Rating[]
+  slot            InterviewSlot?
+  feedback        Feedback?
   interviewNotes  InterviewNote[]
   interviewChecks InterviewCheck[]
 
@@ -700,16 +702,54 @@ model Counter {
 
 /// Bewerbungsrunde: Zeitraum (optional nur eine Stelle) mit Zielanzahl – für die Auswertung
 model ApplicationRound {
-  id         String    @id @default(cuid()) @map("_id")
-  name       String
+  id          String   @id @default(cuid()) @map("_id")
+  name        String
   /// leer = alle Stellen
-  positionId String?
-  startsAt   DateTime
-  endsAt     DateTime
+  positionId  String?
+  startsAt    DateTime
+  endsAt      DateTime
   /// Ziel: so viele Annahmen
-  target     Int?
+  target      Int?
   createdById String?
-  createdAt  DateTime  @default(now())
+  createdAt   DateTime @default(now())
 
   @@index([startsAt])
+}
+
+/// Ideen-Sammlung: Ideen, Feedback und Fehlermeldungen von allen (Bewerber und Team).
+/// Admins sichten sie im Admin-Bereich und entscheiden, ob etwas eingebaut wird.
+enum SuggestionKind {
+  IDEA
+  FEEDBACK
+  BUG
+}
+
+enum SuggestionStatus {
+  NEW
+  REVIEWING
+  PLANNED
+  DONE
+  DECLINED
+}
+
+model Suggestion {
+  id          String           @id @default(cuid()) @map("_id")
+  kind        SuggestionKind
+  title       String
+  body        String
+  /// Bei Fehlern: wo es passiert ist (Seite/Adresse, frei eingegeben)
+  location    String?
+  status      SuggestionStatus @default(NEW)
+  /// Antwort der Admins – sieht auch die Person, die es eingereicht hat
+  adminNote   String?
+  /// Konto gelöscht → Einreichungen werden mitgelöscht (können persönliche Angaben enthalten)
+  authorId    String?
+  author      User?            @relation("SuggestionAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  handledById String?
+  handledBy   User?            @relation("SuggestionHandler", fields: [handledById], references: [id], onDelete: SetNull)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([status, createdAt])
+  @@index([authorId])
 }

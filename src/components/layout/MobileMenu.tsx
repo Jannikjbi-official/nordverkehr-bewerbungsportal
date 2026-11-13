@@ -27,6 +27,7 @@ export function MobileMenu({ discordInvite }: Props) {
     { href: "/", label: "Positionen" },
     { href: "/passt-zu-mir", label: "Welche Stelle passt?" },
     { href: "/dashboard", label: "Meine Bewerbungen" },
+    { href: "/ideen", label: "Ideen & Fehler" },
     { href: "/konto", label: "Konto & Daten" },
   ];
 

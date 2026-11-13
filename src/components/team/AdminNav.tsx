@@ -7,7 +7,7 @@ import { ADMIN_SECTIONS } from "@/lib/admin/sections";
 /** Unternavigation im Admin-Bereich. */
 export function AdminNav() {
   const path = usePathname();
-  const items = [{ href: "/team/admin", label: "Übersicht" }, ...ADMIN_SECTIONS.map((s) => ({ href: `/team/admin/${s.key}`, label: s.label }))];
+  const items = [{ href: "/team/admin", label: "Übersicht" }, ...ADMIN_SECTIONS.map((s) => ({ href: `/team/admin/${s.key}`, label: s.label })), { href: "/team/admin/ideen", label: "Ideen & Fehler" }];
   return (
     <nav aria-label="Admin-Bereich" className="flex flex-wrap gap-1.5">
       {items.map((i) => {

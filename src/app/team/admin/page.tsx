@@ -24,11 +24,12 @@ async function Overview() {
   const props = await loadSettingsProps();
   const s = props.settings;
   const now = new Date();
-  const [pending, failed, waiting, tests] = await Promise.all([
+  const [pending, failed, waiting, tests, newIdeas] = await Promise.all([
     db.outboxJob.count({ where: { status: "PENDING", runAt: { lte: now } } }),
     db.outboxJob.count({ where: { status: "FAILED" } }),
     db.outboxJob.count({ where: { status: "PENDING", runAt: { gt: now } } }),
     db.application.count({ where: { isTest: true } }),
+    db.suggestion.count({ where: { status: "NEW" } }),
   ]);
   const night = isNight(s, now);
   // Changelog des laufenden Tages: veröffentlicht oder noch ausstehend?
@@ -85,6 +86,16 @@ async function Overview() {
             Positionen & Fragen <ArrowRight size={16} className="text-muted group-hover:text-red-text" aria-hidden />
           </p>
           <p className="text-sm text-muted mt-1">Stellen, Formularfragen, Quiz, Gesprächsvorlagen pro Stelle.</p>
+        </Link>
+        <Link href="/team/admin/ideen" className="nv-card p-5 group hover:border-red-line transition-colors">
+          <p className="font-semibold flex items-center justify-between">
+            <span>
+              Ideen & Fehler
+              {newIdeas > 0 && <span className="nv-pill nv-pill-red ml-2 !text-[0.68rem] !py-0.5">{newIdeas} neu</span>}
+            </span>
+            <ArrowRight size={16} className="text-muted group-hover:text-red-text" aria-hidden />
+          </p>
+          <p className="text-sm text-muted mt-1">Ideen, Feedback und Fehlermeldungen von Bewerbern und Team – sichten und entscheiden, was eingebaut wird.</p>
         </Link>
       </section>
 

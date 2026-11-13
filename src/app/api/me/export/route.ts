@@ -35,6 +35,7 @@ export async function GET() {
       profile: { select: { age: true, answers: true, createdAt: true, updatedAt: true } },
       notesAbout: { select: { body: true, createdAt: true } },
       bansAbout: { select: { reason: true, expiresAt: true, createdAt: true, liftedAt: true } },
+      suggestions: { select: { kind: true, title: true, body: true, location: true, status: true, adminNote: true, createdAt: true, updatedAt: true } },
     },
   });
   if (!full) return new Response("Nicht gefunden", { status: 404 });
@@ -78,6 +79,7 @@ export async function GET() {
       : null,
     interneNotizen: full.notesAbout,
     sperren: full.bansAbout,
+    ideenUndMeldungen: full.suggestions,
   };
 
   await audit("user.export", { actorId: user.id, targetType: "user", targetId: user.id });

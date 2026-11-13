@@ -54,7 +54,9 @@ export type AuditAction =
   | "settings.import"
   | "ai.request"
   | "export.csv"
-  | "retention.cleanup";
+  | "retention.cleanup"
+  | "suggestion.update"
+  | "suggestion.delete";
 
 export async function audit(
   action: AuditAction,
@@ -135,4 +137,6 @@ export const AUDIT_LABELS: Record<string, string> = {
   "ai.request": "KI-Anfrage",
   "export.csv": "CSV-Export",
   "retention.cleanup": "Löschfristen",
+  "suggestion.update": "Idee/Meldung bearbeitet",
+  "suggestion.delete": "Idee/Meldung gelöscht",
 };

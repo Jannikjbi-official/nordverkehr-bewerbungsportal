@@ -610,6 +610,31 @@ try {
     check(!(await canAnswer(ra.id, owner.discordId)) && !(await postApplicantReply({ applicationId: ra.id, owner: { discordId: owner.discordId }, body: "Hallo?" })).ok, "Abgeschlossen: keine Antwort mehr");
   }
 
+  // ── Ideen & Fehler: einreichen, prüfen, Status mit DM
+  {
+    const { createSuggestion, updateSuggestion } = await import("../src/lib/suggestions");
+    const sub = await mk("Ida", "100000000000000301");
+    const bad = await createSuggestion(db, sub, { kind: "IDEA", title: "x", body: "zu kurz" });
+    check(!bad.ok && !!bad.fieldErrors?.title && !!bad.fieldErrors?.body, "Ideen: zu kurze Eingaben abgelehnt (mit Feldfehlern)");
+    const ok = await createSuggestion(db, sub, { kind: "BUG", title: "Upload hängt", body: "Upload hängt bei 99 % auf dem Handy.", location: "Formular, Schritt 3" });
+    const row = ok.ok ? await db.suggestion.findUnique({ where: { id: ok.id } }) : null;
+    check(!!row && row.status === "NEW" && row.location === "Formular, Schritt 3" && row.authorId === sub.id, "Ideen: Fehlermeldung gespeichert (Status Neu, Ort)");
+    const idea = await createSuggestion(db, sub, { kind: "IDEA", title: "Dunkles Design", body: "Ein dunkles Design wäre schön.", location: "ignorieren" });
+    check(idea.ok && (await db.suggestion.findUniqueOrThrow({ where: { id: idea.id } })).location === null, "Ideen: Ort nur bei Fehlern");
+    const u1 = await updateSuggestion(db, team.id, { id: row!.id, status: "REVIEWING" });
+    check(u1.ok && u1.jobIds.length === 0, "Ideen: „Wird geprüft“ ohne DM");
+    const u2 = await updateSuggestion(db, team.id, { id: row!.id, status: "DONE", adminNote: "Behoben, danke!" });
+    const after = await db.suggestion.findUniqueOrThrow({ where: { id: row!.id } });
+    const dm = u2.ok && u2.jobIds[0] ? await db.outboxJob.findUnique({ where: { id: u2.jobIds[0] } }) : null;
+    check(after.status === "DONE" && after.adminNote === "Behoben, danke!" && after.handledById === team.id && !!dm && JSON.stringify(dm.payload).includes(sub.discordId), "Ideen: Umgesetzt → DM an die Person");
+    const u3 = await updateSuggestion(db, team.id, { id: row!.id, status: "DONE", adminNote: "Nur Notiz geändert" });
+    check(u3.ok && u3.jobIds.length === 0, "Ideen: gleicher Status → keine zweite DM");
+    const u4 = idea.ok ? await updateSuggestion(db, team.id, { id: idea.id, status: "DECLINED", notify: false }) : null;
+    check(!!u4 && u4.ok && u4.jobIds.length === 0, "Ideen: DM abwählbar");
+    await db.user.delete({ where: { id: sub.id } });
+    check((await db.suggestion.count({ where: { authorId: sub.id } })) === 0, "Ideen: Konto gelöscht → Einreichungen mitgelöscht");
+  }
+
   // ── Feedback (eins pro Bewerbung)
   await db.feedback.create({ data: { applicationId: app1.id, rating: 5 } });
   dup = false;

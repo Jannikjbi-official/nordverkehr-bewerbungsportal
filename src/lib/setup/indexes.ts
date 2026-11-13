@@ -71,6 +71,7 @@ export const INDEXES: Record<string, IndexSpec[]> = {
   // Abgelaufene Rate-Limit-Einträge räumt MongoDB selbst auf (TTL)
   RateLimit: [{ key: { resetAt: 1 }, name: "ttl_resetAt", expireAfterSeconds: 3600 }],
   OutboxJob: [idx(["status", "runAt"], "OutboxJob")],
+  Suggestion: [idx(["status", "createdAt"], "Suggestion"), idx(["authorId"], "Suggestion")],
 };
 
 /** Alte, fehlerhafte Indizes entfernen (vollständiges @unique auf optionaler publicId). */
