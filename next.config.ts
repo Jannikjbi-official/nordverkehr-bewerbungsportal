@@ -18,6 +18,29 @@ const nextConfig: NextConfig = {
     remotePatterns: [{ protocol: "https", hostname: "cdn.discordapp.com" }],
   },
   serverExternalPackages: ["sharp", "discord.js", "@discordjs/rest", "pg"],
+  // Kleinere Server-Funktionen (Vercel speichert jede Funktion pro Deploy):
+  // Prisma bringt WASM-Engines für alle Datenbanken mit (~55 MB pro Funktion) –
+  // wir nutzen nur MongoDB mit der nativen Engine (runtime/library.js + .so.node).
+  outputFileTracingExcludes: {
+    "*": [
+      "node_modules/@prisma/client/runtime/query_engine_bg.*",
+      "node_modules/@prisma/client/runtime/query_compiler_bg.*",
+      "node_modules/@prisma/client/runtime/wasm-*",
+      "node_modules/@prisma/client/runtime/binary.*",
+      "node_modules/@prisma/client/runtime/react-native.*",
+      "node_modules/@prisma/client/runtime/edge*",
+      "node_modules/@prisma/client/runtime/*.map",
+      "node_modules/.prisma/client/edge.js",
+      "node_modules/.prisma/client/wasm*",
+      "node_modules/.prisma/client/index.d.ts",
+      // sharp: WebAssembly-Fallback wird auf Linux x64 nie geladen
+      "node_modules/@img/sharp-wasm32/**",
+      // Nur zum Bauen/Testen nötig
+      "node_modules/prisma/**",
+      "node_modules/@prisma/engines/**",
+      "node_modules/typescript/**",
+    ],
+  },
   turbopack: {
     rules: {
       "*.css": {
