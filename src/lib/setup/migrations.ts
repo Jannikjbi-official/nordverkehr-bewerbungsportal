@@ -464,7 +464,24 @@ const MIGRATIONS: { id: string; run: (db: PrismaClient, opts: Options) => Promis
   },
   // Bewerbungsgespräche und Support laufen über Discord (TeamSpeak nur Ingame-Voice)
   { id: "2026-11-gespraech-auf-discord", run: (db, o) => (o.dryRun ? Promise.resolve(0) : interviewsOnDiscord(db)) },
+  // Einarbeitung: TeamSpeak ist nur Ingame-Voice – Punkt „TeamSpeak-Rechte gesetzt“ entfällt
+  { id: "2026-11-einarbeitung-ohne-teamspeak", run: (db, o) => (o.dryRun ? Promise.resolve(0) : onboardingWithoutTeamspeak(db)) },
 ];
+
+export const removeTeamspeakItem = (items: string) =>
+  items
+    .split("\n")
+    .filter((l) => l.trim() !== "TeamSpeak-Rechte gesetzt")
+    .join("\n");
+
+async function onboardingWithoutTeamspeak(db: PrismaClient) {
+  const s = await db.setting.findUnique({ where: { key: "onboarding.items" } });
+  if (!s || typeof s.value !== "string") return 0; // Standard aus dem Code gilt – dort schon entfernt
+  const value = removeTeamspeakItem(s.value);
+  if (value === s.value) return 0;
+  await db.setting.update({ where: { key: s.key }, data: { value } });
+  return 1;
+}
 
 /** Alte Standardtexte (genau so ausgeliefert) → neue Fassung. Von Admins geänderte Texte bleiben unberührt. */
 export const DISCORD_TEXT_REPLACE: [string, string][] = [

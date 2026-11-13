@@ -182,3 +182,12 @@ describe("Gespräch & Support auf Discord, ehrenamtlich", () => {
   });
   it("Pflicht-Haken: ehrenamtlich", () => expect(CONFIRMATIONS.some((c) => c.key === "unpaid" && c.label.includes("derzeit gibt es keine Bezahlung"))).toBe(true));
 });
+
+import { removeTeamspeakItem } from "@/lib/setup/migrations";
+import { settingsSchema } from "@/lib/settings";
+
+describe("Einarbeitung ohne TeamSpeak", () => {
+  it("Standard-Checkliste ohne TeamSpeak-Rechte", () => expect(settingsSchema.parse({})["onboarding.items"]).not.toContain("TeamSpeak"));
+  it("gespeicherte Liste: nur genau dieser Punkt fällt weg", () =>
+    expect(removeTeamspeakItem("Regelwerk gelesen\nTeamSpeak-Rechte gesetzt\nEinweisung gemacht")).toBe("Regelwerk gelesen\nEinweisung gemacht"));
+});

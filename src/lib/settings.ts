@@ -126,7 +126,7 @@ export const settingsSchema = z.object({
   "onboarding.items": z
     .string()
     .max(2000)
-    .default(["Regelwerk & Team-Regeln gelesen", "Discord-Rolle vergeben", "TeamSpeak-Rechte gesetzt", "In Team-Kanäle eingeladen", "Einweisung gemacht", "Ansprechpartner zugeteilt"].join("\n")),
+    .default(["Regelwerk & Team-Regeln gelesen", "Discord-Rolle vergeben", "In Team-Kanäle eingeladen", "Einweisung gemacht", "Ansprechpartner zugeteilt"].join("\n")),
   /** Nachtruhe (deutsche Zeit): Team schläft – KI antwortet, DMs/Team-Posts warten bis zum Ende */
   "night.enabled": bool(true),
   "night.start": z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Uhrzeit als HH:MM").default("22:00"),
