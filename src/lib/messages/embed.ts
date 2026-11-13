@@ -19,7 +19,8 @@ import { groupItems, type ChangeKind } from "@/lib/changelog";
 export const BRAND_COLOR = 0xc41e1e;
 export const WARN_COLOR = 0xf3c25b;
 export const NEUTRAL_COLOR = 0x4e5058;
-export const LOGO_URL = "https://nordverkehr.xyz/logo.png";
+/** Logo für Discord-Nachrichten – liegt im Portal unter /logo.png */
+export const LOGO_URL = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://bewerbung.nordverkehr.xyz"}/logo.png`;
 /** MessageFlags.IsComponentsV2 */
 export const COMPONENTS_V2 = 1 << 15;
 /** Discord erlaubt bei V2 insgesamt 4000 Zeichen Text pro Nachricht */

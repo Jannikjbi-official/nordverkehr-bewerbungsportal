@@ -192,5 +192,3 @@ git tag v2 && git push origin v2
 ```
 
 oder in GitHub unter *Actions → Release → Run workflow*. Der Workflow (`.github/workflows/release.yml`) legt ein GitHub-Release mit allen Changelog-Einträgen seit dem letzten Release an. Ein Release samt Tag entfernt *Actions → Release löschen* (Version eintragen, mit „LÖSCHEN“ bestätigen).
-
-# abonieren sie cisko

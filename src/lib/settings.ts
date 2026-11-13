@@ -82,18 +82,18 @@ export const settingsSchema = z.object({
 
   /** Neue Bewerbungen im Bewerbungs-Kanal posten */
   "discord.logChannelEnabled": bool(true),
-  "discord.applicationsChannelId": channel("1570180703663165520"),
+  "discord.applicationsChannelId": channel(""),
   /** Protokoll (Status, Claims, Nachrichten, Zustellfehler) im Bot-Log-Kanal */
   "discord.botLogEnabled": bool(true),
-  "discord.botLogChannelId": channel("1569736621019111515"),
+  "discord.botLogChannelId": channel(""),
   /** Stellenaufruf („Wir suchen neue Teammitglieder!“) – Kanal + automatisch aktualisieren */
-  "discord.jobsChannelId": channel("1569736461933084792"),
+  "discord.jobsChannelId": channel(""),
   "discord.jobsAutoUpdate": bool(true),
   /** Einzelaufrufe „Wir suchen <Stelle>!“ */
-  "discord.spotlightChannelId": channel("1569736463564808263"),
+  "discord.spotlightChannelId": channel(""),
   /** Neue Changelog-Einträge des Portals posten */
   "discord.changelogEnabled": bool(true),
-  "discord.changelogChannelId": channel("1570181667627475146"),
+  "discord.changelogChannelId": channel(""),
   /** Changelog: Uhrzeit der Veröffentlichung (00:00 = nach Ende des Tages, sonst am selben Tag) */
   "changelog.publishTime": z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Uhrzeit als HH:MM").default("00:00"),
   /** Changelog: per Knopf bis zu diesem Tag (YYYY-MM-DD) sofort veröffentlicht */
@@ -114,7 +114,7 @@ export const settingsSchema = z.object({
   "discord.claimButton": bool(false),
   /** Tägliche Team-Übersicht (morgens) im Teamchat */
   "discord.dailySummaryEnabled": bool(true),
-  "discord.summaryChannelId": channel("1569736476797837312"),
+  "discord.summaryChannelId": channel(""),
   /** Neue Bewerbungen automatisch dem Teammitglied mit den wenigsten offenen Bewerbungen zuteilen */
   "team.autoAssign": bool(false),
   /** Gespräche als Discord-Server-Event anlegen (Bot braucht „Events verwalten“) */
@@ -135,7 +135,7 @@ export const settingsSchema = z.object({
   /** Persönliche Morgen-DM an Betreuer mit ihren offenen Punkten (pro Person abschaltbar) */
   "team.personalDigestEnabled": bool(true),
   /** Leitungs-Chat: Hinweis, wenn Bewerbungen zu lange liegen (leer = aus) */
-  "discord.leadChannelId": channel("1569736564433494167"),
+  "discord.leadChannelId": channel(""),
   /** Ab wie vielen Tagen ohne Team-Aktivität eine Bewerbung als „liegengeblieben“ gilt */
   "team.staleDays": z.coerce.number().int().min(1).max(30).default(3),
   /** Junior-Team: Discord-Rollen (IDs, Komma-getrennt) – nur lesen, kommentieren, bewerten */

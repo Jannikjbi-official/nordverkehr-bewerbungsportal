@@ -26,7 +26,7 @@ const SAMPLE = {
   position: "Support",
   bewerbungs_id: "NV-2026-0042",
   datum: "11. November 2026",
-  dashboard_link: "https://bewerbung.nordverkehr.xyz/dashboard",
+  dashboard_link: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://bewerbung.nordverkehr.xyz"}/dashboard`,
 };
 
 export function SettingsForm({ section, settings, env, spend, spendMicro }: Props) {

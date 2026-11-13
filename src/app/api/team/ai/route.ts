@@ -7,6 +7,7 @@ import { getSettings } from "@/lib/settings";
 import { AiError, assertAiAllowed, callAi, loadApplicationContext } from "@/lib/ai/service";
 import { buildPrompt } from "@/lib/ai/prompts";
 import { sanitizeOutput } from "@/lib/ai/guard";
+import { hostOf, publicEnv } from "@/lib/env";
 
 // Gestreamte KI-Antworten können etwas dauern (Vercel-Funktionslimit)
 export const maxDuration = 60;
@@ -67,7 +68,7 @@ export async function POST(req: Request) {
         });
         if (res.refused) throw new AiError("Die KI hat diese Anfrage abgelehnt.", 422);
         if (input.feature === "summary") {
-          const clean = sanitizeOutput(res.text, { maxChars: 6000, allowedHosts: ["nordverkehr.xyz"] });
+          const clean = sanitizeOutput(res.text, { maxChars: 6000, allowedHosts: [hostOf(publicEnv.mainSiteUrl), hostOf(publicEnv.appUrl)] });
           await db.application.update({ where: { id: input.applicationId }, data: { aiSummary: clean, aiSummaryAt: new Date() } });
         }
       } catch (err) {

@@ -12,7 +12,7 @@
  *  Die KI entscheidet nichts und sagt immer, dass das Team sich meldet.
  */
 import { db } from "@/lib/db";
-import { publicEnv } from "@/lib/env";
+import { hostOf, publicEnv } from "@/lib/env";
 import { getSettings, type Settings } from "@/lib/settings";
 import { rateLimit } from "@/lib/rate-limit";
 import { isAiConfigured } from "@/lib/ai/config";
@@ -43,7 +43,7 @@ export async function isTeamOnline(minutes: number, now = new Date()) {
 }
 
 function allowedHosts() {
-  const hosts = ["nordverkehr.xyz"];
+  const hosts = [hostOf(publicEnv.mainSiteUrl)];
   try {
     hosts.push(new URL(publicEnv.appUrl).hostname);
   } catch {}

@@ -21,6 +21,9 @@ try {
   const pos = await db.position.create({ data: { typeId: type.id, slug: "support", title: "Support", tagline: "x", description: "x" } });
   const mk = (n: string, id: string, isAdmin = false) => db.user.create({ data: { discordId: id, username: n, globalName: n, discordCreatedAt: new Date("2020-01-01"), isTeam: true, isAdmin } });
   const applicant = await mk("Bewerber", "100000000000000010");
+  // Eingerichteter Server: Bot-Log-Kanal gesetzt (seit Open Source kein Standardwert mehr)
+  const { saveSettings } = await import("../src/lib/settings");
+  await saveSettings({ "discord.botLogChannelId": "123456789012345678" }, applicant.id);
   const jonas = await mk("Jonas", "100000000000000011");
   const lea = await mk("Lea", "100000000000000012");
   const app = await db.application.create({ data: { userId: applicant.id, positionId: pos.id, status: "SUBMITTED", publicId: "NV-T-1", submittedAt: new Date() } });
@@ -60,7 +63,7 @@ try {
   const logs = await db.outboxJob.findMany({ where: { type: "CHANNEL_MESSAGE" } });
   const all = logs.map((l) => JSON.stringify(l.payload)).join("\n");
   check(logs.length > 0 && logs.every((l) => JSON.stringify(l.payload).includes('"flags":32768')), `alle ${logs.length} Kanal-Posts sind V2`);
-  check(all.includes("1569736621019111515"), "Bot-Logs gehen in 1569736621019111515");
+  check(all.includes("123456789012345678"), "Bot-Logs gehen in den eingestellten Kanal");
   for (const s of ["betreut jetzt", "übernommen von", "freigegeben", "geschrieben (als Team)", "In Prüfung"]) check(all.includes(s), `Bot-Log enthält „${s}“`);
   // Rückzug während der Bearbeitung bestätigen
   await db.application.update({ where: { id: app.id }, data: { status: "WITHDRAWN", withdrawnInReview: true, withdrawReason: "Keine Zeit mehr", decidedAt: new Date() } });

@@ -468,6 +468,8 @@ const MIGRATIONS: { id: string; run: (db: PrismaClient, opts: Options) => Promis
   { id: "2026-11-einarbeitung-ohne-teamspeak", run: (db, o) => (o.dryRun ? Promise.resolve(0) : onboardingWithoutTeamspeak(db)) },
   // Moderator/Support: Ingame-Voice wieder in der Anforderung (Zwischenstand korrigieren)
   { id: "2026-11-anforderung-ingame-voice", run: (db, o) => (o.dryRun ? Promise.resolve(0) : interviewsOnDiscord(db)) },
+  // Open Source: Kanal-IDs stehen nicht mehr als Standard im Code – bestehende Installation behält ihre Werte
+  { id: "2026-11-kanal-ids-sichern", run: (db, o) => (o.dryRun ? Promise.resolve(0) : keepLegacyChannelIds(db)) },
   // Kommende Gespräche: Termin-Notizen und Discord-Events auf Discord umstellen
   { id: "2026-11-kommende-gespraeche-discord", run: (db, o) => (o.dryRun ? Promise.resolve(0) : upcomingInterviewsOnDiscord(db)) },
 ];
@@ -661,4 +663,33 @@ export async function markMigrationsDone(db: PrismaClient) {
       .create({ data: { key: `migration:${m.id}`, value: { at: new Date().toISOString(), fresh: true } } })
       .catch(() => {});
   }
+}
+
+/**
+ * Bis Version 1.2 standen die Kanal-IDs des Nordverkehr-Servers als Standardwerte im Code.
+ * Bestehende Installationen (nur dort läuft diese Migration – frische DBs markieren sie als
+ * erledigt) bekommen die Werte einmalig fest gespeichert, sofern nichts eingestellt ist.
+ */
+const LEGACY_CHANNEL_IDS: Record<string, string> = {
+  "discord.applicationsChannelId": "1570180703663165520",
+  "discord.botLogChannelId": "1569736621019111515",
+  "discord.jobsChannelId": "1569736461933084792",
+  "discord.spotlightChannelId": "1569736463564808263",
+  "discord.changelogChannelId": "1570181667627475146",
+  "discord.summaryChannelId": "1569736476797837312",
+  "discord.leadChannelId": "1569736564433494167",
+};
+
+async function keepLegacyChannelIds(db: PrismaClient) {
+  let saved = 0;
+  for (const [key, value] of Object.entries(LEGACY_CHANNEL_IDS)) {
+    if (await db.setting.findUnique({ where: { key }, select: { key: true } })) continue;
+    await db.setting.create({ data: { key, value } });
+    saved++;
+  }
+  if (saved) {
+    const { clearSettingsCache } = await import("@/lib/settings");
+    clearSettingsCache();
+  }
+  return saved;
 }

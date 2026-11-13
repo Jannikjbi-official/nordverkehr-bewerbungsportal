@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { RULES_URL, hostOf } from "@/lib/public-urls";
 
 /**
  * Serverseitige Umgebungsvariablen. Wird erst beim ersten Zugriff validiert,
@@ -56,7 +57,9 @@ export const publicEnv = {
   appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
   mainSiteUrl: process.env.NEXT_PUBLIC_MAIN_SITE_URL ?? "https://nordverkehr.xyz",
   discordInvite: process.env.NEXT_PUBLIC_DISCORD_INVITE ?? "https://discord.gg/KrfKASTHDp",
+  rulesUrl: RULES_URL,
 };
+export { hostOf };
 
 /** Für Tests: Cache zurücksetzen. */
 export function resetEnvCache() {

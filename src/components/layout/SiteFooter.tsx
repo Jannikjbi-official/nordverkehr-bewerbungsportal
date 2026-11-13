@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight, DiscordLogo } from "@phosphor-icons/react/ssr";
-import { publicEnv } from "@/lib/env";
+import { hostOf, publicEnv } from "@/lib/env";
 
 export function SiteFooter() {
   return (
@@ -14,7 +14,7 @@ export function SiteFooter() {
           </p>
           <div className="flex flex-wrap gap-2">
             <a href={publicEnv.mainSiteUrl} className="nv-btn nv-btn-ghost nv-btn-sm">
-              nordverkehr.xyz <ArrowUpRight size={13} aria-hidden />
+              {hostOf(publicEnv.mainSiteUrl)} <ArrowUpRight size={13} aria-hidden />
             </a>
             <a href={publicEnv.discordInvite} target="_blank" rel="noopener noreferrer" className="nv-btn nv-btn-ghost nv-btn-sm">
               <DiscordLogo size={15} weight="fill" aria-hidden /> Discord

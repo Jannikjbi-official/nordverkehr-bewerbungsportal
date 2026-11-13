@@ -35,7 +35,7 @@ const SAMPLE = {
   sperrfrist_tage: "30 Tage",
   discord_link: "https://discord.gg/KrfKASTHDp",
   bearbeitungszeit: "in der Regel 3–7 Tage",
-  dashboard_link: "https://bewerbung.nordverkehr.xyz/dashboard",
+  dashboard_link: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://bewerbung.nordverkehr.xyz"}/dashboard`,
 };
 
 export function TemplateManager({ templates: initial }: { templates: Template[] }) {

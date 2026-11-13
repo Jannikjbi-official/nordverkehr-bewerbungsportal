@@ -4,6 +4,7 @@
  */
 import { z } from "zod";
 import type { QuestionType } from "@prisma/client";
+import { RULES_URL } from "@/lib/public-urls";
 
 export interface FormQuestion {
   id: string;
@@ -164,7 +165,7 @@ export const CONFIRMATIONS = [
   {
     key: "rules",
     label: "Ich habe das Regelwerk gelesen und halte mich daran.",
-    link: { href: "https://nordverkehr.xyz/regeln", label: "Regelwerk" },
+    link: { href: RULES_URL, label: "Regelwerk" },
   },
   {
     key: "unpaid",
