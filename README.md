@@ -13,7 +13,7 @@ Bewerber loggen sich mit Discord ein, füllen ein Formular in Ruhe aus und verfo
 - [Funktionen](#funktionen)
 - [Technik](#technik)
 - [Schnellstart (lokal)](#schnellstart-lokal)
-- [Einrichtung](#einrichtung) – Discord, Datenbank, Umgebungsvariablen, Hosting
+- [Einrichtung](#einrichtung) – Discord, Datenbank, Umgebungsvariablen, Hosting, KI
 - [Für andere Server einrichten](#für-andere-server-einrichten)
 - [Betrieb](#betrieb) – Cron-Jobs, Worker, Changelog & Releases
 - [Sicherheit & Datenschutz](#sicherheit--datenschutz)
@@ -53,6 +53,8 @@ Bewerber loggen sich mit Discord ein, füllen ein Formular in Ruhe aus und verfo
 
 ### KI (optional, Claude)
 Zusammenfassungen, Fragen-Vorschläge, beschreibende Kategorien, Punkte als Orientierung (getrennt vom Team) und kurze Auto-Antworten, wenn niemand vom Team online ist. **Die KI entscheidet nichts.** Mit Schutz vor Prompt Injection, Token-Limits und Monatsbudget. Ohne API-Key läuft das Portal vollständig.
+
+> Die KI läuft **derzeit nur über die Claude API von Anthropic** und ist **kostenpflichtig** – Einrichtung und empfohlener Plan unter [5. KI (optional)](#5-ki-optional). Weitere KI-Anbieter und Modelle (APIs) kommen noch.
 
 ---
 
@@ -120,7 +122,7 @@ Vorlage: [`.env.example`](.env.example). Die wichtigsten:
 | `AUTH_SECRET`, `AUTH_DISCORD_ID`, `AUTH_DISCORD_SECRET`, `AUTH_TRUST_HOST` | Login |
 | `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, `TEAM_ROLE_ID`, `ADMIN_ROLE_ID` | Bot & Rollen |
 | `CRON_SECRET` | Schutz der Cron-Routen (zufällig, ≥ 16 Zeichen) |
-| `ANTHROPIC_API_KEY` | KI (optional) |
+| `ANTHROPIC_API_KEY` | KI (optional, kostenpflichtig – siehe [5. KI](#5-ki-optional)) |
 | `PUBLIC_ID_PREFIX` | Präfix der Bewerbungs-IDs (Standard `NV`) |
 
 Kanäle (Bewerbungen, Bot-Log, Teamchat, Leitung, Changelog …) werden **im Portal** unter *Admin-Bereich → Discord* eingetragen, nicht in der `.env`.
@@ -136,6 +138,24 @@ cp .env.example .env
 docker compose up -d --build      # MongoDB (Replica Set) + Portal + Worker
 docker compose run --rm setup     # Schema, Indizes, Basisdaten (einmalig)
 ```
+
+### 5. KI (optional)
+
+Die KI-Funktionen laufen **derzeit ausschließlich über die Claude API von Anthropic**. Weitere KI-Anbieter und Modelle (APIs) sind geplant und kommen noch.
+
+**Die Claude API ist kostenpflichtig.** Abgerechnet wird nach Verbrauch (Tokens), unabhängig davon, wie viele Leute im Team sind.
+
+**Welchen Plan nehmen?**
+- **Ein API-Konto in der [Claude Console](https://platform.claude.com)** (Anthropic API, nutzungsbasiert mit **Prepaid-Guthaben**). Das reicht für das Portal völlig – keinen Enterprise-/Firmenvertrag nötig.
+- **Nicht** ein Claude.ai-Abo (Pro, Max, Team): Diese Abos gelten nur für die Claude-App und enthalten **keinen API-Zugang**.
+- Empfehlung zum Start: **5–10 $ Guthaben** aufladen, **automatisches Nachladen aus** lassen und in der Console ein **Ausgabenlimit** setzen. Für eine normale Bewerbungsphase reicht das meist lange.
+
+**Einrichten:**
+1. In der Console ein Konto anlegen, Guthaben aufladen und unter *API Keys* einen Key erstellen.
+2. Den Key als `ANTHROPIC_API_KEY` in die Umgebungsvariablen eintragen (nur serverseitig, nie ins Repo).
+3. Im Portal unter *Admin-Bereich → KI* einschalten und das **Monatsbudget** prüfen (Standard 20 $). Ist es aufgebraucht, schaltet sich die KI bis zum Monatsende ab – das Portal läuft normal weiter.
+
+**Modelle & Kosten:** Standard ist `claude-sonnet-5-5` (`AI_MODEL_DEFAULT`) für Zusammenfassungen und Einordnung, für kleine, häufige Aufgaben wie Auto-Antworten das günstige `claude-haiku-5-5` (`AI_MODEL_FAST`). Beides lässt sich im Admin-Bereich ändern. Aktuelle Preise stehen auf der [Preisseite von Anthropic](https://www.anthropic.com/pricing) – den Verbrauch des Portals zeigt *Statistiken → KI-Nutzung (dieser Monat)*.
 
 ---
 
