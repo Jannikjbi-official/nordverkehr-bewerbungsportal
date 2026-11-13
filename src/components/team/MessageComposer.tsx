@@ -42,9 +42,11 @@ interface Props {
   sender: { name: string; avatarUrl: string; claimedByMe: boolean };
   /** Rückfrage mit Frist (Einstellungen) */
   followUp?: { reminderDays: number; closeDays: number };
+  /** Discord-Interaktionen eingerichtet → DM bekommt den Knopf „Zurückschreiben“ */
+  answerButton?: boolean;
 }
 
-export function MessageComposer({ applicationId, publicId, templates, vars, suggested, statusTargets, sender, followUp = { reminderDays: 0, closeDays: 7 } }: Props) {
+export function MessageComposer({ applicationId, publicId, templates, vars, suggested, statusTargets, sender, followUp = { reminderDays: 0, closeDays: 7 }, answerButton = false }: Props) {
   const router = useRouter();
   const textarea = useRef<HTMLTextAreaElement>(null);
   const [category, setCategory] = useState<TemplateCategory>(suggested[0] ?? "EINGANG");
@@ -137,7 +139,7 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
   const preview = (
     <div className="space-y-3 min-w-0">
       <p className="nv-mono">Vorschau wie in Discord</p>
-      <DiscordPreview title={renderedTitle} body={rendered.text} publicId={publicId} author={asTeam ? null : { name: sender.name, iconUrl: sender.avatarUrl }} />
+      <DiscordPreview title={renderedTitle} body={rendered.text} publicId={publicId} author={asTeam ? null : { name: sender.name, iconUrl: sender.avatarUrl }} answerButton={answerButton} linkLabel="Im Portal antworten" />
       {rendered.missing.length > 0 && (
         <p className="flex items-start gap-1.5 text-xs text-[var(--tone-warn)]">
           <WarningCircle size={14} className="shrink-0 mt-0.5" aria-hidden />

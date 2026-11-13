@@ -250,7 +250,8 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
               })}
             </ol>
             {(active || followUp) && (
-              <div className="border-t border-line p-5">
+              // Sprungmarke für den DM-Knopf „Im Portal antworten“
+              <div id="antworten" className="border-t border-line p-5 scroll-mt-28">
                 {followUp && (
                   <p className="mb-3 text-xs text-muted">
                     Du hast die Bewerbung zurückgezogen. Falls das Team noch Fragen hat, kannst du hier bis zum{" "}

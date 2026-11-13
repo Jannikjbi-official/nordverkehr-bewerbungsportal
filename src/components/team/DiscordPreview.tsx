@@ -51,12 +51,18 @@ export function DiscordPreview({
   body,
   publicId,
   author,
+  answerButton = false,
+  linkLabel = "Status ansehen",
 }: {
   title: string;
   body: string;
   publicId?: string | null;
   /** Persönlicher Absender; ohne Angabe "NORDVERKEHR // TEAM" */
   author?: { name: string; iconUrl: string } | null;
+  /** Knopf „Zurückschreiben“ zeigen (Team-Nachrichten, wenn Discord-Interaktionen eingerichtet sind) */
+  answerButton?: boolean;
+  /** Beschriftung des Link-Knopfs */
+  linkLabel?: string;
 }) {
   const look = useSyncExternalStore(subscribeLook, readLook, () => "dark" as Look);
   const toggle = () => writeLook(look === "dark" ? "light" : "dark");
@@ -118,9 +124,16 @@ export function DiscordPreview({
             <p className="mt-3 text-xs" style={{ color: t.muted }}>
               {publicId ? `Bewerbung ${publicId}` : "Nordverkehr Roleplay"} · Heute
             </p>
-            <span className="mt-3 inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-sm font-medium" style={{ background: t.button, color: t.buttonText }}>
-              Status ansehen ↗
-            </span>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {answerButton && (
+                <span className="inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-sm font-medium" style={{ background: t.button, color: t.buttonText }}>
+                  ✍️ Zurückschreiben
+                </span>
+              )}
+              <span className="inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-sm font-medium" style={{ background: t.button, color: t.buttonText }}>
+                {linkLabel} ↗
+              </span>
+            </div>
           </div>
         </div>
       </div>

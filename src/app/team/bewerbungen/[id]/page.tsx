@@ -519,6 +519,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
                 statusTargets={statusTargets}
                 sender={{ name: me.globalName || me.username, avatarUrl: avatarUrl(me.discordId, me.avatar, 128), claimedByMe: app.claimedById === me.id }}
                 followUp={{ reminderDays: settings["followup.reminderDays"], closeDays: settings["followup.closeDays"] }}
+                answerButton={settings["discord.claimButton"]}
               />
             </div>
           </section>

@@ -11,10 +11,8 @@ import { getEligibility, submitApplication, UserFacingError } from "@/lib/applic
 import { rateLimit } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
 import { deliverNow, runOutbox } from "@/lib/discord/outbox-db";
-import { replyCustomId } from "@/lib/discord/interactions";
 import { botLog, esc } from "@/lib/discord/botlog";
-import { getSettings } from "@/lib/settings";
-import { ACTIVE_STATUSES, canFollowUp, isInProcessing } from "@/lib/applications/status";
+import { ACTIVE_STATUSES, isInProcessing } from "@/lib/applications/status";
 import type { Prisma } from "@prisma/client";
 
 export type ActionResult<T = undefined> =
@@ -297,40 +295,16 @@ export async function replyToTeamAction(input: z.input<typeof replySchema>): Pro
   const user = await requireUser();
   const parsed = replySchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Bitte schreib zwischen 2 und 2000 Zeichen." };
-  const rl = await rateLimit(`reply:${user.id}`, 10, 3600);
-  if (!rl.ok) return { ok: false, error: "Du hast gerade viele Nachrichten geschickt. Bitte warte etwas." };
-
-  const found = await db.application.findFirst({
-    where: { id: parsed.data.applicationId, userId: user.id, status: { in: [...ACTIVE_STATUSES, "WITHDRAWN"] } },
-    include: { position: true },
-  });
-  // Nach einem Rückzug während der Bearbeitung bleibt der Chat für Rückfragen offen
-  const app = found && (ACTIVE_STATUSES.includes(found.status) || canFollowUp(found)) ? found : null;
-  if (!app) return { ok: false, error: "Auf diese Bewerbung kann nicht mehr geantwortet werden." };
-
-  const message = await db.message.create({
-    data: { applicationId: app.id, direction: "APPLICANT_TO_TEAM", authorId: user.id, body: parsed.data.body },
-  });
-  // Offene Rückfrage ist beantwortet → Frist endet
-  if (app.awaitingReplySince) await db.application.update({ where: { id: app.id }, data: { awaitingReplySince: null, awaitingRemindedAt: null } });
+  const { postApplicantReply } = await import("@/lib/applications/reply");
+  const r = await postApplicantReply({ applicationId: parsed.data.applicationId, owner: { userId: user.id }, body: parsed.data.body, via: "portal" });
+  if (!r.ok) return r;
   // Ist gerade niemand vom Team online, antwortet (falls aktiviert) die KI – mit Schutzfiltern
   after(async () => {
     const { maybeAutoReply } = await import("@/lib/ai/autoreply");
-    await maybeAutoReply(message.id).catch((e) => console.error("[autoreply]", e));
+    await maybeAutoReply(r.messageId).catch((e) => console.error("[autoreply]", e));
   });
-
-  // Vom Team stummgeschaltet? Dann kein Bot-Log (im Portal bleibt alles sichtbar)
-  const muted = !!app.mutedUntil && app.mutedUntil.getTime() > Date.now();
-  const job = muted
-    ? null
-    : await botLog(`💬 Neue Antwort von ${esc(user.globalName || user.username)} zu **${app.publicId}** (${app.position.title})`, {
-        applicationId: app.id,
-        url: `${publicEnv.appUrl}/team/bewerbungen/${app.id}`,
-        // Direkt aus Discord antworten (Fenster), wenn der Knopf „Übernehmen“ eingerichtet ist
-        actions: (await getSettings())["discord.claimButton"] ? [{ label: "Antworten", customId: replyCustomId(app.id), emoji: "✉️", style: 1 }] : undefined,
-      });
-  if (job) await deliverNow([job]);
-  revalidatePath(`/dashboard/${app.id}`);
+  if (r.jobIds.length) await deliverNow(r.jobIds);
+  revalidatePath(`/dashboard/${r.applicationId}`);
   return { ok: true };
 }
 

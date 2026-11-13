@@ -4,6 +4,7 @@ import {
   CLAIM_COMMAND,
   OPEN_COMMAND,
   STATUS_COMMAND,
+  answerModal,
   cancelConfirmReply,
   ephemeral,
   modalValue,
@@ -96,6 +97,28 @@ export async function POST(req: Request) {
     const { cancelInterviewByApplicant } = await import("@/lib/team/slots");
     const r = await cancelInterviewByApplicant(db, { applicationId: action.applicationId, discordId, expectAt: action.at });
     return Response.json(ephemeral(r.ok ? `Erledigt – das Team weiß Bescheid. Einen neuen Termin findest du im Portal: ${publicEnv.appUrl}/dashboard/${action.applicationId}` : r.error));
+  }
+
+  // Bewerber: „Zurückschreiben“ (Knopf in der DM) – nur die eigene Bewerbung
+  if (action.kind === "answer" || action.kind === "answerSubmit") {
+    const discordId = i.member?.user.id ?? i.user?.id;
+    if (!discordId) return Response.json(ephemeral("Das hat nicht geklappt."));
+    const link = `${publicEnv.appUrl}/dashboard/${action.applicationId}`;
+    if (action.kind === "answer") {
+      const { canAnswer } = await import("@/lib/applications/reply");
+      const app = await canAnswer(action.applicationId, discordId);
+      if (!app) return Response.json(ephemeral(`Auf diese Bewerbung kannst du gerade nicht antworten. Alles Weitere findest du im Portal: ${link}`));
+      return Response.json(answerModal(app.id, app.publicId));
+    }
+    const { postApplicantReply } = await import("@/lib/applications/reply");
+    const r = await postApplicantReply({ applicationId: action.applicationId, owner: { discordId }, body: modalValue(i.data, "body"), via: "discord" });
+    if (!r.ok) return Response.json(ephemeral(r.error));
+    after(async () => {
+      if (r.jobIds.length) await runOutbox({ ids: r.jobIds }).catch(() => {});
+      const { maybeAutoReply } = await import("@/lib/ai/autoreply");
+      await maybeAutoReply(r.messageId).catch((e) => console.error("[autoreply]", e));
+    });
+    return Response.json(ephemeral(`✅ Deine Antwort ist beim Team angekommen und steht im Portal: ${link}`));
   }
 
   if (!i.member) return Response.json(ephemeral("Das geht nur auf dem Server."));

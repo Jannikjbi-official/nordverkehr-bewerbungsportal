@@ -90,6 +90,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: "2026-11-13",
     items: [
       { kind: "neu", text: "**Antworten aus Discord** – am Bot-Log „Neue Antwort von …“ hängt ein Knopf „Antworten“: Text eintippen, geht als deine Nachricht per DM und ins Portal." },
+      { kind: "neu", text: "**Zurückschreiben aus der DM** – Nachrichten vom Team (auch Rückfrage-Erinnerungen und Auto-Antworten) haben jetzt den Knopf „Zurückschreiben“: Text in Discord eintippen, er erscheint im Portal bei der Bewerbung. Daneben führt „Im Portal antworten“ direkt zum Antwortfeld." },
       { kind: "neu", text: "**Status per Knopf** – an neuen Bewerbungen im Bewerbungs-Kanal: „In Prüfung“ und „Zum Gespräch“ (3-Sterne-Hürde gilt auch hier)." },
       { kind: "neu", text: "**Sprachkanal-Erkennung** – mit laufendem Worker sieht das Team, wann der Bewerber im Gesprächskanal war; fehlt er 10 Minuten nach Beginn, kommt „Nicht erschienen?“." },
       { kind: "neu", text: "**Warteraum-Ping** – kommt ein Bewerber am Gesprächstag in den Warteraum, bekommt sein Betreuer eine DM." },

@@ -173,7 +173,7 @@ export function TemplateManager({ templates: initial }: { templates: Template[] 
             </label>
             <div>
               <p className="nv-mono mb-2">Vorschau (Beispieldaten)</p>
-              <DiscordPreview title="Nachricht vom Nordverkehr-Team" body={renderTemplate(editing.body ?? "", SAMPLE).text} publicId={SAMPLE.bewerbungs_id} />
+              <DiscordPreview title="Nachricht vom Nordverkehr-Team" body={renderTemplate(editing.body ?? "", SAMPLE).text} publicId={SAMPLE.bewerbungs_id} linkLabel="Im Portal antworten" />
             </div>
             {error && <p className="nv-error">{error}</p>}
             <div className="flex justify-end gap-2">
