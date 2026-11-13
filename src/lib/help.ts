@@ -229,6 +229,18 @@ export const HELP: HelpSection[] = [
         text: "An jeder neuen Bewerbung im Bewerbungs-Kanal hängt (wenn eingeschaltet) der Knopf **📌 Übernehmen**. Wer die Team-Rolle hat und schon einmal im Portal eingeloggt war, claimt die Bewerbung damit direkt – die Antwort sieht nur er selbst. Betreut schon jemand die Bewerbung, sagt der Bot wer; übernehmen geht dann nur im Portal. Einmalig einrichten: Admin-Bereich → Discord → „Knopf ‚Übernehmen‘ einrichten“.",
       },
       {
+        id: "sprachkanal",
+        term: "Sprachkanal, Warteraum & Vorbereitung",
+        short: "Gesprächskanal und Warteraum eintragen – der Bot erkennt, wer wann da ist.",
+        text: "Unter Einstellungen → Gesprächstermine: **Sprachkanal fürs Gespräch** (Server-Event hängt daran) und **Warteraum**. Mit laufendem Worker steht in der Bewerbung, wann der Bewerber im Gesprächskanal war; fehlt er 10 Minuten nach Beginn, kommt „Nicht erschienen?“. Kommt er am Gesprächstag in den Warteraum, bekommt der Betreuer eine DM. Bewerber finden unter /gespraech eine kurze Vorbereitung.",
+      },
+      {
+        id: "antworten-discord",
+        term: "Antworten & Status aus Discord",
+        short: "Knöpfe „Antworten“, „In Prüfung“ und „Zum Gespräch“ direkt in Discord.",
+        text: "Am Bot-Log „Neue Antwort von …“ öffnet **Antworten** ein Fenster – der Text geht als deine Nachricht per DM und ins Portal. An neuen Bewerbungen im Bewerbungs-Kanal setzen **In Prüfung** und **Zum Gespräch** den Status (Zuständigkeit und 3-Sterne-Hürde gelten). Juniors können die Knöpfe nicht nutzen.",
+      },
+      {
         id: "befehle",
         term: "Discord-Befehle",
         short: "/bewerbung für Bewerber, /offen und /claim fürs Team.",
@@ -301,6 +313,18 @@ export const HELP: HelpSection[] = [
         id: "audit",
         term: "Audit-Log",
         text: "Protokoll, wer wann was im Portal gemacht hat (Status, Nachrichten, Claims, Einstellungen …). Für Nachvollziehbarkeit, nicht zur Kontrolle einzelner.",
+      },
+      {
+        id: "rechte",
+        term: "Junior-Team & Abwesenheit",
+        short: "Juniors lesen und bewerten nur; Abwesende bekommen nichts Neues.",
+        text: "Admins tragen **Junior-Rollen** ein: diese Teammitglieder lesen, kommentieren, bewerten und stimmen ab, ändern aber keinen Status, claimen nicht und schreiben Bewerbern nicht. Unter **Konto** trägt jedes Teammitglied eine **Abwesenheit** ein – dann keine Zuteilung, keine Erinnerungen, und in der Übersicht steht „abwesend“. Bewerber können im Dashboard melden, dass sie eine Weile nicht erreichbar sind; Rückfrage-Fristen warten dann.",
+      },
+      {
+        id: "runden",
+        term: "Bewerbungsrunden",
+        short: "Zeitraum mit Ziel – Eingänge, Annahmen und Dauer auf einen Blick.",
+        text: "Unter **Bewerbungsrunden** legen Admins z. B. „Support-Runde Dezember, Ziel 3“ an. Gezählt werden alle Bewerbungen, die im Zeitraum eingegangen sind (ohne Testbewerbungen), mit Annahmen, Absagen, offenen und der Dauer bis zur Entscheidung.",
       },
       {
         id: "team-aktivitaet",

@@ -697,3 +697,19 @@ model Counter {
   key   String @id @map("_id")
   value Int
 }
+
+/// Bewerbungsrunde: Zeitraum (optional nur eine Stelle) mit Zielanzahl – für die Auswertung
+model ApplicationRound {
+  id         String    @id @default(cuid()) @map("_id")
+  name       String
+  /// leer = alle Stellen
+  positionId String?
+  startsAt   DateTime
+  endsAt     DateTime
+  /// Ziel: so viele Annahmen
+  target     Int?
+  createdById String?
+  createdAt  DateTime  @default(now())
+
+  @@index([startsAt])
+}

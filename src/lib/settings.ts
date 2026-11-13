@@ -43,6 +43,21 @@ const channel = (def: string) =>
     .regex(/^(\d{15,25})?$/, "Kanal-ID besteht nur aus Ziffern.")
     .default(def);
 
+export const DEFAULT_INTERVIEW_PREP = `**Vorher**
+- Mikrofon testen: Discord → Einstellungen → Sprache & Video → „Mikrofontest“
+- Ruhiger Ort, Kopfhörer helfen
+- Ein paar Minuten vorher im Warteraum auf Discord sein
+
+**Ablauf (etwa 20–30 Minuten)**
+- Kurz kennenlernen
+- Fragen zu deiner Bewerbung und ein, zwei Situationen aus der Stelle
+- Deine Fragen an uns
+
+**Gut zu wissen**
+- Es gibt keine perfekte Antwort – ehrlich ist besser als auswendig gelernt
+- Nordverkehr ist ein Hobby- und Community-Projekt, die Mitarbeit im Team ist ehrenamtlich
+- Klappt der Termin nicht, sag im Portal mit „Ich kann nicht“ ab`;
+
 /** Alle einstellbaren Werte mit Typ, Grenzen und Standard. */
 export const settingsSchema = z.object({
   "applications.minAge": z.coerce.number().int().min(12).max(99).default(18),
@@ -106,6 +121,8 @@ export const settingsSchema = z.object({
   "interview.discordEvent": bool(false),
   /** Sprachkanal fürs Gespräch: Server-Event hängt direkt daran (leer = Event mit Ort „Discord“) */
   "interview.voiceChannelId": channel(""),
+  /** Seite „So läuft dein Gespräch“ (/gespraech) – Discord-Markdown */
+  "interview.prepText": z.string().trim().min(10).max(4000).default(DEFAULT_INTERVIEW_PREP),
   /** Warteraum-Sprachkanal: Betritt ein Bewerber mit Gespräch heute den Kanal, bekommt der Betreuer eine DM (Worker nötig) */
   "interview.waitingRoomChannelId": channel(""),
   /** DM an den Betreuer so viele Minuten vor dem Gespräch (0 = aus) */

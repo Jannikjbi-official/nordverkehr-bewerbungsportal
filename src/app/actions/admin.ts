@@ -681,3 +681,37 @@ export async function publishChangelogNowAction(): Promise<ActionResult<{ messag
   if (errors.length) return { ok: false, error: `Veröffentlicht, aber Discord meldet: ${errors.join(" · ")}` };
   return { ok: true, data: { message: `Veröffentlicht und ${ids.length} Version(en) in Discord gepostet.` } };
 }
+
+// ─── Bewerbungsrunden ─────────────────────────────────────────
+
+const roundSchema = z.object({
+  name: z.string().trim().min(2, "Name zu kurz.").max(80),
+  positionId: z.string().regex(/^[a-z0-9]{10,40}$/i).nullable(),
+  startsAt: z.iso.date(),
+  endsAt: z.iso.date(),
+  target: z.number().int().min(1).max(1000).nullable(),
+});
+
+/** Runde anlegen (nur Admins). Start/Ende als Tage (deutsche Zeit, ganztägig). */
+export async function createRoundAction(input: z.input<typeof roundSchema>): Promise<ActionResult> {
+  const { user } = await requireAdmin();
+  const p = roundSchema.safeParse(input);
+  if (!p.success) return { ok: false, error: p.error.issues[0].message };
+  const { berlinDayBounds } = await import("@/lib/team/rounds");
+  const startsAt = berlinDayBounds(p.data.startsAt).start;
+  const endsAt = berlinDayBounds(p.data.endsAt).end;
+  if (endsAt <= startsAt) return { ok: false, error: "Das Ende muss nach dem Start liegen." };
+  const round = await db.applicationRound.create({ data: { name: p.data.name, positionId: p.data.positionId, startsAt, endsAt, target: p.data.target, createdById: user.id } });
+  await audit("settings.update", { actorId: user.id, meta: { round: round.id, name: round.name } });
+  revalidatePath("/team/runden");
+  return { ok: true };
+}
+
+export async function deleteRoundAction(roundId: string): Promise<ActionResult> {
+  const { user } = await requireAdmin();
+  if (!/^[a-z0-9]{10,40}$/i.test(roundId)) return { ok: false, error: "Ungültig." };
+  await db.applicationRound.deleteMany({ where: { id: roundId } });
+  await audit("settings.update", { actorId: user.id, meta: { roundDeleted: roundId } });
+  revalidatePath("/team/runden");
+  return { ok: true };
+}

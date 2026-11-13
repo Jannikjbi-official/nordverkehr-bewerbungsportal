@@ -77,3 +77,48 @@ describe("Junior-Team", () => {
   });
   it("Admins sind nie Junior", () => expect(isJunior([J], true, J)).toBe(false));
 });
+
+import { berlinDayBounds, roundPhase, roundStats } from "@/lib/team/rounds";
+
+describe("Bewerbungsrunden", () => {
+  it("Tagesgrenzen in deutscher Zeit (Winter/Sommer)", () => {
+    expect(berlinDayBounds("2026-12-01").start.toISOString()).toBe("2026-11-30T23:00:00.000Z");
+    expect(berlinDayBounds("2026-07-01").start.toISOString()).toBe("2026-06-30T22:00:00.000Z");
+    expect(berlinDayBounds("2026-12-01").end.toISOString()).toBe("2026-12-01T22:59:59.000Z");
+  });
+  it("Kennzahlen und Ziel", () => {
+    const d = (s: string) => new Date(s);
+    const s = roundStats(
+      [
+        { status: "ACCEPTED", submittedAt: d("2026-12-01"), decidedAt: d("2026-12-03") },
+        { status: "REJECTED", submittedAt: d("2026-12-01"), decidedAt: d("2026-12-05") },
+        { status: "SUBMITTED", submittedAt: d("2026-12-02"), decidedAt: null },
+      ],
+      2,
+    );
+    expect(s).toMatchObject({ total: 3, accepted: 1, rejected: 1, open: 1, avgDays: 3, targetReached: false });
+  });
+  it("Phase", () => {
+    const r = { startsAt: new Date("2026-12-01"), endsAt: new Date("2026-12-31") };
+    expect(roundPhase(r, new Date("2026-11-20").getTime())).toBe("geplant");
+    expect(roundPhase(r, new Date("2026-12-10").getTime())).toBe("läuft");
+    expect(roundPhase(r, new Date("2027-01-02").getTime())).toBe("beendet");
+  });
+});
+
+import { MATCH_QUESTIONS, scorePositions } from "@/lib/applications/match";
+
+describe("Welche Stelle passt zu mir?", () => {
+  const slugs = ["support", "moderator", "entwickler", "media", "mapper", "eventteam"];
+  it("Support-Typ landet bei Support", () => {
+    const answers = { ort: 0, staerke: 0, technik: 3, zeit: 2, stress: 0 };
+    expect(scorePositions(answers, slugs)[0].slug).toBe("support");
+  });
+  it("Technik-Typ landet bei Entwickler", () => {
+    expect(scorePositions({ ort: 2, staerke: 4, technik: 0, zeit: 1, stress: 2 }, slugs)[0].slug).toBe("entwickler");
+  });
+  it("nur vorhandene Stellen, jede Frage hat Antworten", () => {
+    expect(scorePositions({ ort: 0 }, ["moderator"]).every((r) => r.slug === "moderator")).toBe(true);
+    for (const q of MATCH_QUESTIONS) expect(q.options.length).toBeGreaterThan(1);
+  });
+});

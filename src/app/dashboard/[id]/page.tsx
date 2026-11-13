@@ -194,6 +194,9 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
                 <p className="font-semibold">Gesprächstermin</p>
                 <p className="text-fg-2 mt-0.5">{formatDayTime(app.interviewAt)} Uhr · Discord</p>
                 {app.interviewNote && <p className="text-sm text-muted mt-1">{app.interviewNote}</p>}
+                <Link href="/gespraech" className="nv-link text-sm mt-1 inline-block">
+                  So läuft dein Gespräch →
+                </Link>
                 {app.interviewAt.getTime() > nowMs() && <CancelInterviewButton applicationId={app.id} />}
               </div>
             </div>

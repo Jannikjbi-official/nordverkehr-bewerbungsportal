@@ -395,6 +395,13 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
             „Nicht erschienen?“). Warteraum: Kommt der Bewerber am Gesprächstag dort an, bekommt der Betreuer eine DM.
           </p>
           <p className="nv-help">Gesprächstermine als Kalender-Abo: jedes Teammitglied unter „Konto“ → „Kalender-Link erzeugen“.</p>
+          <div>
+            <label htmlFor="prep" className="nv-field-label">
+              Seite „So läuft dein Gespräch“ (/gespraech)
+            </label>
+            <textarea id="prep" className="nv-input text-sm !min-h-40" maxLength={4000} value={s["interview.prepText"]} onChange={(e) => set("interview.prepText", e.target.value)} />
+            <p className="nv-help mt-1">Discord-Markdown (**fett**, Listen mit „-“). Verlinkt im Dashboard beim Termin und in der Erinnerungs-DM; mit eingetragenem Warteraum gibt es einen Knopf direkt dorthin.</p>
+          </div>
         </div>
       </Card>
       )}

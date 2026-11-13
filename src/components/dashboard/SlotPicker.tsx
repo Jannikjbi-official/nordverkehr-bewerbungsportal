@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { CalendarCheck } from "@phosphor-icons/react/ssr";
@@ -70,6 +71,11 @@ export function SlotPicker({
             </p>
           ) : (
             <p className="text-sm text-muted mt-0.5">Wir haben dich zum Gespräch eingeladen. Wähl einfach eine Zeit, die dir passt – am Tag selbst erinnern wir dich per DM.</p>
+          )}
+          {current && (
+            <Link href="/gespraech" className="nv-link text-sm mt-1 inline-block">
+              So läuft dein Gespräch →
+            </Link>
           )}
           {current && canCancel && <CancelInterviewButton applicationId={applicationId} />}
         </div>

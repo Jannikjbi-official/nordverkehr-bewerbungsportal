@@ -75,7 +75,10 @@ export default function HomePage() {
       <section id="positionen" className="scroll-mt-28 pt-24">
         <Container>
           <SectionTitle label="Offene Stellen" title="Wir suchen" emphasis="Verstärkung.">
-            Klick auf eine Rolle, um Aufgaben und Anforderungen zu sehen. Beworben wird direkt hier im Portal.
+            Klick auf eine Rolle, um Aufgaben und Anforderungen zu sehen. Beworben wird direkt hier im Portal. Unsicher?{" "}
+            <Link href="/passt-zu-mir" className="nv-link">
+              Welche Stelle passt zu mir?
+            </Link>
           </SectionTitle>
           <Suspense fallback={<PositionsSkeleton />}>
             <PositionList />
