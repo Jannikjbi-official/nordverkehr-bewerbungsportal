@@ -98,7 +98,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       { kind: "neu", text: "**Team-Verzeichnis** – wer ist in welcher Stelle, seit wann, Probezeit-Status und Pate." },
       { kind: "neu", text: "**So läuft dein Gespräch** – Seite zur Vorbereitung (Mikro testen, Ablauf, Warteraum-Link), verlinkt beim Termin und in der Erinnerung; Text im Admin-Bereich anpassbar." },
       { kind: "neu", text: "**Bewerbungsrunden** – z. B. „Support-Runde Dezember, Ziel 3“: Eingänge, Annahmen, Dauer und ob das Ziel erreicht ist." },
-      { kind: "neu", text: "**Welche Stelle passt zu mir?** – fünf kurze Fragen vor dem Bewerben, danach passende Stellen. Nichts wird gespeichert." },
+      { kind: "neu", text: "**Welche Stelle passt zu mir?** – fünf kurze Fragen vor dem Bewerben, danach passende Stellen. Zu finden auf der Startseite, auf jeder Stellenseite, im Menü und unten im Fußbereich. Nichts wird gespeichert." },
       { kind: "neu", text: "**Abwesenheit im Team** – unter „Konto“ eintragen, bis wann du weg bist: keine neuen Zuteilungen, keine Erinnerungen, in der Übersicht steht „abwesend“." },
       { kind: "neu", text: "**Abwesenheit für Bewerber** – Bewerber melden im Dashboard „bis … nicht erreichbar“; Rückfrage-Erinnerung und Frist warten so lange, das Team sieht einen Hinweis." },
       { kind: "neu", text: "**Junior-Team** – eine Discord-Rolle (Admin-Bereich) darf lesen, kommentieren, bewerten und abstimmen, aber keinen Status ändern, nicht claimen und Bewerbern nicht schreiben." },

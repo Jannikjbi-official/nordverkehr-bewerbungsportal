@@ -116,6 +116,12 @@ async function PositionDetail({ params }: Pick<PageProps<"/positionen/[slug]">, 
             <Suspense fallback={<div className="nv-skeleton h-11" />}>
               <ApplyCta position={position} />
             </Suspense>
+            <p className="mt-4 text-xs text-muted text-center">
+              Unsicher, ob die Stelle passt?{" "}
+              <Link href="/passt-zu-mir" className="nv-link">
+                Mach den Selbsttest
+              </Link>
+            </p>
           </aside>
         </div>
       </Container>

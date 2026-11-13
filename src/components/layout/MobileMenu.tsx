@@ -25,6 +25,7 @@ export function MobileMenu({ discordInvite }: Props) {
 
   const portal = [
     { href: "/", label: "Positionen" },
+    { href: "/passt-zu-mir", label: "Welche Stelle passt?" },
     { href: "/dashboard", label: "Meine Bewerbungen" },
     { href: "/konto", label: "Konto & Daten" },
   ];

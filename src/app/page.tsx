@@ -5,6 +5,7 @@ import {
   ArrowRight,
   ChatCircleDots,
   ClipboardText,
+  Compass,
   DiscordLogo,
   FloppyDisk,
   Handshake,
@@ -34,6 +35,9 @@ export default function HomePage() {
             <a href="#positionen" className="nv-btn nv-btn-primary">
               Offene Positionen <ArrowRight size={16} aria-hidden />
             </a>
+            <Link href="/passt-zu-mir" className="nv-btn nv-btn-ghost">
+              <Compass size={16} aria-hidden /> Welche Stelle passt zu mir?
+            </Link>
             <Link href="/dashboard" className="nv-btn nv-btn-ghost">
               <ClipboardText size={16} aria-hidden /> Meine Bewerbungen
             </Link>
