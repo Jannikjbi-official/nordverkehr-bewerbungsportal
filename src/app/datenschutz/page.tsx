@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { Container, PageHero } from "@/components/ui";
@@ -36,7 +37,11 @@ async function Content() {
         <a className="nv-link" href={`${main}/datenschutz`}>
           Datenschutzerklärung der Hauptseite
         </a>
-        . Verantwortlich ist der Betreiber von Nordverkehr; Kontaktdaten findest du dort.
+        . Verantwortlich ist der Betreiber von Nordverkehr; Kontaktdaten findest du im{" "}
+        <Link className="nv-link" href="/impressum">
+          Impressum
+        </Link>
+        .
       </p>
 
       <H>Welche Daten?</H>
@@ -61,6 +66,11 @@ async function Content() {
         <li>
           <strong>Intern:</strong> Abstimmungen, Kommentare und Notizen des Teams, automatische Hinweise (z. B. „sehr kurze
           Antworten“) – keine automatische Bewertung oder Punktzahl.
+        </li>
+        <li>
+          <strong>Ideen &amp; Fehler:</strong> Was du unter „Ideen &amp; Fehler“ einreichst (Art, Titel, Text, bei Fehlern optional
+          der Ort), mit deinem Konto verknüpft. Sehen können es nur du und die Leitung (Admins); sie kann einen Status setzen und
+          dir antworten. Löschst du deinen Account, werden deine Einreichungen mitgelöscht.
         </li>
         <li>
           <strong>Technisch:</strong> Sicherheits-Logs (Audit-Log), Zähler für Rate Limits.

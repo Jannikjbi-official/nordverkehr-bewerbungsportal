@@ -163,7 +163,7 @@ Die KI-Funktionen laufen **derzeit ausschließlich über die Claude API von Anth
 
 Das Portal ist auf Nordverkehr zugeschnitten, lässt sich aber für euren Server anpassen:
 
-1. **Branding ersetzen:** `public/logo.png`, `public/Nord-Verkehr-Wordmark.png`, Farben in `src/app/globals.css`, Texte mit „Nordverkehr“ (Startseite, Footer, Bausteine, Datenschutzseite, KI-Prompts in `src/lib/ai/prompts.ts`). Name und Logo von Nordverkehr dürft ihr nicht weiterverwenden – siehe [Marke & Logo](#marke--logo).
+1. **Branding ersetzen:** `public/logo.png`, `public/Nord-Verkehr-Wordmark.png`, Farben in `src/app/globals.css`, Texte mit „Nordverkehr“ (Startseite, Footer, Bausteine, Datenschutzseite, KI-Prompts in `src/lib/ai/prompts.ts`). **Impressum:** eigene Angaben in `src/lib/legal.ts` eintragen (Name, Anschrift, Kontakt, Link zum Quellcode). Name und Logo von Nordverkehr dürft ihr nicht weiterverwenden – siehe [Marke & Logo](#marke--logo).
 2. **Umgebungsvariablen** mit euren Adressen, Rollen und Schlüsseln setzen (siehe oben).
 3. **Positionen, Fragen und Bausteine** im Portal anpassen (*Positionen & Fragen*, *Nachrichtenbausteine*) – die Startdaten in `src/lib/setup/seed-data.ts` sind nur ein Beispiel.
 4. **Kanäle und Abläufe** im *Admin-Bereich* einstellen: Kanal-IDs, Nachtruhe, Sperrfristen, Mindestalter, Phase-2-Hürde, KI.

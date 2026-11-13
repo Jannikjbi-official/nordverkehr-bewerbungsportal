@@ -11,6 +11,7 @@ import {
   Flag,
   Gear,
   House,
+  Lightbulb,
   IdentificationCard,
   ListDashes,
   Megaphone,
@@ -30,15 +31,20 @@ const ITEMS = [
   { href: "/team/audit", label: "Audit-Log", icon: ClockCounterClockwise },
   { href: "/team/changelog", label: "Changelog", icon: Megaphone },
   { href: "/team/hilfe", label: "Hilfe & Begriffe", icon: Question },
+  { href: "/ideen", label: "Idee oder Fehler melden", icon: Lightbulb },
 ];
 const ADMIN = [
   { href: "/team/positionen", label: "Positionen & Fragen", icon: ListDashes },
   { href: "/team/admin", label: "Admin-Bereich", icon: Gear },
+  { href: "/team/admin/ideen", label: "Ideen & Fehler sichten", icon: Lightbulb },
 ];
 
 export function TeamNav({ isAdmin }: { isAdmin: boolean }) {
   const path = usePathname();
-  const isActive = (href: string, exact?: boolean) => (exact ? path === href : path === href || path.startsWith(href + "/"));
+  const matches = (href: string, exact?: boolean) => (exact ? path === href : path === href || path.startsWith(href + "/"));
+  // Genauester Treffer gewinnt (z. B. /team/admin/ideen statt /team/admin)
+  const all = [...ITEMS, ...ADMIN];
+  const isActive = (href: string, exact?: boolean) => matches(href, exact) && !all.some((o) => o.href.length > href.length && matches(o.href));
 
   const link = (i: (typeof ITEMS)[number]) => {
     const active = isActive(i.href, "exact" in i ? i.exact : false);

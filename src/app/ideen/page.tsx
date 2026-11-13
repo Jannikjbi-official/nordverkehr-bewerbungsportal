@@ -54,7 +54,7 @@ async function Content({ searchParams }: Pick<PageProps<"/ideen">, "searchParams
   const mine = await db.suggestion.findMany({ where: { authorId: user.id }, orderBy: { createdAt: "desc" }, take: 50 });
   return (
     <div className="space-y-8">
-      <SuggestionForm initialKind={KIND_PARAM[art] ?? "IDEA"} from={von} />
+      <SuggestionForm key={`${art}:${von}`} initialKind={KIND_PARAM[art] ?? "IDEA"} from={von} />
       <section aria-labelledby="mine" className="space-y-3">
         <h2 id="mine" className="nv-mono">
           Deine Einreichungen {mine.length > 0 && <span className="opacity-70">({mine.length})</span>}

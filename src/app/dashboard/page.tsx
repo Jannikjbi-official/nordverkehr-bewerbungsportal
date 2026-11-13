@@ -22,6 +22,13 @@ export default function DashboardPage() {
         <Suspense fallback={<ListSkeleton />}>
           <ApplicationList />
         </Suspense>
+        <p className="mt-10 text-sm text-muted">
+          Idee, Feedback oder etwas funktioniert nicht?{" "}
+          <Link href="/ideen" className="nv-link">
+            Sag es uns
+          </Link>{" "}
+          – die Leitung liest alles.
+        </p>
       </Container>
     </>
   );
