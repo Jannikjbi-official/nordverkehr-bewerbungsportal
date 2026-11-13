@@ -23,7 +23,7 @@ export default function AdminIdeasPage({ searchParams }: PageProps<"/team/admin/
 async function Ideas({ searchParams }: Pick<PageProps<"/team/admin/ideen">, "searchParams">) {
   await requireAdmin();
   const sp = await searchParams;
-  const statusParam = typeof sp.status === "string" ? sp.status : "offen";
+  const statusParam = typeof sp.status === "string" ? sp.status.toLowerCase() : "offen";
   const kindParam = typeof sp.art === "string" ? sp.art : "";
   const kind = KINDS.find((k) => k === kindParam.toUpperCase());
   const statusFilter: SuggestionStatus[] | null =
@@ -67,7 +67,7 @@ async function Ideas({ searchParams }: Pick<PageProps<"/team/admin/ideen">, "sea
         <h2 className="font-semibold text-lg">Ideen & Fehler</h2>
         <p className="text-sm text-muted mt-1 max-w-3xl">
           Alles, was Bewerber und Team unter <Link href="/ideen" className="nv-link">/ideen</Link> einreichen: Ideen, Feedback und Fehlermeldungen. Status setzen, kurz antworten – bei
-          „Geplant“, „Umgesetzt“ und „Nicht geplant“ bekommt die Person auf Wunsch eine DM. Neue Einreichungen meldet der Bot im Leitungs-Chat (sonst im Bot-Log).
+          „Geplant“, „Umgesetzt“ und „Nicht geplant“ bekommt die Person auf Wunsch eine DM. Neue Einreichungen meldet der Bot im Leitungs-Chat; ist keiner eingestellt, steht im Bot-Log nur ein Hinweis ohne Inhalt.
         </p>
       </section>
 

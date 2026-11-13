@@ -621,12 +621,22 @@ try {
     check(!!row && row.status === "NEW" && row.location === "Formular, Schritt 3" && row.authorId === sub.id, "Ideen: Fehlermeldung gespeichert (Status Neu, Ort)");
     const idea = await createSuggestion(db, sub, { kind: "IDEA", title: "Dunkles Design", body: "Ein dunkles Design wäre schön.", location: "ignorieren" });
     check(idea.ok && (await db.suggestion.findUniqueOrThrow({ where: { id: idea.id } })).location === null, "Ideen: Ort nur bei Fehlern");
+    // Ohne Leitungs-Chat: Bot-Log-Hinweis ohne Titel/Namen (Bot-Log sieht das ganze Team)
+    const { saveSettings: save } = await import("../src/lib/settings");
+    await save({ "discord.botLogEnabled": true, "discord.botLogChannelId": "100000000000000999", "discord.leadChannelId": "" }, team.id);
+    const priv = await createSuggestion(db, sub, { kind: "IDEA", title: "Geheimer Titel", body: "Etwas, das nur die Leitung lesen soll." });
+    const logJob = priv.ok && priv.jobIds[0] ? await db.outboxJob.findUnique({ where: { id: priv.jobIds[0] } }) : null;
+    check(!!logJob && !JSON.stringify(logJob.payload).includes("Geheimer Titel") && !JSON.stringify(logJob.payload).includes("Ida"), "Ideen: Bot-Log-Hinweis ohne Inhalt und Namen");
+    await save({ "discord.leadChannelId": "100000000000000998" }, team.id);
+    const lead = await createSuggestion(db, sub, { kind: "IDEA", title: "Für die Leitung", body: "Im Leitungs-Chat mit Titel." });
+    const leadJob = lead.ok && lead.jobIds[0] ? await db.outboxJob.findUnique({ where: { id: lead.jobIds[0] } }) : null;
+    check(!!leadJob && JSON.stringify(leadJob.payload).includes("Für die Leitung") && JSON.stringify(leadJob.payload).includes("100000000000000998"), "Ideen: Leitungs-Chat bekommt Titel");
     const u1 = await updateSuggestion(db, team.id, { id: row!.id, status: "REVIEWING" });
     check(u1.ok && u1.jobIds.length === 0, "Ideen: „Wird geprüft“ ohne DM");
     const u2 = await updateSuggestion(db, team.id, { id: row!.id, status: "DONE", adminNote: "Behoben, danke!" });
     const after = await db.suggestion.findUniqueOrThrow({ where: { id: row!.id } });
     const dm = u2.ok && u2.jobIds[0] ? await db.outboxJob.findUnique({ where: { id: u2.jobIds[0] } }) : null;
-    check(after.status === "DONE" && after.adminNote === "Behoben, danke!" && after.handledById === team.id && !!dm && JSON.stringify(dm.payload).includes(sub.discordId), "Ideen: Umgesetzt → DM an die Person");
+    check(after.status === "DONE" && after.adminNote === "Behoben, danke!" && after.handledById === team.id && !!dm && JSON.stringify(dm.payload).includes(sub.discordId) && (dm.payload as { purpose?: string }).purpose === "status", "Ideen: Umgesetzt → DM an die Person (Status-Info)");
     const u3 = await updateSuggestion(db, team.id, { id: row!.id, status: "DONE", adminNote: "Nur Notiz geändert" });
     check(u3.ok && u3.jobIds.length === 0, "Ideen: gleicher Status → keine zweite DM");
     const u4 = idea.ok ? await updateSuggestion(db, team.id, { id: idea.id, status: "DECLINED", notify: false }) : null;

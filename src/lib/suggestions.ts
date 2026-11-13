@@ -49,15 +49,22 @@ export async function createSuggestion(db: PrismaClient, user: { id: string; use
     data: { kind: d.kind, title: d.title, body: d.body, location: d.kind === "BUG" ? (d.location ?? null) : null, authorId: user.id },
   });
 
-  // Hinweis an die Leitung (Admins entscheiden), sonst ins Bot-Log
+  // Hinweis an die Leitung (Admins entscheiden). Ohne Leitungs-Chat nur ein
+  // Hinweis ohne Inhalt ins Bot-Log – das sieht das ganze Team, Einreichungen sind aber nur für Admins
   const name = user.globalName || user.username;
-  const line = `${KIND_EMOJI[d.kind]} **${KIND_LABEL[d.kind]}** von ${esc(name)}${user.isTeam ? " (Team)" : ""}: „${esc(d.title)}“`;
   const url = `${publicEnv.appUrl}/team/admin/ideen#${s.id}`;
   const lead = (await getSettings())["discord.leadChannelId"];
   const tone = d.kind === "BUG" ? "warn" : "default";
   const job = lead
-    ? (await enqueue({ type: "CHANNEL_MESSAGE", kind: "summary", channelId: lead, message: buildBotLogMessage(line, { url, tone }) })).id
-    : await botLog(line, { url, tone });
+    ? (
+        await enqueue({
+          type: "CHANNEL_MESSAGE",
+          kind: "summary",
+          channelId: lead,
+          message: buildBotLogMessage(`${KIND_EMOJI[d.kind]} **${KIND_LABEL[d.kind]}** von ${esc(name)}${user.isTeam ? " (Team)" : ""}: „${esc(d.title)}“`, { url, tone }),
+        })
+      ).id
+    : await botLog(`${KIND_EMOJI[d.kind]} Neue Einreichung unter „Ideen & Fehler“ (${KIND_LABEL[d.kind]}) – für Admins im Admin-Bereich`, { url, tone });
   return { ok: true, id: s.id, jobIds: job ? [job] : [] };
 }
 
@@ -83,9 +90,10 @@ export async function updateSuggestion(db: PrismaClient, adminId: string, input:
     const job = await enqueue({
       type: "DM",
       discordUserId: before.author.discordId,
-      purpose: "notify",
+      // „status“ = automatische Info (nicht „notify“ – das sind die Rundmails „Stelle offen“)
+      purpose: "status",
       message: buildApplicantMessage({
-        title: `Deine ${KIND_LABEL[before.kind]}: ${STATUS_LABEL[p.data.status]}`,
+        title: `${KIND_SUBJECT[before.kind]}: ${STATUS_LABEL[p.data.status]}`,
         body: notifyText(before.author.globalName || before.author.username, before.kind, before.title, p.data.status, note),
         statusUrl: `${publicEnv.appUrl}/ideen#${before.id}`,
         buttonLabel: "Ansehen",
@@ -96,15 +104,19 @@ export async function updateSuggestion(db: PrismaClient, adminId: string, input:
   return { ok: true, jobIds };
 }
 
+/** Betreff der DM: „Deine Idee“, „Dein Feedback“, „Deine Fehlermeldung“ */
+const KIND_SUBJECT: Record<SuggestionKind, string> = { IDEA: "Deine Idee", FEEDBACK: "Dein Feedback", BUG: "Deine Fehlermeldung" };
+
 export function notifyText(name: string, kind: SuggestionKind, title: string, status: SuggestionStatus, note: string | null) {
-  const what = `${kind === "BUG" ? "deine Fehlermeldung" : kind === "FEEDBACK" ? "dein Feedback" : "deine Idee"} **„${title}“**`;
+  const what = `${KIND_SUBJECT[kind]} **„${title}“**`;
+  const it = kind === "FEEDBACK" ? "es" : "sie";
   const line =
     status === "DONE"
       ? kind === "BUG"
         ? `${what} ist erledigt – der Fehler ist behoben. Danke fürs Melden!`
         : `${what} ist umgesetzt. Danke für den Anstoß!`
       : status === "PLANNED"
-        ? `${what} haben wir uns angeschaut und eingeplant. Wann genau es kommt, können wir noch nicht sagen.`
-        : `${what} haben wir uns angeschaut – umsetzen werden wir sie vorerst nicht. Trotzdem danke!`;
+        ? `${what}: Haben wir uns angeschaut und eingeplant. Wann genau es kommt, können wir noch nicht sagen.`
+        : `${what}: Haben wir uns angeschaut – umsetzen werden wir ${it} vorerst nicht. Trotzdem danke!`;
   return `Moin ${name},\n\n${line}${note ? `\n\n**Anmerkung vom Team:** ${note}` : ""}`;
 }

@@ -23,5 +23,9 @@ describe("Ideen & Fehler", () => {
     expect(d).toContain("vorerst nicht");
     expect(d).toContain("**Anmerkung vom Team:** Passt nicht zu uns.");
     expect(d.startsWith("Moin Anna")).toBe(true);
+    // Großschreibung und richtiges Fürwort je Art
+    expect(notifyText("Anna", "IDEA", "Dark Mode", "DONE", null)).toContain("\n\nDeine Idee **„Dark Mode“** ist umgesetzt");
+    expect(notifyText("Anna", "FEEDBACK", "Formular", "DECLINED", null)).toContain("Dein Feedback **„Formular“**: Haben wir uns angeschaut – umsetzen werden wir es vorerst nicht");
+    expect(notifyText("Anna", "BUG", "Upload", "PLANNED", null)).toContain("Deine Fehlermeldung **„Upload“**: Haben wir");
   });
 });

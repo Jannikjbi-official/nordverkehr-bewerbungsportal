@@ -161,7 +161,7 @@ export const HELP: HelpSection[] = [
         id: "ideen",
         term: "Ideen & Fehler",
         short: "Ideen, Feedback und Fehlermeldungen von allen – Admins entscheiden.",
-        text: "Unter **/ideen** (Fußbereich, Benutzermenü) können alle Eingeloggten – Bewerber und Team – eine Idee, Feedback oder einen Fehler einreichen. Die Leitung sieht alles unter *Admin-Bereich → Ideen & Fehler*, setzt den Status (Neu, Wird geprüft, Geplant, Umgesetzt, Nicht geplant) und kann kurz antworten. Bei Geplant, Umgesetzt und Nicht geplant bekommt die Person auf Wunsch eine DM. Neue Einreichungen meldet der Bot im Leitungs-Chat (sonst im Bot-Log).",
+        text: "Unter **/ideen** (Fußbereich, Benutzermenü) können alle Eingeloggten – Bewerber und Team – eine Idee, Feedback oder einen Fehler einreichen. Die Leitung sieht alles unter *Admin-Bereich → Ideen & Fehler*, setzt den Status (Neu, Wird geprüft, Geplant, Umgesetzt, Nicht geplant) und kann kurz antworten. Bei Geplant, Umgesetzt und Nicht geplant bekommt die Person auf Wunsch eine DM. Neue Einreichungen meldet der Bot im Leitungs-Chat; ist keiner eingestellt, steht im Bot-Log nur ein Hinweis ohne Inhalt.",
       },
       {
         id: "kommentare",

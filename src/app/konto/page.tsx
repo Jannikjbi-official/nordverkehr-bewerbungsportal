@@ -104,7 +104,7 @@ async function Account() {
         <div className="nv-divider" />
         <h2 className="font-semibold">Account löschen</h2>
         <p className="text-sm text-muted">
-          Löscht deinen Account, alle Bewerbungen, Antworten, Bilder und Nachrichten endgültig (Art. 17 DSGVO). Im Audit-Log
+          Löscht deinen Account, alle Bewerbungen, Antworten, Bilder, Nachrichten sowie deine Ideen und Fehlermeldungen endgültig (Art. 17 DSGVO). Im Audit-Log
           bleiben nur anonymisierte Einträge.
         </p>
         <DeleteAccount />
