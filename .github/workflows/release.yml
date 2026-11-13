@@ -42,12 +42,10 @@ jobs:
       - name: Release-Notizen aus dem Changelog
         run: |
           TAG="${{ steps.tag.outputs.tag }}"
-          # Datum des vorherigen Releases (deutsche Zeit) – Notizen enthalten alles danach
+          # Vorheriges Release (Tag) – Notizen enthalten alle Versionen danach
           PREV=$(git tag --list 'v*' --sort=-v:refname | grep -vx "$TAG" | head -n1 || true)
-          SINCE=""
-          if [ -n "$PREV" ]; then SINCE=$(TZ=Europe/Berlin git log -1 --format=%cd --date=format-local:%Y-%m-%d "$PREV"); fi
-          echo "Vorheriges Release: ${PREV:-keins} (${SINCE:-–})"
-          npx --yes tsx scripts/release-notes.mts "$TAG" "$SINCE" > release-notes.md
+          echo "Vorheriges Release: ${PREV:-keins}"
+          npx --yes tsx scripts/release-notes.mts "$TAG" "$PREV" > release-notes.md
           cat release-notes.md
 
       - name: GitHub-Release anlegen
