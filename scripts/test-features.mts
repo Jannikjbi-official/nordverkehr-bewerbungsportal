@@ -569,6 +569,25 @@ try {
     check((await db.application.findUniqueOrThrow({ where: { id: pa.id } })).probationResult === "PASSED" && err.includes("schon entschieden"), "Bestanden; zweite Entscheidung abgelehnt");
   }
 
+  // ── Abwesenheit: Team (keine Zuteilung) und Bewerber (keine Rückfrage-Erinnerung)
+  {
+    const { saveSettings } = await import("../src/lib/settings");
+    const { autoAssign } = await import("../src/lib/team/assign");
+    const { sendFollowUpReminders } = await import("../src/lib/applications/followup");
+    await db.user.updateMany({ where: { isTeam: true }, data: { lastTeamActiveAt: null } });
+    const away = await mk("Anton", "100000000000000101", { isTeam: true, lastTeamActiveAt: new Date(), awayUntil: new Date(Date.now() + 5 * 86_400_000) });
+    await saveSettings({ "team.autoAssign": true }, team.id);
+    const aa = await db.application.create({ data: { userId: (await mk("Arne", "100000000000000102")).id, positionId: pos.id, status: "SUBMITTED", publicId: "NV-A-1", submittedAt: new Date() } });
+    await autoAssign(db, aa.id);
+    check((await db.application.findUniqueOrThrow({ where: { id: aa.id } })).claimedById !== away.id, "Abwesende bekommen keine Bewerbung zugeteilt");
+    await saveSettings({ "team.autoAssign": false }, team.id);
+    const fu = await db.application.create({
+      data: { userId: (await mk("Fiona", "100000000000000103")).id, positionId: pos.id, status: "IN_REVIEW", publicId: "NV-A-2", submittedAt: new Date(), awaitingReplySince: new Date(Date.now() - 10 * 86_400_000), applicantAwayUntil: new Date(Date.now() + 3 * 86_400_000) },
+    });
+    await sendFollowUpReminders(db);
+    check(!(await db.application.findUniqueOrThrow({ where: { id: fu.id } })).awaitingRemindedAt, "Bewerber abwesend: keine Rückfrage-Erinnerung");
+  }
+
   // ── Feedback (eins pro Bewerbung)
   await db.feedback.create({ data: { applicationId: app1.id, rating: 5 } });
   dup = false;

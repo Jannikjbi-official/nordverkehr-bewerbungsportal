@@ -96,6 +96,8 @@ export const CHANGELOG: ChangelogEntry[] = [
       { kind: "neu", text: "**Probezeit-Abschluss** – am Ende der Probezeit entscheidet die Leitung: bestanden, +14 Tage oder beenden (Rollen und Präfix werden entfernt). Der Betreuer wird vorher erinnert." },
       { kind: "neu", text: "**Pate** – neuen Teammitgliedern einen Paten zuteilen; nach zwei Wochen fragt der Bot nach einer kurzen Rückmeldung („läuft gut“ / „braucht Hilfe“)." },
       { kind: "neu", text: "**Team-Verzeichnis** – wer ist in welcher Stelle, seit wann, Probezeit-Status und Pate." },
+      { kind: "neu", text: "**Abwesenheit im Team** – unter „Konto“ eintragen, bis wann du weg bist: keine neuen Zuteilungen, keine Erinnerungen, in der Übersicht steht „abwesend“." },
+      { kind: "neu", text: "**Abwesenheit für Bewerber** – Bewerber melden im Dashboard „bis … nicht erreichbar“; Rückfrage-Erinnerung und Frist warten so lange, das Team sieht einen Hinweis." },
       { kind: "neu", text: "**Junior-Team** – eine Discord-Rolle (Admin-Bereich) darf lesen, kommentieren, bewerten und abstimmen, aber keinen Status ändern, nicht claimen und Bewerbern nicht schreiben." },
       { kind: "besser", text: "**Einarbeitung ohne TeamSpeak** – der Punkt „TeamSpeak-Rechte gesetzt“ entfällt, TeamSpeak ist nur noch fürs Ingame-Voice." },
       { kind: "besser", text: "**Gespräch im Sprachkanal** – Admins können einen Discord-Sprachkanal fürs Gespräch eintragen, das Server-Event hängt dann direkt daran. Bestehende Termine und Events zeigen jetzt Discord statt TeamSpeak." },

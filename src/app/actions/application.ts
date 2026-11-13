@@ -483,9 +483,9 @@ export async function createCalendarTokenAction(): Promise<ActionResult<{ url: s
 const awaySchema = z.object({ applicationId: idSchema, until: z.iso.date().nullable() });
 
 /** Bewerber: „bis … nicht erreichbar“ (max. 30 Tage) – Rückfrage-Frist pausiert, Team sieht einen Hinweis. */
-export async function setApplicantAwayAction(input: z.input<typeof awaySchema>): Promise<ActionResult> {
+export async function setApplicantAwayAction(applicationId: string, untilDate: string | null): Promise<ActionResult> {
   const user = await requireUser();
-  const p = awaySchema.safeParse(input);
+  const p = awaySchema.safeParse({ applicationId, until: untilDate });
   if (!p.success) return { ok: false, error: "Bitte ein gültiges Datum wählen." };
   const app = await db.application.findFirst({
     where: { id: p.data.applicationId, userId: user.id, status: { in: ACTIVE_STATUSES } },

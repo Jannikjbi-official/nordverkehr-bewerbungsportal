@@ -221,6 +221,11 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
   return (
     <div className="space-y-6">
       <LiveRefresh scope="team-app" id={app.id} />
+      {app.applicantAwayUntil && app.applicantAwayUntil.getTime() > nowMs() && (
+        <Notice tone="info" title={`Bewerber ist bis ${formatDay(app.applicantAwayUntil)} nicht erreichbar`}>
+          Rückfrage-Erinnerung und Frist warten so lange. Nachrichten kommen trotzdem an.
+        </Notice>
+      )}
       {junior && (
         <Notice tone="info" title="Junior-Zugang">
           Du kannst lesen, kommentieren, bewerten und abstimmen. Status, Claims und Nachrichten an Bewerber macht das reguläre Team.

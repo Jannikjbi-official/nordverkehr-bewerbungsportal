@@ -1,3 +1,6 @@
+import { nowMs } from "@/lib/time";
+import { AwayForm } from "@/components/AwayForm";
+import { setTeamAwayAction } from "@/app/actions/application";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { DownloadSimple } from "@phosphor-icons/react/ssr";
@@ -33,7 +36,7 @@ async function Account() {
   const [apps, messages, me, settings] = await Promise.all([
     db.application.count({ where: { userId: user.id } }),
     db.message.count({ where: { application: { userId: user.id } } }),
-    db.user.findUnique({ where: { id: user.id }, select: { isTeam: true, digestOptOut: true, calendarToken: true } }),
+    db.user.findUnique({ where: { id: user.id }, select: { isTeam: true, digestOptOut: true, calendarToken: true, awayUntil: true } }),
     getSettings(),
   ]);
   return (
@@ -77,6 +80,15 @@ async function Account() {
             <DigestToggle on={!me.digestOptOut} globallyOff={!settings["team.personalDigestEnabled"]} />
             <div className="nv-divider" />
             <CalendarLink url={me.calendarToken ? `${publicEnv.appUrl}/api/calendar/${me.calendarToken}.ics` : null} />
+            <div className="nv-divider" />
+            <AwayForm
+              until={me.awayUntil?.toISOString() ?? null}
+              nowMs={nowMs()}
+              maxDays={60}
+              title="Abwesenheit (Team)"
+              help="Solange bekommst du keine neuen Bewerbungen zugeteilt, keine Claim-Erinnerungen und keine Morgen-DM. In der Team-Übersicht steht bei deinen Bewerbungen „abwesend“."
+              save={setTeamAwayAction}
+            />
           </>
         )}
       </section>

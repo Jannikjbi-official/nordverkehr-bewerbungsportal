@@ -31,6 +31,8 @@ import { formatAnswerForDisplay, type AnswerValue } from "@/lib/applications/for
 import { getSettings } from "@/lib/settings";
 import { AMENDABLE_TYPES, canAmend, getQueueInfo, queueText } from "@/lib/applications/queue";
 import { AmendForm } from "@/components/dashboard/AmendForm";
+import { AwayForm } from "@/components/AwayForm";
+import { setApplicantAwayAction } from "@/app/actions/application";
 import { isNight } from "@/lib/night";
 import type { ApplicationStatus } from "@prisma/client";
 
@@ -164,6 +166,18 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
             </p>
           )}
           {amendable.length > 0 && <AmendForm applicationId={app.id} answers={amendable} />}
+          {["SUBMITTED", "IN_REVIEW", "INTERVIEW"].includes(app.status) && (
+            <div className="nv-card p-4">
+              <AwayForm
+                until={app.applicantAwayUntil?.toISOString() ?? null}
+                nowMs={nowMs()}
+                maxDays={30}
+                title="Eine Weile nicht erreichbar?"
+                help="Sag uns, bis wann du weg bist (z. B. Urlaub) – dann warten wir mit Rückfragen und Erinnerungen, und deine Bewerbung läuft nicht ab."
+                save={setApplicantAwayAction.bind(null, app.id)}
+              />
+            </div>
+          )}
           {selfBooking && (
             <SlotPicker
               applicationId={app.id}
