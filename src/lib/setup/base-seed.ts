@@ -118,8 +118,10 @@ export async function bootstrapDatabase(db: PrismaClient): Promise<BootstrapResu
   const empty = (await db.applicationType.count()) === 0;
   const migrations = empty ? [] : await runMigrations(db);
   if (empty) {
-    await seedBase(db);
+    // Erst als erledigt markieren: Ein parallel startender Server (instrumentation)
+    // sieht sonst halb angelegte Basisdaten und startet die Migrationen erneut
     await markMigrationsDone(db);
+    await seedBase(db);
   }
   return { seeded: empty, migrations };
 }
