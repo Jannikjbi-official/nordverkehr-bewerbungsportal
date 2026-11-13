@@ -64,7 +64,12 @@ export async function collectDailySummary(db: PrismaClient, opts: { now?: Date; 
       orderBy: { decidedAt: "asc" },
     }),
     db.application.findMany({
-      where: { status: "ACCEPTED", probationUntil: { gte: now, lt: new Date(now.getTime() + 3 * DAY) } },
+      where: {
+        status: "ACCEPTED",
+        probationUntil: { gte: now, lt: new Date(now.getTime() + 3 * DAY) },
+        // schon entschieden (bestanden/beendet) → nicht mehr anzeigen
+        OR: [{ probationResult: null }, { probationResult: { isSet: false } }],
+      },
       include: userAndPos,
       orderBy: { probationUntil: "asc" },
     }),

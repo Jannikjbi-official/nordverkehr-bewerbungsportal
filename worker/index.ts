@@ -21,6 +21,7 @@ import { releaseStuckJobs, runOutbox } from "@/lib/discord/outbox-db";
 import { runRetention } from "@/lib/retention";
 import { ACTIVE_STATUSES } from "@/lib/applications/status";
 import { handleVoiceState } from "@/lib/team/voice";
+import { beat } from "@/lib/team/alerts";
 
 const OUTBOX_INTERVAL_MS = 15_000;
 const RETENTION_INTERVAL_MS = 6 * 60 * 60 * 1000;
@@ -73,6 +74,8 @@ const PRESENCE_INTERVAL_MS = 5 * 60 * 1000;
 
 /** Bot-Status: online + „Schaut zu: N offene Bewerbungen“. */
 async function updatePresence(client: Client) {
+  // Herzschlag: das Portal zeigt Sprachkanal-Hinweise nur, wenn der Worker läuft
+  await beat(db, "worker").catch(() => {});
   try {
     const open = await db.application.count({ where: { status: { in: ACTIVE_STATUSES } } });
     client.user?.setPresence({

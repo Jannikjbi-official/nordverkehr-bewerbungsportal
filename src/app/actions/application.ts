@@ -493,13 +493,15 @@ export async function setApplicantAwayAction(applicationId: string, untilDate: s
   });
   if (!app) return { ok: false, error: "Bewerbung nicht gefunden." };
   const now = Date.now();
+  // Vorzeitig zurück: eine in die Zukunft verschobene Rückfrage-Frist beginnt jetzt
+  const fristNow = !p.data.until && app.awaitingReplySince && app.awaitingReplySince.getTime() > now ? { awaitingReplySince: new Date(now) } : {};
   // Ende des gewählten Tages (deutsche Zeit, grob 23:59)
   const until = p.data.until ? new Date(`${p.data.until}T22:59:00Z`) : null;
   if (until && (until.getTime() <= now || until.getTime() > now + 31 * 86_400_000)) return { ok: false, error: "Höchstens 30 Tage im Voraus." };
   await db.application.update({
     where: { id: app.id },
     // Offene Rückfrage: Frist beginnt erst nach der Rückkehr neu
-    data: { applicantAwayUntil: until, ...(until && app.awaitingReplySince ? { awaitingReplySince: until, awaitingRemindedAt: null } : {}) },
+    data: { applicantAwayUntil: until, ...(until && app.awaitingReplySince ? { awaitingReplySince: until, awaitingRemindedAt: null } : {}), ...fristNow },
   });
   await audit("application.amend", { actorId: user.id, targetType: "application", targetId: app.id, meta: { awayUntil: p.data.until } });
   const job = await botLog(

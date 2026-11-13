@@ -59,9 +59,12 @@ export const MATCH_QUESTIONS: MatchQuestion[] = [
   },
 ];
 
+/** Stellen, die der Test kennt – alle anderen (neu angelegt) bekommen einen neutralen Punkt und erscheinen hinten. */
+const KNOWN = new Set(MATCH_QUESTIONS.flatMap((q) => q.options.flatMap((o) => Object.keys(o.points))));
+
 /** Punkte je Slug; Reihenfolge absteigend, nur Stellen mit Punkten. */
 export function scorePositions(answers: Record<string, number>, slugs: string[]): { slug: string; points: number }[] {
-  const score = new Map<string, number>(slugs.map((s) => [s, 0]));
+  const score = new Map<string, number>(slugs.map((s) => [s, KNOWN.has(s) ? 0 : 1]));
   for (const q of MATCH_QUESTIONS) {
     const opt = q.options[answers[q.key]];
     if (!opt) continue;

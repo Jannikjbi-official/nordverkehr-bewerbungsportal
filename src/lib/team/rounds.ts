@@ -50,12 +50,20 @@ export async function loadRounds(db: PrismaClient) {
   );
 }
 
-/** Tag (YYYY-MM-DD) → Beginn bzw. Ende dieses Tages in deutscher Zeit (Sommer-/Winterzeit beachtet). */
+const berlinHour = (d: Date) => Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Berlin", hour: "2-digit", hourCycle: "h23" }).format(d));
+
+/** Beginn eines Tages in deutscher Zeit (Sommer-/Winterzeit beachtet, auch am Umstellungstag selbst). */
+function berlinDayStart(y: number, m: number, d: number) {
+  // Erste Schätzung mit dem Versatz von 12 Uhr, dann an Mitternacht ausrichten (Umstellung passiert nachts)
+  let t = Date.UTC(y, m - 1, d) - (berlinHour(new Date(Date.UTC(y, m - 1, d, 12))) - 12) * 3_600_000;
+  const h = berlinHour(new Date(t));
+  if (h === 23) t += 3_600_000;
+  else if (h === 1) t -= 3_600_000;
+  return new Date(t);
+}
+
+/** Tag (YYYY-MM-DD) → Beginn und Ende (Beginn des Folgetags − 1 s; Tage mit Zeitumstellung haben 23 bzw. 25 Std.). */
 export function berlinDayBounds(day: string) {
   const [y, m, d] = day.split("-").map(Number);
-  const noon = new Date(Date.UTC(y, m - 1, d, 12));
-  const berlinHour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Berlin", hour: "2-digit", hourCycle: "h23" }).format(noon));
-  const offsetH = berlinHour - 12;
-  const start = new Date(Date.UTC(y, m - 1, d) - offsetH * 3_600_000);
-  return { start, end: new Date(start.getTime() + 86_400_000 - 1000) };
+  return { start: berlinDayStart(y, m, d), end: new Date(berlinDayStart(y, m, d + 1).getTime() - 1000) };
 }

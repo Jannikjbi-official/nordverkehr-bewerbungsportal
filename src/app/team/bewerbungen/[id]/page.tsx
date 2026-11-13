@@ -26,6 +26,7 @@ import { QuizPill } from "@/components/team/QuizPill";
 import { NoShowButton } from "@/components/team/NoShowButton";
 import { noShowSuspected, voiceSummary } from "@/lib/team/voice";
 import { isJunior } from "@/lib/team/rights";
+import { lastBeat } from "@/lib/team/alerts";
 import { InterviewProtocol } from "@/components/team/InterviewProtocol";
 import { buildProtocol, protocolQuestions, suggestFollowUps } from "@/lib/team/interview";
 import { testScenarioLabel } from "@/lib/setup/test-applications";
@@ -137,7 +138,10 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
   const junior = isJunior(me.roleIds, !!access?.isAdmin, settings["team.juniorRoleIds"]);
   // Sprachkanal-Erkennung (Worker): Anwesenheit im Gesprächskanal, Hinweis „Nicht erschienen?“
   const voiceInfo = voiceSummary(app.voiceJoinedAt, app.voiceLeftAt, app.interviewAt);
-  const suspectNoShow = app.status === "INTERVIEW" && noShowSuspected({ interviewAt: app.interviewAt, voiceJoinedAt: app.voiceJoinedAt, now: nowMs(), tracking: !!settings["interview.voiceChannelId"] });
+  // Erfasst wird nur mit laufendem Worker (Herzschlag alle 5 Min.) – sonst kein „Nicht erschienen?“-Verdacht
+  const workerBeat = app.status === "INTERVIEW" && settings["interview.voiceChannelId"] ? await lastBeat(db, "worker") : null;
+  const voiceTracking = !!workerBeat && nowMs() - workerBeat.getTime() < 15 * 60_000;
+  const suspectNoShow = app.status === "INTERVIEW" && noShowSuspected({ interviewAt: app.interviewAt, voiceJoinedAt: app.voiceJoinedAt, now: nowMs(), tracking: voiceTracking });
   const myVote = app.votes.find((v) => v.userId === me.id)?.value ?? null;
   const aiEnabled = settings["ai.enabled"] && isAiConfigured();
   const myRating = app.ratings.find((r) => r.userId === me.id);

@@ -122,3 +122,18 @@ describe("Welche Stelle passt zu mir?", () => {
     for (const q of MATCH_QUESTIONS) expect(q.options.length).toBeGreaterThan(1);
   });
 });
+
+describe("Review-Fixes 13.11.", () => {
+  it("Rundenende an Tagen mit Zeitumstellung", () => {
+    const b = berlinDayBounds("2026-10-25");
+    expect(b.start.toISOString()).toBe("2026-10-24T22:00:00.000Z");
+    expect(b.end.toISOString()).toBe("2026-10-25T22:59:59.000Z");
+    expect(berlinDayBounds("2026-03-29").end.toISOString()).toBe("2026-03-29T21:59:59.000Z");
+  });
+  it("Selbsttest: neu angelegte Stellen erscheinen (hinten)", () => {
+    const r = scorePositions({ ort: 0, staerke: 0, technik: 3, zeit: 2, stress: 0 }, ["support", "fraktionsverwaltung"]);
+    expect(r[0].slug).toBe("support");
+    expect(r.map((x) => x.slug)).toContain("fraktionsverwaltung");
+    expect(scorePositions({ ort: 0 }, ["fraktionsverwaltung"])).toEqual([{ slug: "fraktionsverwaltung", points: 1 }]);
+  });
+});

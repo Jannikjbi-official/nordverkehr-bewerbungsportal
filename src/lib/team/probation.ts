@@ -8,7 +8,7 @@ import type { PrismaClient } from "@prisma/client";
 import { enqueue, runOutboxAll } from "@/lib/discord/outbox-db";
 import { botLog, esc } from "@/lib/discord/botlog";
 import { env, publicEnv } from "@/lib/env";
-import { buildApplicantMessage, discordTime } from "@/lib/messages/embed";
+import { buildApplicantMessage, buildBotLogMessage, discordTime } from "@/lib/messages/embed";
 import { getSettings } from "@/lib/settings";
 
 const DAY = 86_400_000;
@@ -97,29 +97,42 @@ export async function sendProbationReminders(db: PrismaClient, now = new Date())
   const ids: string[] = [];
   const base = { status: "ACCEPTED" as const, isTest: { not: true }, OR: [{ probationResult: null }, { probationResult: { isSet: false } }] };
   const due = await db.application.findMany({
-    where: { ...base, probationUntil: { not: null, lte: new Date(now.getTime() + DAY) }, claimedById: { not: null } },
+    where: { ...base, probationUntil: { not: null, lte: new Date(now.getTime() + DAY) } },
     include: { user: { select: { globalName: true, username: true } }, position: { select: { title: true } }, claimedBy: { select: { discordId: true } } },
     take: 50,
   });
+  const s = await getSettings();
   for (const a of due) {
-    if (!a.probationUntil || !a.claimedBy || a.probationRemindedFor?.getTime() === a.probationUntil.getTime()) continue;
+    if (!a.probationUntil || a.probationRemindedFor?.getTime() === a.probationUntil.getTime()) continue;
     const marked = await db.application.updateMany({ where: { id: a.id, probationUntil: a.probationUntil }, data: { probationRemindedFor: a.probationUntil } });
     if (!marked.count) continue;
-    const job = await enqueue(
-      {
-        type: "DM",
-        discordUserId: a.claimedBy.discordId,
-        purpose: "team_reminder",
-        message: buildApplicantMessage({
-          title: "Probezeit endet",
-          body: `Die Probezeit von **${a.user.globalName || a.user.username}** (${a.position.title}) endet ${discordTime(a.probationUntil, "R")}. Bitte in der Bewerbung entscheiden: **bestanden**, **verlängern** oder **beenden**.`,
-          statusUrl: `${publicEnv.appUrl}/team/bewerbungen/${a.id}`,
-          buttonLabel: "Entscheiden",
-        }),
-      },
-      { applicationId: a.id },
-    );
-    ids.push(job.id);
+    const name = a.user.globalName || a.user.username;
+    const url = `${publicEnv.appUrl}/team/bewerbungen/${a.id}`;
+    // Entscheiden darf die Leitung (Admins) → Hinweis in den Leitungs-Chat, sonst ins Bot-Log
+    const line = `⏳ Probezeit von ${esc(name)} (${a.position.title}) endet ${discordTime(a.probationUntil, "R")} – bitte entscheiden: bestanden, +14 Tage oder beenden`;
+    const lead = s["discord.leadChannelId"];
+    const leadJob = lead
+      ? (await enqueue({ type: "CHANNEL_MESSAGE", kind: "summary", channelId: lead, message: buildBotLogMessage(line, { url }) }, { applicationId: a.id })).id
+      : await botLog(line, { applicationId: a.id, url });
+    if (leadJob) ids.push(leadJob);
+    // Betreuer zur Info (er kennt die Person am besten)
+    if (a.claimedBy) {
+      const job = await enqueue(
+        {
+          type: "DM",
+          discordUserId: a.claimedBy.discordId,
+          purpose: "team_reminder",
+          message: buildApplicantMessage({
+            title: "Probezeit endet",
+            body: `Die Probezeit von **${name}** (${a.position.title}) endet ${discordTime(a.probationUntil, "R")}. Die Leitung entscheidet – sag ihr kurz Bescheid, wie es aus deiner Sicht läuft (z. B. als Kommentar in der Bewerbung).`,
+            statusUrl: url,
+            buttonLabel: "Zur Bewerbung",
+          }),
+        },
+        { applicationId: a.id },
+      );
+      ids.push(job.id);
+    }
   }
   const mentorDue = await db.application.findMany({
     where: { ...base, mentorId: { not: null }, decidedAt: { not: null, lte: new Date(now.getTime() - MENTOR_FEEDBACK_DAYS * DAY) } },

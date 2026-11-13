@@ -59,6 +59,11 @@ export async function handleVoiceState(db: PrismaClient, ev: { discordId: string
     await db.application.update({ where: { id: app.id }, data: { voiceJoinedAt: now, voiceLeftAt: null } });
     return "joined";
   }
+  // Wieder drin nach kurzem Verlassen (z. B. Verbindungsabbruch): „verlassen“ zurücksetzen
+  if (interviewCh && ev.to === interviewCh && forThisInterview(app.voiceJoinedAt, at) && app.voiceLeftAt) {
+    await db.application.update({ where: { id: app.id }, data: { voiceLeftAt: null } });
+    return "rejoined";
+  }
   if (interviewCh && ev.from === interviewCh && ev.to !== interviewCh && forThisInterview(app.voiceJoinedAt, at)) {
     await db.application.update({ where: { id: app.id }, data: { voiceLeftAt: now } });
     return "left";

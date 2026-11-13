@@ -539,6 +539,9 @@ try {
     check(w1 === "waiting" && w2 === null && (await db.outboxJob.count({ where: { applicationId: va.id, type: "DM" } })) === 1, "Warteraum: Betreuer bekommt genau eine DM");
     check((await handleVoiceState(db, { discordId: vu.discordId, from: "622222222222222222", to: "611111111111111111" })) === "joined", "Gesprächskanal betreten wird erkannt");
     check((await handleVoiceState(db, { discordId: vu.discordId, from: "611111111111111111", to: null })) === "left", "Verlassen wird erkannt");
+    check((await handleVoiceState(db, { discordId: vu.discordId, from: null, to: "611111111111111111" })) === "rejoined", "Wiederbeitritt nach Abbruch wird erkannt");
+    check(!(await db.application.findUniqueOrThrow({ where: { id: va.id } })).voiceLeftAt, "Wiederbeitritt: „verlassen“ zurückgesetzt");
+    await handleVoiceState(db, { discordId: vu.discordId, from: "611111111111111111", to: null });
     const after = await db.application.findUniqueOrThrow({ where: { id: va.id } });
     check(!!after.voiceJoinedAt && !!after.voiceLeftAt, "Beginn und Ende gespeichert");
     check(!noShowSuspected({ interviewAt: at, voiceJoinedAt: after.voiceJoinedAt, now: at.getTime() + 20 * 60_000, tracking: true }), "Kein „Nicht erschienen?“, wenn im Kanal gewesen");
@@ -558,7 +561,9 @@ try {
     });
     const sent = await sendProbationReminders(db);
     const again = await sendProbationReminders(db);
-    check(sent === 2 && again === 0, "Erinnerung: Probezeit-Ende an Betreuer + Paten-Rückmeldung, je einmal");
+    const paJobs = await db.outboxJob.count({ where: { applicationId: pa.id } });
+    check(sent >= 3 && again === 0 && paJobs === 3, `Erinnerung: Probezeit-Ende an Leitung + Betreuer, Paten-Rückmeldung – je einmal (${paJobs} Aufträge)`);
+    check((await db.outboxJob.count({ where: { applicationId: pa.id, type: "CHANNEL_MESSAGE" } })) >= 1, "Probezeit-Ende: Hinweis im Leitungs-Chat");
     const before = (await db.application.findUniqueOrThrow({ where: { id: pa.id } })).probationUntil!;
     await decideProbation(db, { applicationId: pa.id, decision: "EXTEND", actor: team });
     const ext = await db.application.findUniqueOrThrow({ where: { id: pa.id } });

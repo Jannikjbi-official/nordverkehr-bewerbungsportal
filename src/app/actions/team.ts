@@ -379,7 +379,11 @@ export async function claimAction(applicationId: string, action: "claim" | "rele
 }
 
 export async function retryDeliveryAction(messageId: string): Promise<ActionResult> {
-  await requireTeam();
+  const { user, access } = await requireTeam();
+  {
+    const j = await juniorDenied(user, access);
+    if (j) return j;
+  }
   const job = await db.outboxJob.findFirst({ where: { messageId }, orderBy: { createdAt: "desc" } });
   if (!job) return { ok: false, error: "Kein Zustellauftrag gefunden." };
   await db.$transaction([

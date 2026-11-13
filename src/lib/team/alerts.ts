@@ -13,15 +13,19 @@ import { buildBotLogMessage } from "@/lib/messages/embed";
 import { getSettings } from "@/lib/settings";
 
 const HOUR = 3_600_000;
-export type Heartbeat = "outbox-daily" | "summary";
-const LABEL: Record<Heartbeat, string> = { "outbox-daily": "Nachtlauf (0 Uhr: Zustellung, Changelog, Stellen)", summary: "Morgenlauf (8 Uhr: Team-Übersicht, Erinnerungen)" };
+export type Heartbeat = "outbox-daily" | "summary" | "worker";
+const LABEL: Record<Heartbeat, string> = {
+  "outbox-daily": "Nachtlauf (0 Uhr: Zustellung, Changelog, Stellen)",
+  summary: "Morgenlauf (8 Uhr: Team-Übersicht, Erinnerungen)",
+  worker: "Worker (Discord-Gateway)",
+};
 
 export async function beat(db: PrismaClient, name: Heartbeat, now = new Date()) {
   const key = `heartbeat:${name}`;
   await db.setting.upsert({ where: { key }, create: { key, value: { at: now.toISOString() } }, update: { value: { at: now.toISOString() } } });
 }
 
-async function lastBeat(db: PrismaClient, name: Heartbeat) {
+export async function lastBeat(db: PrismaClient, name: Heartbeat) {
   const row = await db.setting.findUnique({ where: { key: `heartbeat:${name}` } });
   const at = (row?.value as { at?: string } | undefined)?.at;
   return at ? new Date(at) : null;
