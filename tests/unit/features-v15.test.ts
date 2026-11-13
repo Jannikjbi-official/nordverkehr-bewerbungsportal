@@ -28,3 +28,24 @@ describe("Discord-Knöpfe: Status & Antworten", () => {
     expect(post).toContain("nv:status:INTERVIEW:abcdefghij12");
   });
 });
+
+import { forThisInterview, noShowSuspected, voiceSummary } from "@/lib/team/voice";
+
+describe("Sprachkanal-Erkennung", () => {
+  const at = new Date("2026-11-20T18:00:00Z");
+  it("zählt nur Zeiten dieses Termins", () => {
+    expect(forThisInterview(new Date("2026-11-20T17:55:00Z"), at)).toBe(true);
+    expect(forThisInterview(new Date("2026-11-13T18:00:00Z"), at)).toBe(false);
+    expect(forThisInterview(null, at)).toBe(false);
+  });
+  it("„Nicht erschienen?“ erst nach 10 Minuten und nur mit Kanal", () => {
+    const now = at.getTime() + 5 * 60_000;
+    expect(noShowSuspected({ interviewAt: at, voiceJoinedAt: null, now, tracking: true })).toBe(false);
+    expect(noShowSuspected({ interviewAt: at, voiceJoinedAt: null, now: at.getTime() + 11 * 60_000, tracking: false })).toBe(false);
+    expect(noShowSuspected({ interviewAt: at, voiceJoinedAt: new Date("2026-11-13T18:00:00Z"), now: at.getTime() + 11 * 60_000, tracking: true })).toBe(true);
+  });
+  it("Dauer", () => {
+    expect(voiceSummary(new Date("2026-11-20T18:02:00Z"), new Date("2026-11-20T18:31:00Z"), at)).toBe("19:02–19:31 Uhr (29 Min.)");
+    expect(voiceSummary(new Date("2026-11-20T18:02:00Z"), null, at)).toBe("seit 19:02 Uhr");
+  });
+});

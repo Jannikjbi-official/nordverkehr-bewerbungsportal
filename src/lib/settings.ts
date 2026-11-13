@@ -106,6 +106,8 @@ export const settingsSchema = z.object({
   "interview.discordEvent": bool(false),
   /** Sprachkanal fürs Gespräch: Server-Event hängt direkt daran (leer = Event mit Ort „Discord“) */
   "interview.voiceChannelId": channel(""),
+  /** Warteraum-Sprachkanal: Betritt ein Bewerber mit Gespräch heute den Kanal, bekommt der Betreuer eine DM (Worker nötig) */
+  "interview.waitingRoomChannelId": channel(""),
   /** DM an den Betreuer so viele Minuten vor dem Gespräch (0 = aus) */
   "interview.teamReminderMinutes": z.coerce.number().int().min(0).max(240).default(15),
   /** Störungs-Alarm in den Leitungs-Chat (fehlgeschlagene Zustellungen, ausgefallene Läufe) */

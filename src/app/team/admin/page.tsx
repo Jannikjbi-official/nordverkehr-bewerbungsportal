@@ -33,7 +33,9 @@ async function Overview() {
   const night = isNight(s, now);
   // Changelog des laufenden Tages: veröffentlicht oder noch ausstehend?
   const rule = { time: s["changelog.publishTime"], through: s["changelog.publishedThrough"] };
-  const todayEntry = CHANGELOG.find((e) => e.date === todayBerlin(now)) ?? null;
+  // Mehrere Versionen am selben Tag möglich – veröffentlicht wird der Tag gemeinsam
+  const todayEntries = CHANGELOG.filter((e) => e.date === todayBerlin(now));
+  const todayEntry = todayEntries[0] ?? null;
   const clStatus = !todayEntry ? "none" : isPublished(todayEntry, now, rule) ? "published" : "pending";
   return (
     <div className="space-y-6">
@@ -67,7 +69,7 @@ async function Overview() {
         </div>
       </section>
 
-      <ChangelogPublishCard status={clStatus} version={todayEntry?.version ?? null} timeLabel={publishTimeLabel(rule)} />
+      <ChangelogPublishCard status={clStatus} version={todayEntries.length ? [...todayEntries].reverse().map((e) => e.version).join(" & ") : null} timeLabel={publishTimeLabel(rule)} />
 
       <section className="grid gap-4 md:grid-cols-2" aria-label="Bereiche">
         {ADMIN_SECTIONS.map((sec) => (

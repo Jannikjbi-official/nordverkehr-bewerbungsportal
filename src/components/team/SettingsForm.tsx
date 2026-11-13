@@ -379,9 +379,14 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
             "Der Bot legt zu jedem Termin ein Event an („Bewerbungsgespräch · Support“, ohne Bewerbernamen), verschiebt es bei Änderungen und löscht es bei Absage/Abschluss. Braucht die Berechtigung „Events verwalten“. Achtung: Events sieht der ganze Server.",
           )}
           <div className="grid gap-4 sm:grid-cols-2">
-            {s["interview.discordEvent"] && channelField("interview.voiceChannelId", "Sprachkanal fürs Gespräch (Event hängt daran)")}
+            {channelField("interview.voiceChannelId", "Sprachkanal fürs Gespräch")}
+            {channelField("interview.waitingRoomChannelId", "Warteraum-Sprachkanal")}
             {num("interview.teamReminderMinutes", "Erinnerung an den Betreuer (Minuten vorher)", "DM an den Betreuer vor dem Gespräch. 0 = aus. Pünktlich nur mit laufendem Worker, sonst beim nächsten Cron.")}
           </div>
+          <p className="nv-help">
+            Sprachkanal fürs Gespräch: das Server-Event hängt daran, und mit laufendem Worker sieht das Team, wann der Bewerber im Kanal war (sonst nach 10 Minuten
+            „Nicht erschienen?“). Warteraum: Kommt der Bewerber am Gesprächstag dort an, bekommt der Betreuer eine DM.
+          </p>
           <p className="nv-help">Gesprächstermine als Kalender-Abo: jedes Teammitglied unter „Konto“ → „Kalender-Link erzeugen“.</p>
         </div>
       </Card>

@@ -24,6 +24,7 @@ import { AiPanel } from "@/components/team/AiPanel";
 import { Tabs } from "@/components/Tabs";
 import { QuizPill } from "@/components/team/QuizPill";
 import { NoShowButton } from "@/components/team/NoShowButton";
+import { noShowSuspected, voiceSummary } from "@/lib/team/voice";
 import { InterviewProtocol } from "@/components/team/InterviewProtocol";
 import { buildProtocol, protocolQuestions, suggestFollowUps } from "@/lib/team/interview";
 import { testScenarioLabel } from "@/lib/setup/test-applications";
@@ -130,6 +131,9 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
   const accountAgeDays = Math.floor((nowMs() - app.user.discordCreatedAt.getTime()) / 86_400_000);
   const replyOverdue = !!app.awaitingReplySince && nowMs() - app.awaitingReplySince.getTime() >= settings["followup.closeDays"] * 86_400_000;
   const interviewPast = !!app.interviewAt && app.interviewAt.getTime() < nowMs();
+  // Sprachkanal-Erkennung (Worker): Anwesenheit im Gesprächskanal, Hinweis „Nicht erschienen?“
+  const voiceInfo = voiceSummary(app.voiceJoinedAt, app.voiceLeftAt, app.interviewAt);
+  const suspectNoShow = app.status === "INTERVIEW" && noShowSuspected({ interviewAt: app.interviewAt, voiceJoinedAt: app.voiceJoinedAt, now: nowMs(), tracking: !!settings["interview.voiceChannelId"] });
   const myVote = app.votes.find((v) => v.userId === me.id)?.value ?? null;
   const aiEnabled = settings["ai.enabled"] && isAiConfigured();
   const myRating = app.ratings.find((r) => r.userId === me.id);
@@ -524,6 +528,10 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
             {["SUBMITTED", "IN_REVIEW", "INTERVIEW"].includes(app.status) && <MuteControl applicationId={app.id} until={app.mutedUntil?.toISOString() ?? null} nowMs={nowMs()} />}
             <div className="nv-divider" />
             <InterviewForm applicationId={app.id} at={app.interviewAt?.toISOString() ?? null} note={app.interviewNote} />
+            {app.status === "INTERVIEW" && voiceInfo && <p className="text-xs text-muted">🎙️ Im Gesprächskanal: {voiceInfo}</p>}
+            {app.status === "INTERVIEW" && suspectNoShow && (
+              <p className="text-xs text-[var(--tone-warn)]">⚠ War bisher nicht im Gesprächskanal – nicht erschienen?</p>
+            )}
             {app.status === "INTERVIEW" && interviewPast && <NoShowButton applicationId={app.id} count={app.noShowCount} />}
             {app.noShowCount > 0 && (
               <p className={`text-xs ${app.noShowCount >= 2 ? "text-[var(--tone-danger)]" : "text-muted"}`}>

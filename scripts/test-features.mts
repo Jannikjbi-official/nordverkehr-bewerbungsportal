@@ -526,6 +526,27 @@ try {
     await saveSettings({ "discord.autoRoleOnAccept": false, "discord.acceptExtraRoleIds": "", "discord.welcomeChannelId": "", "interview.minStars": 3 }, team.id);
   }
 
+  // ── Sprachkanal-Erkennung & Warteraum-Ping
+  {
+    const { saveSettings } = await import("../src/lib/settings");
+    const { handleVoiceState, noShowSuspected } = await import("../src/lib/team/voice");
+    await saveSettings({ "interview.voiceChannelId": "611111111111111111", "interview.waitingRoomChannelId": "622222222222222222" }, team.id);
+    const vu = await mk("Vito", "100000000000000097");
+    const at = new Date(Date.now() + 15 * 60_000);
+    const va = await db.application.create({ data: { userId: vu.id, positionId: pos.id, status: "INTERVIEW", publicId: "NV-V-1", submittedAt: new Date(), interviewAt: at, claimedById: team.id, claimedAt: new Date() } });
+    const w1 = await handleVoiceState(db, { discordId: vu.discordId, from: null, to: "622222222222222222" });
+    const w2 = await handleVoiceState(db, { discordId: vu.discordId, from: "611111111111111111", to: "622222222222222222" });
+    check(w1 === "waiting" && w2 === null && (await db.outboxJob.count({ where: { applicationId: va.id, type: "DM" } })) === 1, "Warteraum: Betreuer bekommt genau eine DM");
+    check((await handleVoiceState(db, { discordId: vu.discordId, from: "622222222222222222", to: "611111111111111111" })) === "joined", "Gesprächskanal betreten wird erkannt");
+    check((await handleVoiceState(db, { discordId: vu.discordId, from: "611111111111111111", to: null })) === "left", "Verlassen wird erkannt");
+    const after = await db.application.findUniqueOrThrow({ where: { id: va.id } });
+    check(!!after.voiceJoinedAt && !!after.voiceLeftAt, "Beginn und Ende gespeichert");
+    check(!noShowSuspected({ interviewAt: at, voiceJoinedAt: after.voiceJoinedAt, now: at.getTime() + 20 * 60_000, tracking: true }), "Kein „Nicht erschienen?“, wenn im Kanal gewesen");
+    check(noShowSuspected({ interviewAt: at, voiceJoinedAt: null, now: at.getTime() + 20 * 60_000, tracking: true }), "„Nicht erschienen?“ nach 10 Minuten ohne Bewerber");
+    check((await handleVoiceState(db, { discordId: "100000000000000098", from: null, to: "611111111111111111" })) === null, "Fremde ohne Gespräch: nichts passiert");
+    await saveSettings({ "interview.voiceChannelId": "", "interview.waitingRoomChannelId": "" }, team.id);
+  }
+
   // ── Feedback (eins pro Bewerbung)
   await db.feedback.create({ data: { applicationId: app1.id, rating: 5 } });
   dup = false;
