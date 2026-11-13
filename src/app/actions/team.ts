@@ -715,3 +715,60 @@ export async function setMuteAction(applicationId: string, hours: number): Promi
   await audit("application.mute", { actorId: user.id, targetType: "application", targetId: applicationId, meta: { hours } });
   return { ok: true, data: { until: until?.toISOString() ?? null } };
 }
+
+/** Probezeit abschließen (nur Admins/Leitung): bestanden, verlängern (+14 Tage) oder beenden. */
+export async function decideProbationAction(applicationId: string, decision: "PASSED" | "EXTEND" | "END"): Promise<ActionResult> {
+  const { user, access } = await requireTeam();
+  if (!access.isAdmin) return { ok: false, error: "Das entscheidet die Leitung (Admins)." };
+  if (!id.safeParse(applicationId).success || !["PASSED", "EXTEND", "END"].includes(decision)) return { ok: false, error: "Ungültig." };
+  try {
+    const { decideProbation } = await import("@/lib/team/probation");
+    const { jobIds } = await decideProbation(db, { applicationId, decision, actor: user });
+    await kick(jobIds);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Hat nicht geklappt." };
+  }
+  revalidatePath(`/team/bewerbungen/${applicationId}`);
+  revalidatePath("/team/verzeichnis");
+  return { ok: true };
+}
+
+/** Paten zuteilen bzw. entfernen (Teammitglied). */
+export async function setMentorAction(applicationId: string, mentorId: string | null): Promise<ActionResult> {
+  const { user, access } = await requireTeam();
+  if (!id.safeParse(applicationId).success || (mentorId !== null && !id.safeParse(mentorId).success)) return { ok: false, error: "Ungültig." };
+  {
+    const denied = await guardApp(user, access, applicationId);
+    if (denied) return denied;
+  }
+  if (mentorId) {
+    const m = await db.user.findFirst({ where: { id: mentorId, OR: [{ isTeam: true }, { isAdmin: true }] }, select: { id: true } });
+    if (!m) return { ok: false, error: "Pate muss im Team sein." };
+  }
+  const res = await db.application.updateMany({ where: { id: applicationId, status: "ACCEPTED" }, data: { mentorId, mentorRemindedAt: null } });
+  if (!res.count) return { ok: false, error: "Nur bei angenommenen Bewerbungen." };
+  await audit("application.onboarding", { actorId: user.id, targetType: "application", targetId: applicationId, meta: { mentorId } });
+  revalidatePath(`/team/bewerbungen/${applicationId}`);
+  revalidatePath("/team/verzeichnis");
+  return { ok: true };
+}
+
+/** Rückmeldung des Paten (oder eines Admins): läuft gut / braucht Hilfe + kurze Notiz. */
+export async function mentorFeedbackAction(applicationId: string, rating: "good" | "help", note: string): Promise<ActionResult> {
+  const { user, access } = await requireTeam();
+  if (!id.safeParse(applicationId).success || !["good", "help"].includes(rating) || typeof note !== "string" || note.length > 1000) return { ok: false, error: "Ungültig." };
+  const app = await db.application.findUnique({ where: { id: applicationId }, select: { status: true, mentorId: true } });
+  if (!app || app.status !== "ACCEPTED") return { ok: false, error: "Nur bei angenommenen Bewerbungen." };
+  if (app.mentorId !== user.id && !access.isAdmin) return { ok: false, error: "Nur der Pate (oder ein Admin) gibt die Rückmeldung." };
+  const feedback = { rating, note: note.trim() || null, by: user.globalName || user.username, at: new Date().toISOString() };
+  await db.application.update({ where: { id: applicationId }, data: { mentorFeedback: feedback } });
+  await audit("application.onboarding", { actorId: user.id, targetType: "application", targetId: applicationId, meta: { mentorFeedback: rating } });
+  if (rating === "help") {
+    const { botLog } = await import("@/lib/discord/botlog");
+    const { publicEnv } = await import("@/lib/env");
+    const job = await botLog(`🆘 Pate meldet bei einem neuen Teammitglied „braucht Hilfe“ – bitte reinschauen`, { applicationId, tone: "warn", url: `${publicEnv.appUrl}/team/bewerbungen/${applicationId}` });
+    if (job) await kick([job]);
+  }
+  revalidatePath(`/team/bewerbungen/${applicationId}`);
+  return { ok: true };
+}

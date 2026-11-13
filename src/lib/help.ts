@@ -150,7 +150,7 @@ export const HELP: HelpSection[] = [
       {
         id: "einarbeitung",
         term: "Einarbeitung & Probezeit",
-        text: "Bei angenommenen Bewerbungen erscheint rechts eine **Checkliste** (Regelwerk, Discord-Rolle, Team-Kanäle …) – wer etwas erledigt, hakt es ab, Name und Datum werden gespeichert. Mit der Annahme startet außerdem die **Probezeit** (Standard 14 Tage, das Ende lässt sich pro Person ändern). Endet sie in den nächsten Tagen, steht die Person in der Team-Übersicht im Teamchat. Die Punkte der Checkliste und die Länge der Probezeit stellen Admins in den Einstellungen ein.",
+        text: "Bei angenommenen Bewerbungen erscheint rechts eine **Checkliste** (Regelwerk, Discord-Rolle, Team-Kanäle …) – wer etwas erledigt, hakt es ab, Name und Datum werden gespeichert. Mit der Annahme startet außerdem die **Probezeit** (Standard 14 Tage, das Ende lässt sich pro Person ändern). Endet sie in den nächsten Tagen, steht die Person in der Team-Übersicht im Teamchat. Die Punkte der Checkliste und die Länge der Probezeit stellen Admins in den Einstellungen ein. Am Ende entscheidet die Leitung: **Bestanden**, **+14 Tage** oder **Beenden** (Rollen und Präfix werden entfernt). Optional bekommt die Person einen **Paten**, der nach zwei Wochen kurz Rückmeldung gibt. Alle Teammitglieder stehen im **Team-Verzeichnis**.",
       },
       {
         id: "feedback",

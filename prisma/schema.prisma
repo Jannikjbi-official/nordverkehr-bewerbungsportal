@@ -379,6 +379,16 @@ model Application {
   voiceLeftAt          DateTime?
   /// Warteraum-Ping an den Betreuer verschickt (einmal pro Termin)
   waitingPingAt        DateTime?
+  /// Probezeit-Abschluss: PASSED (bestanden) | ENDED (beendet); verlängern setzt nur probationUntil neu
+  probationResult      String?
+  probationDecidedAt   DateTime?
+  probationDecidedById String?
+  /// Erinnerung „Probezeit endet“ an Betreuer verschickt (für dieses Enddatum)
+  probationRemindedFor DateTime?
+  /// Pate für neue Teammitglieder (User-ID) + Rückmeldung nach 14 Tagen { rating: "good" | "help", note, by, at }
+  mentorId             String?
+  mentorFeedback       Json?
+  mentorRemindedAt     DateTime?
   rejectionReason      String?
   /// Feste Kategorie des Absagegrunds (lib/applications/rejection.ts) – für die Statistik
   rejectionCategory    String?

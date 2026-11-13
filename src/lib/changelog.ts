@@ -93,6 +93,9 @@ export const CHANGELOG: ChangelogEntry[] = [
       { kind: "neu", text: "**Status per Knopf** – an neuen Bewerbungen im Bewerbungs-Kanal: „In Prüfung“ und „Zum Gespräch“ (3-Sterne-Hürde gilt auch hier)." },
       { kind: "neu", text: "**Sprachkanal-Erkennung** – mit laufendem Worker sieht das Team, wann der Bewerber im Gesprächskanal war; fehlt er 10 Minuten nach Beginn, kommt „Nicht erschienen?“." },
       { kind: "neu", text: "**Warteraum-Ping** – kommt ein Bewerber am Gesprächstag in den Warteraum, bekommt sein Betreuer eine DM." },
+      { kind: "neu", text: "**Probezeit-Abschluss** – am Ende der Probezeit entscheidet die Leitung: bestanden, +14 Tage oder beenden (Rollen und Präfix werden entfernt). Der Betreuer wird vorher erinnert." },
+      { kind: "neu", text: "**Pate** – neuen Teammitgliedern einen Paten zuteilen; nach zwei Wochen fragt der Bot nach einer kurzen Rückmeldung („läuft gut“ / „braucht Hilfe“)." },
+      { kind: "neu", text: "**Team-Verzeichnis** – wer ist in welcher Stelle, seit wann, Probezeit-Status und Pate." },
     ],
   },
   {

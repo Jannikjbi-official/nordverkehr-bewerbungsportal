@@ -33,6 +33,8 @@ import { canSeePosition, viewerOf } from "@/lib/team/visibility";
 import { RatingPanel } from "@/components/team/RatingPanel";
 import { OnboardingPanel } from "@/components/team/OnboardingPanel";
 import { MuteControl } from "@/components/team/MuteControl";
+import { ProbationPanel } from "@/components/team/ProbationPanel";
+import { MENTOR_FEEDBACK_DAYS, readMentorFeedback } from "@/lib/team/probation";
 import { onboardingItems, readOnboarding } from "@/lib/team/onboarding";
 import { cleanScores, criteriaFor, formatScore, summarizeRatings, withLegacy } from "@/lib/team/ratings";
 import { claimAndScore, isScoringPending, readAiRating, scoringBlockedReason } from "@/lib/ai/scoring";
@@ -177,6 +179,14 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
   );
   // Reiter „Gespräch“: ab Einladung zum Gespräch oder sobald schon etwas notiert ist
   const showProtocol = protocol.started || ["INTERVIEW", "ACCEPTED", "REJECTED"].includes(app.status);
+  // Teammitglieder für die Paten-Auswahl (nur bei angenommenen Bewerbungen)
+  const teamMembers =
+    app.status === "ACCEPTED"
+      ? (await db.user.findMany({ where: { OR: [{ isTeam: true }, { isAdmin: true }] }, select: { id: true, globalName: true, username: true }, orderBy: { username: "asc" }, take: 200 })).map((u) => ({
+          id: u.id,
+          name: u.globalName || u.username,
+        }))
+      : [];
   // Vergleich (andere laufende Bewerbungen derselben Stelle) und Mindestlängen für Nachfragen – parallel
   const wantsFollowUps = showProtocol && app.status === "INTERVIEW";
   const qIds = app.answers.map((a) => a.questionId).filter((x): x is string => !!x);
@@ -556,6 +566,18 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
                 state={readOnboarding(app.onboarding)}
                 probationUntil={app.probationUntil?.toISOString() ?? null}
                 me={me.globalName || me.username}
+              />
+              <ProbationPanel
+                applicationId={app.id}
+                probationUntil={app.probationUntil?.toISOString() ?? null}
+                result={app.probationResult === "PASSED" || app.probationResult === "ENDED" ? app.probationResult : null}
+                decidedAt={app.probationDecidedAt?.toISOString() ?? null}
+                isAdmin={!!access?.isAdmin}
+                meId={me.id}
+                mentorId={app.mentorId}
+                team={teamMembers}
+                feedback={readMentorFeedback(app.mentorFeedback)}
+                feedbackDue={!!app.decidedAt && nowMs() - app.decidedAt.getTime() >= MENTOR_FEEDBACK_DAYS * 86_400_000}
               />
             </div>
           )}

@@ -547,6 +547,28 @@ try {
     await saveSettings({ "interview.voiceChannelId": "", "interview.waitingRoomChannelId": "" }, team.id);
   }
 
+  // ── Probezeit-Abschluss & Pate
+  {
+    const { decideProbation, sendProbationReminders, extendedUntil } = await import("../src/lib/team/probation");
+    const pu = await mk("Paula", "100000000000000099");
+    const mentor = await mk("Mats", "100000000000000100", { isTeam: true });
+    const decided = new Date(Date.now() - 15 * 86_400_000);
+    const pa = await db.application.create({
+      data: { userId: pu.id, positionId: pos.id, status: "ACCEPTED", publicId: "NV-P-1", submittedAt: decided, decidedAt: decided, probationUntil: new Date(Date.now() + 3_600_000), claimedById: team.id, claimedAt: decided, mentorId: mentor.id },
+    });
+    const sent = await sendProbationReminders(db);
+    const again = await sendProbationReminders(db);
+    check(sent === 2 && again === 0, "Erinnerung: Probezeit-Ende an Betreuer + Paten-Rückmeldung, je einmal");
+    const before = (await db.application.findUniqueOrThrow({ where: { id: pa.id } })).probationUntil!;
+    await decideProbation(db, { applicationId: pa.id, decision: "EXTEND", actor: team });
+    const ext = await db.application.findUniqueOrThrow({ where: { id: pa.id } });
+    check(ext.probationUntil!.getTime() === extendedUntil(before, new Date(ext.probationUntil!.getTime() - 14 * 86_400_000)).getTime() && !ext.probationResult, "Verlängern: +14 Tage, noch offen");
+    await decideProbation(db, { applicationId: pa.id, decision: "PASSED", actor: team });
+    let err = "";
+    try { await decideProbation(db, { applicationId: pa.id, decision: "END", actor: team }); } catch (e) { err = (e as Error).message; }
+    check((await db.application.findUniqueOrThrow({ where: { id: pa.id } })).probationResult === "PASSED" && err.includes("schon entschieden"), "Bestanden; zweite Entscheidung abgelehnt");
+  }
+
   // ── Feedback (eins pro Bewerbung)
   await db.feedback.create({ data: { applicationId: app1.id, rating: 5 } });
   dup = false;

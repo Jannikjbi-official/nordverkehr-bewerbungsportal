@@ -49,3 +49,19 @@ describe("Sprachkanal-Erkennung", () => {
     expect(voiceSummary(new Date("2026-11-20T18:02:00Z"), null, at)).toBe("seit 19:02 Uhr");
   });
 });
+
+import { extendedUntil, readMentorFeedback } from "@/lib/team/probation";
+
+describe("Probezeit & Pate", () => {
+  it("verlängern ab dem späteren Datum", () => {
+    const now = new Date("2026-11-13T12:00:00Z");
+    expect(extendedUntil(new Date("2026-11-10T12:00:00Z"), now).toISOString()).toBe("2026-11-27T12:00:00.000Z");
+    expect(extendedUntil(new Date("2026-11-20T12:00:00Z"), now).toISOString()).toBe("2026-12-04T12:00:00.000Z");
+    expect(extendedUntil(null, now).toISOString()).toBe("2026-11-27T12:00:00.000Z");
+  });
+  it("Rückmeldung lesen", () => {
+    expect(readMentorFeedback({ rating: "help", note: "x", by: "Mats", at: "2026-11-13" })?.rating).toBe("help");
+    expect(readMentorFeedback({ rating: "meh" })).toBeNull();
+    expect(readMentorFeedback(null)).toBeNull();
+  });
+});
