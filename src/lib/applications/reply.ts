@@ -1,6 +1,5 @@
 /**
- * Antwort des Bewerbers ans Team – gemeinsam für das Portal (Nachrichtenfeld)
- * und Discord (Knopf „Zurückschreiben“ in der DM → Fenster).
+ * Antwort des Bewerbers ans Team (Nachrichtenfeld im Portal).
  * Prüft Besitz, Status und Rate Limit, beendet offene Rückfragen, stößt die
  * Auto-Antwort an und meldet die Antwort im Bot-Log.
  */
@@ -8,8 +7,6 @@ import { db } from "@/lib/db";
 import { publicEnv } from "@/lib/env";
 import { rateLimit } from "@/lib/rate-limit";
 import { botLog, esc } from "@/lib/discord/botlog";
-import { replyCustomId } from "@/lib/discord/interactions";
-import { getSettings } from "@/lib/settings";
 import { ACTIVE_STATUSES, canFollowUp } from "@/lib/applications/status";
 
 export const REPLY_MIN = 2;
@@ -21,21 +18,11 @@ export type ApplicantReplyResult =
 
 const ownerWhere = (owner: { userId: string } | { discordId: string }) => ("userId" in owner ? { userId: owner.userId } : { user: { discordId: owner.discordId } });
 
-/** Darf diese Person (Discord-ID) auf die Bewerbung antworten? Für den Knopf, bevor das Fenster aufgeht. */
-export async function canAnswer(applicationId: string, discordId: string) {
-  const app = await db.application.findFirst({
-    where: { id: applicationId, ...ownerWhere({ discordId }), status: { in: [...ACTIVE_STATUSES, "WITHDRAWN"] } },
-    select: { id: true, publicId: true, status: true, withdrawnInReview: true, decidedAt: true, withdrawAckAt: true },
-  });
-  return app && (ACTIVE_STATUSES.includes(app.status) || canFollowUp(app)) ? app : null;
-}
-
 export async function postApplicantReply(opts: {
   applicationId: string;
-  /** Portal-Konto (Login) oder Discord-ID (signierte Interaktion) – nur eigene Bewerbungen */
+  /** Portal-Konto (Login) oder Discord-ID – nur eigene Bewerbungen */
   owner: { userId: string } | { discordId: string };
   body: string;
-  via?: "portal" | "discord";
 }): Promise<ApplicantReplyResult> {
   const body = opts.body.trim();
   if (body.length < REPLY_MIN || body.length > REPLY_MAX) return { ok: false, error: `Bitte schreib zwischen ${REPLY_MIN} und ${REPLY_MAX} Zeichen.` };
@@ -66,13 +53,9 @@ export async function postApplicantReply(opts: {
   const job = muted
     ? null
     : await botLog(
-        `💬 Neue Antwort von ${esc(app.user.globalName || app.user.username)} zu **${app.publicId}** (${app.position.title})${opts.via === "discord" ? " · per Discord" : ""}`,
-        {
-          applicationId: app.id,
-          url: `${publicEnv.appUrl}/team/bewerbungen/${app.id}`,
-          // Direkt aus Discord antworten (Fenster), wenn der Knopf „Übernehmen“ eingerichtet ist
-          actions: (await getSettings())["discord.claimButton"] ? [{ label: "Antworten", customId: replyCustomId(app.id), emoji: "✉️", style: 1 }] : undefined,
-        },
+        `💬 Neue Antwort von ${esc(app.user.globalName || app.user.username)} zu **${app.publicId}** (${app.position.title})`,
+        // Antworten nur im Portal – der Knopf führt direkt zum Nachrichtenfeld
+        { applicationId: app.id, url: `${publicEnv.appUrl}/team/bewerbungen/${app.id}#nachricht`, linkLabel: "Im Portal antworten" },
       );
   return { ok: true, applicationId: app.id, publicId: app.publicId, messageId: message.id, jobIds: job ? [job] : [] };
 }

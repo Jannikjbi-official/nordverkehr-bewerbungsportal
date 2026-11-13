@@ -6,9 +6,6 @@
  * Knöpfe (custom_id):
  *  - nv:claim:<applicationId>  → Bewerbung übernehmen (nur Team-Rolle)
  *  - nv:status:<IN_REVIEW|INTERVIEW>:<applicationId> → Status setzen (Team, gleiche Regeln wie im Portal)
- *  - nv:reply:<applicationId>  → Fenster „Antworten“ öffnen (Team) → nv:replysubmit:<applicationId>
- *  - nv:answer:<applicationId> → Bewerber: Fenster „Zurückschreiben“ (Knopf in Team-Nachrichten-DMs)
- *    → nv:answersubmit:<applicationId> → Antwort landet im Portal (wie dort geschrieben)
  *  - nv:cancel:<applicationId>:<Termin, Unix-Sek.> → Bewerber: Gespräch absagen (fragt nach)
  *  - nv:cancelok:<applicationId>:<Termin> → Bewerber: Absage bestätigt
  *    (Knopf gilt nur für den Termin, zu dem die Erinnerung gehörte)
@@ -16,6 +13,10 @@
  *  - /bewerbung                → eigener Bewerbungsstand (nur für die Person sichtbar)
  *
  * Antworten sind „ephemeral“ (nur für die klickende Person sichtbar).
+ *
+ * Nachrichten schreiben geht bewusst nur im Portal (DMs und Bot-Log verlinken
+ * dorthin) – Discord-Fenster würden für jeden Klick eine Vercel-Funktion starten.
+ * Alte Knöpfe (nv:reply, nv:answer) antworten mit „veraltet“.
  */
 import { createPublicKey, verify } from "node:crypto";
 
@@ -54,32 +55,20 @@ export const CANCEL_PREFIX = "nv:cancel:";
 export const CANCEL_OK_PREFIX = "nv:cancelok:";
 export const cancelCustomId = (applicationId: string, at: Date) => `${CANCEL_PREFIX}${applicationId}:${Math.floor(at.getTime() / 1000)}`;
 
-export const replyCustomId = (applicationId: string) => `nv:reply:${applicationId}`;
-/** Bewerber-Knopf „Zurückschreiben“ in der DM */
-export const answerCustomId = (applicationId: string) => `nv:answer:${applicationId}`;
-export const ANSWER_BUTTON = { label: "Zurückschreiben", emoji: "✍️" } as const;
 /** Link-Knopf in Nachrichten-DMs: direkt zum Antwortfeld der Bewerbung im Portal */
 export const PORTAL_ANSWER_LABEL = "Im Portal antworten";
 export const portalAnswerUrl = (appUrl: string, applicationId: string) => `${appUrl}/dashboard/${applicationId}#antworten`;
-
-/** Knopf für buildApplicantMessage – nur wenn Discord-Interaktionen eingerichtet sind (sonst „Interaktion fehlgeschlagen“). */
-export const answerAction = (applicationId: string, interactionsReady: boolean) =>
-  interactionsReady ? { label: ANSWER_BUTTON.label, customId: answerCustomId(applicationId), emoji: ANSWER_BUTTON.emoji } : null;
 export const STATUS_BUTTON_TARGETS = ["IN_REVIEW", "INTERVIEW"] as const;
 export type StatusButtonTarget = (typeof STATUS_BUTTON_TARGETS)[number];
 
 export type CustomAction =
-  | { kind: "claim" | "cancelInterview" | "cancelInterviewConfirmed" | "reply" | "replySubmit" | "answer" | "answerSubmit"; applicationId: string; at?: number }
+  | { kind: "claim" | "cancelInterview" | "cancelInterviewConfirmed"; applicationId: string; at?: number }
   | { kind: "status"; applicationId: string; to: StatusButtonTarget };
 
 export function parseCustomId(customId: string): CustomAction | null {
   const st = customId.match(/^nv:status:(IN_REVIEW|INTERVIEW):([a-z0-9]{10,40})$/i);
   if (st) return { kind: "status", to: st[1].toUpperCase() as StatusButtonTarget, applicationId: st[2] };
   const kinds: [string, Exclude<CustomAction["kind"], "status">][] = [
-    ["nv:replysubmit:", "replySubmit"],
-    ["nv:answersubmit:", "answerSubmit"],
-    ["nv:answer:", "answer"],
-    ["nv:reply:", "reply"],
     [CLAIM_PREFIX, "claim"],
     [CANCEL_OK_PREFIX, "cancelInterviewConfirmed"],
     [CANCEL_PREFIX, "cancelInterview"],
@@ -91,58 +80,6 @@ export function parseCustomId(customId: string): CustomAction | null {
     return m[2] ? { kind, applicationId: m[1], at: Number(m[2]) } : { kind, applicationId: m[1] };
   }
   return null;
-}
-
-/** Fenster (Modal) „Antwort an den Bewerber“ – Interaktionsantwort Typ 9. */
-export function replyModal(applicationId: string, publicId: string | null) {
-  return {
-    type: 9,
-    data: {
-      custom_id: `nv:replysubmit:${applicationId}`,
-      title: `Antwort an ${publicId ?? "Bewerber"}`.slice(0, 45),
-      components: [
-        {
-          type: 1,
-          components: [{ type: 4, custom_id: "body", label: "Nachricht (geht per DM und ins Portal)", style: 2, min_length: 2, max_length: 2000, required: true }],
-        },
-      ],
-    },
-  };
-}
-
-/** Fenster „Zurückschreiben“ für Bewerber – Antwort geht ins Portal an das Team. */
-export function answerModal(applicationId: string, publicId: string | null) {
-  return {
-    type: 9,
-    data: {
-      custom_id: `nv:answersubmit:${applicationId}`,
-      title: `Antwort zu ${publicId ?? "deiner Bewerbung"}`.slice(0, 45),
-      components: [
-        {
-          type: 1,
-          components: [
-            {
-              type: 4,
-              custom_id: "body",
-              label: "Deine Antwort ans Team",
-              placeholder: "Erscheint im Portal bei deiner Bewerbung.",
-              style: 2,
-              min_length: 2,
-              max_length: 2000,
-              required: true,
-            },
-          ],
-        },
-      ],
-    },
-  };
-}
-
-/** Text aus einem abgeschickten Fenster lesen. */
-export function modalValue(data: unknown, field: string): string {
-  const rows = (data as { components?: { components?: { custom_id?: string; value?: string }[] }[] } | undefined)?.components ?? [];
-  for (const r of rows) for (const c of r.components ?? []) if (c.custom_id === field) return String(c.value ?? "");
-  return "";
 }
 
 /** Rückfrage vor dem Absagen (nur für die Person sichtbar). */

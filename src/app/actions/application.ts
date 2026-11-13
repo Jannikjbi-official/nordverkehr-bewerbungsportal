@@ -296,7 +296,7 @@ export async function replyToTeamAction(input: z.input<typeof replySchema>): Pro
   const parsed = replySchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Bitte schreib zwischen 2 und 2000 Zeichen." };
   const { postApplicantReply } = await import("@/lib/applications/reply");
-  const r = await postApplicantReply({ applicationId: parsed.data.applicationId, owner: { userId: user.id }, body: parsed.data.body, via: "portal" });
+  const r = await postApplicantReply({ applicationId: parsed.data.applicationId, owner: { userId: user.id }, body: parsed.data.body });
   if (!r.ok) return r;
   // Ist gerade niemand vom Team online, antwortet (falls aktiviert) die KI – mit Schutzfiltern
   after(async () => {

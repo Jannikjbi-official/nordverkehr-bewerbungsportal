@@ -22,7 +22,7 @@ import { budgetLeft, callAi, tokensToday } from "@/lib/ai/service";
 import { STATUS_LABEL } from "@/lib/applications/status";
 import { effectiveMinAge } from "@/lib/applications/rules";
 import { buildApplicantMessage } from "@/lib/messages/embed";
-import { PORTAL_ANSWER_LABEL, answerAction, portalAnswerUrl } from "@/lib/discord/interactions";
+import { PORTAL_ANSWER_LABEL, portalAnswerUrl } from "@/lib/discord/interactions";
 import { formatDateTime } from "@/lib/messages/placeholders";
 import { enqueue, runOutbox } from "@/lib/discord/outbox-db";
 import { isNight } from "@/lib/night";
@@ -157,7 +157,6 @@ async function storeReply(
         publicId: app.publicId,
         statusUrl: portalAnswerUrl(publicEnv.appUrl, app.id),
         buttonLabel: PORTAL_ANSWER_LABEL,
-        action: answerAction(app.id, (await getSettings())["discord.claimButton"]),
       }),
     },
     { messageId: message.id, applicationId: app.id },

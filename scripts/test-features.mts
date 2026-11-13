@@ -593,21 +593,20 @@ try {
     check(!(await db.application.findUniqueOrThrow({ where: { id: fu.id } })).awaitingRemindedAt, "Bewerber abwesend: keine Rückfrage-Erinnerung");
   }
 
-  // ── „Zurückschreiben“ aus der DM: nur eigene, laufende Bewerbung; beendet Rückfrage
+  // ── Antwort des Bewerbers (Portal): nur eigene, laufende Bewerbung; beendet Rückfrage
   {
-    const { postApplicantReply, canAnswer } = await import("../src/lib/applications/reply");
+    const { postApplicantReply } = await import("../src/lib/applications/reply");
     const owner = await mk("Rieke", "100000000000000201");
     const other = await mk("Ole", "100000000000000202");
     const ra = await db.application.create({ data: { userId: owner.id, positionId: pos.id, status: "IN_REVIEW", publicId: "NV-R-1", submittedAt: new Date(), awaitingReplySince: new Date() } });
-    check(!!(await canAnswer(ra.id, owner.discordId)) && !(await canAnswer(ra.id, other.discordId)), "Knopf: nur der Bewerber selbst");
-    const bad = await postApplicantReply({ applicationId: ra.id, owner: { discordId: other.discordId }, body: "Fremde Antwort", via: "discord" });
-    check(!bad.ok, "Fremde Discord-ID kann nicht antworten");
-    const r = await postApplicantReply({ applicationId: ra.id, owner: { discordId: owner.discordId }, body: "  Klar, passt mir!  ", via: "discord" });
+    const bad = await postApplicantReply({ applicationId: ra.id, owner: { userId: other.id }, body: "Fremde Antwort" });
+    check(!bad.ok, "Antwort: fremde Bewerbung abgelehnt");
+    const r = await postApplicantReply({ applicationId: ra.id, owner: { userId: owner.id }, body: "  Klar, passt mir!  " });
     const msg = r.ok ? await db.message.findUnique({ where: { id: r.messageId } }) : null;
-    check(r.ok && msg?.direction === "APPLICANT_TO_TEAM" && msg.body === "Klar, passt mir!" && msg.authorId === owner.id, "Antwort aus Discord steht im Portal");
+    check(r.ok && msg?.direction === "APPLICANT_TO_TEAM" && msg.body === "Klar, passt mir!" && msg.authorId === owner.id, "Antwort steht im Portal");
     check(!(await db.application.findUniqueOrThrow({ where: { id: ra.id } })).awaitingReplySince, "Antwort beendet die offene Rückfrage");
     await db.application.update({ where: { id: ra.id }, data: { status: "REJECTED", decidedAt: new Date() } });
-    check(!(await canAnswer(ra.id, owner.discordId)) && !(await postApplicantReply({ applicationId: ra.id, owner: { discordId: owner.discordId }, body: "Hallo?" })).ok, "Abgeschlossen: keine Antwort mehr");
+    check(!(await postApplicantReply({ applicationId: ra.id, owner: { userId: owner.id }, body: "Hallo?" })).ok, "Abgeschlossen: keine Antwort mehr");
   }
 
   // ── Ideen & Fehler: einreichen, prüfen, Status mit DM

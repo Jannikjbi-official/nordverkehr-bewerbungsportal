@@ -4,11 +4,8 @@ import {
   CLAIM_COMMAND,
   OPEN_COMMAND,
   STATUS_COMMAND,
-  answerModal,
   cancelConfirmReply,
   ephemeral,
-  modalValue,
-  replyModal,
   type StatusButtonTarget,
   getDiscordPublicKey,
   normalizePublicId,
@@ -77,8 +74,8 @@ export async function POST(req: Request) {
     return Response.json(ephemeral(await claimFromDiscord({ publicId }, team)));
   }
 
-  // 3 = Knopf, 5 = abgeschicktes Fenster (Modal)
-  if ((i.type !== 3 && i.type !== 5) || !i.data?.custom_id) return Response.json(ephemeral("Diese Aktion kenne ich nicht."));
+  // 3 = Knopf
+  if (i.type !== 3 || !i.data?.custom_id) return Response.json(ephemeral("Diese Aktion kenne ich nicht."));
   const action = parseCustomId(i.data.custom_id);
   if (!action) return Response.json(ephemeral("Dieser Knopf ist veraltet."));
 
@@ -99,44 +96,12 @@ export async function POST(req: Request) {
     return Response.json(ephemeral(r.ok ? `Erledigt – das Team weiß Bescheid. Einen neuen Termin findest du im Portal: ${publicEnv.appUrl}/dashboard/${action.applicationId}` : r.error));
   }
 
-  // Bewerber: „Zurückschreiben“ (Knopf in der DM) – nur die eigene Bewerbung
-  if (action.kind === "answer" || action.kind === "answerSubmit") {
-    const discordId = i.member?.user.id ?? i.user?.id;
-    if (!discordId) return Response.json(ephemeral("Das hat nicht geklappt."));
-    const link = `${publicEnv.appUrl}/dashboard/${action.applicationId}`;
-    if (action.kind === "answer") {
-      const { canAnswer } = await import("@/lib/applications/reply");
-      const app = await canAnswer(action.applicationId, discordId);
-      if (!app) return Response.json(ephemeral(`Auf diese Bewerbung kannst du gerade nicht antworten. Alles Weitere findest du im Portal: ${link}`));
-      return Response.json(answerModal(app.id, app.publicId));
-    }
-    const { postApplicantReply } = await import("@/lib/applications/reply");
-    const r = await postApplicantReply({ applicationId: action.applicationId, owner: { discordId }, body: modalValue(i.data, "body"), via: "discord" });
-    if (!r.ok) return Response.json(ephemeral(r.error));
-    after(async () => {
-      if (r.jobIds.length) await runOutbox({ ids: r.jobIds }).catch(() => {});
-      const { maybeAutoReply } = await import("@/lib/ai/autoreply");
-      await maybeAutoReply(r.messageId).catch((e) => console.error("[autoreply]", e));
-    });
-    return Response.json(ephemeral(`✅ Deine Antwort ist beim Team angekommen und steht im Portal: ${link}`));
-  }
-
   if (!i.member) return Response.json(ephemeral("Das geht nur auf dem Server."));
   const team = await teamContext(i.member);
   if (!team.ok) return Response.json(ephemeral(team.error));
   if (team.isJunior) return Response.json(ephemeral(JUNIOR_DENIED));
   if (action.kind === "claim") return Response.json(ephemeral(await claimFromDiscord({ id: action.applicationId }, team)));
   if (action.kind === "status") return Response.json(ephemeral(await statusFromDiscord(action.applicationId, action.to, team)));
-  if (action.kind === "reply") {
-    const app = await teamApp(action.applicationId, team);
-    if (typeof app === "string") return Response.json(ephemeral(app));
-    return Response.json(replyModal(app.id, app.publicId));
-  }
-  if (action.kind === "replySubmit") {
-    const app = await teamApp(action.applicationId, team);
-    if (typeof app === "string") return Response.json(ephemeral(app));
-    return Response.json(ephemeral(await replyFromDiscord(app, modalValue(i.data, "body"), team)));
-  }
   return Response.json(ephemeral("Unbekannte Aktion."));
 }
 
@@ -237,19 +202,6 @@ async function statusFromDiscord(applicationId: string, to: StatusButtonTarget, 
     const { jobIds } = await changeStatus({ applicationId: app.id, to, actorId: team.user.id });
     if (jobIds.length) after(() => runOutbox({ ids: jobIds }).catch(() => {}));
     return `✅ **${app.publicId}** ist jetzt „${STATUS_LABEL[to]}“. Denk an eine Nachricht an den Bewerber: ${link}?status=${to}#nachricht`;
-  } catch (e) {
-    return e instanceof Error ? e.message : "Hat nicht geklappt – versuch es im Portal.";
-  }
-}
-
-/** Antwort aus dem Discord-Fenster als persönliche Team-Nachricht (Portal + DM). */
-async function replyFromDiscord(app: { id: string; publicId: string | null }, body: string, team: Extract<TeamCtx, { ok: true }>): Promise<string> {
-  if (body.trim().length < 2) return "Die Nachricht ist leer.";
-  try {
-    const { sendTeamMessage } = await import("@/lib/team/service");
-    const { jobIds } = await sendTeamMessage({ applicationId: app.id, actor: actorOf(team), title: "Nachricht vom Nordverkehr-Team", body: body.slice(0, 2000), templateIds: [] });
-    if (jobIds.length) after(() => runOutbox({ ids: jobIds }).catch(() => {}));
-    return `✉️ Nachricht an **${app.publicId}** ist raus (Portal + DM). Verlauf: ${publicEnv.appUrl}/team/bewerbungen/${app.id}#nachricht`;
   } catch (e) {
     return e instanceof Error ? e.message : "Hat nicht geklappt – versuch es im Portal.";
   }

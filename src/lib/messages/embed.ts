@@ -189,12 +189,13 @@ export interface ActionButton {
 
 export function buildBotLogMessage(
   line: string,
-  opts: { tone?: "default" | "warn"; url?: string | null; actions?: ActionButton[] } = {},
+  opts: { tone?: "default" | "warn"; url?: string | null; actions?: ActionButton[]; linkLabel?: string } = {},
 ): RESTPostAPIChannelMessageJSONBody {
+  const label = opts.linkLabel ?? "Öffnen";
   return v2Message(opts.tone === "warn" ? WARN_COLOR : NEUTRAL_COLOR, [
     text(truncate(line, 1800)),
     text(`-# ${discordTime(new Date())}`),
-    opts.actions?.length ? buttonRow(opts.actions, { label: "Öffnen", url: opts.url }) : linkButtons([{ label: "Öffnen", url: opts.url }]),
+    opts.actions?.length ? buttonRow(opts.actions, { label, url: opts.url }) : linkButtons([{ label, url: opts.url }]),
   ]);
 }
 

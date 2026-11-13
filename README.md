@@ -41,7 +41,7 @@ Bewerber loggen sich mit Discord ein, füllen ein Formular in Ruhe aus und verfo
 
 ### Direkt in Discord
 - Post pro neuer Bewerbung mit Knöpfen **Übernehmen**, **In Prüfung**, **Zum Gespräch**.
-- Bot-Log mit Knopf **Antworten** (Discord-Fenster → Nachricht an den Bewerber).
+- Bot-Log und DMs mit Knopf **Im Portal antworten** (geschrieben wird nur im Portal – spart Server-Aufrufe).
 - Befehle `/bewerbung` (Bewerber), `/offen` und `/claim` (Team).
 - Server-Events für Gespräche, Sprachkanal-Erkennung („Nicht erschienen?“) und Warteraum-Ping (mit Worker).
 - Annahme-Automatik: Rollen, Namens-Präfix, Willkommensgruß – beim Zurücknehmen wieder entfernt.

@@ -6,7 +6,7 @@ import { enqueue } from "@/lib/discord/outbox-db";
 import { canTeamTransition } from "@/lib/applications/status";
 import { cooldownUntil, effectiveCooldownDays } from "@/lib/applications/rules";
 import { buildApplicantMessage } from "@/lib/messages/embed";
-import { PORTAL_ANSWER_LABEL, answerAction, portalAnswerUrl } from "@/lib/discord/interactions";
+import { PORTAL_ANSWER_LABEL, portalAnswerUrl } from "@/lib/discord/interactions";
 import { buildTemplateVars, renderTemplate, type TemplateVars } from "@/lib/messages/placeholders";
 import type { ApplicationStatus } from "@prisma/client";
 import { UserFacingError } from "@/lib/applications/service";
@@ -287,7 +287,6 @@ export async function sendTeamMessage(opts: {
   const rendered = renderTemplate(opts.body, { ...baseVars, ...opts.vars });
   const title = renderTemplate(opts.title || "Nachricht vom Nordverkehr-Team", { ...baseVars, ...opts.vars }).text.slice(0, 200);
   if (rendered.text.trim().length < 2) throw new UserFacingError("Die Nachricht ist leer.");
-  const interactionsReady = (await getSettings())["discord.claimButton"];
 
   return db.$transaction(async (tx) => {
     const message = await tx.message.create({
@@ -316,8 +315,6 @@ export async function sendTeamMessage(opts: {
           statusUrl: portalAnswerUrl(publicEnv.appUrl, app.id),
           buttonLabel: PORTAL_ANSWER_LABEL,
           author: asTeam ? null : { name: actorName(opts.actor), iconUrl: avatarUrl(opts.actor.discordId, opts.actor.avatar, 128) },
-          // „Zurückschreiben“: Antwort direkt aus der DM, landet im Portal
-          action: answerAction(app.id, interactionsReady),
         }),
       },
       { tx, messageId: message.id, applicationId: app.id },

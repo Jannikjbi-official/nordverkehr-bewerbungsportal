@@ -13,7 +13,7 @@ import { enqueue, runOutboxAll } from "@/lib/discord/outbox-db";
 import { botLog } from "@/lib/discord/botlog";
 import { publicEnv } from "@/lib/env";
 import { buildApplicantMessage } from "@/lib/messages/embed";
-import { PORTAL_ANSWER_LABEL, answerAction, portalAnswerUrl } from "@/lib/discord/interactions";
+import { PORTAL_ANSWER_LABEL, portalAnswerUrl } from "@/lib/discord/interactions";
 import { getSettings } from "@/lib/settings";
 
 const DAY = 86_400_000;
@@ -63,7 +63,6 @@ export async function sendFollowUpReminders(db: PrismaClient, now = new Date()) 
           publicId: a.publicId,
           statusUrl: portalAnswerUrl(publicEnv.appUrl, a.id),
           buttonLabel: PORTAL_ANSWER_LABEL,
-          action: answerAction(a.id, s["discord.claimButton"]),
         }),
       },
       { messageId: message.id, applicationId: a.id },

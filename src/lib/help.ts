@@ -242,9 +242,9 @@ export const HELP: HelpSection[] = [
       },
       {
         id: "antworten-discord",
-        term: "Antworten & Status aus Discord",
-        short: "Knöpfe „Antworten“, „In Prüfung“ und „Zum Gespräch“ direkt in Discord.",
-        text: "Am Bot-Log „Neue Antwort von …“ öffnet **Antworten** ein Fenster – der Text geht als deine Nachricht per DM und ins Portal. An neuen Bewerbungen im Bewerbungs-Kanal setzen **In Prüfung** und **Zum Gespräch** den Status (Zuständigkeit und 3-Sterne-Hürde gelten). Juniors können die Knöpfe nicht nutzen. Bewerber haben in Nachrichten-DMs den Knopf **Zurückschreiben**: Ihre Antwort landet im Portal wie dort geschrieben. Daneben führt **Im Portal antworten** direkt zum Antwortfeld.",
+        term: "Status aus Discord, Antworten im Portal",
+        short: "Knöpfe „In Prüfung“ und „Zum Gespräch“ in Discord – geschrieben wird im Portal.",
+        text: "An neuen Bewerbungen im Bewerbungs-Kanal setzen **In Prüfung** und **Zum Gespräch** den Status (Zuständigkeit und 3-Sterne-Hürde gelten). Juniors können die Knöpfe nicht nutzen. **Nachrichten schreibt man nur im Portal:** Am Bot-Log „Neue Antwort von …“ führt **Im Portal antworten** direkt zum Nachrichtenfeld, und Bewerber haben in Nachrichten-DMs denselben Knopf zu ihrem Antwortfeld.",
       },
       {
         id: "befehle",
