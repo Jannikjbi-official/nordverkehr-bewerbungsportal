@@ -103,7 +103,7 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
 
   return (
     <div className="space-y-8">
-      <LiveRefresh scope="my-app" id={app.id} />
+      <LiveRefresh />
       {unread && <MarkRead applicationId={app.id} />}
       <Link href="/dashboard" className="nv-btn nv-btn-quiet nv-btn-sm -ml-3">
         <ArrowLeft size={14} aria-hidden /> Alle Bewerbungen

@@ -160,7 +160,7 @@ const CONCURRENCY = 5;
 /**
  * Bestimmte Jobs vollständig zustellen – in Paketen, statt nur die ersten 20.
  * Mit `deadline` (ms-Zeitstempel) wird rechtzeitig aufgehört; der Rest bleibt in der
- * Warteschlange und geht beim nächsten Durchlauf raus (Crons dürfen nicht am Zeitlimit scheitern).
+ * Warteschlange und geht beim nächsten Durchlauf raus (Aufrufe dürfen nicht am Zeitlimit scheitern).
  */
 export async function runOutboxAll(ids: string[], opts: { chunk?: number; deadline?: number } = {}) {
   const chunk = opts.chunk ?? 20;

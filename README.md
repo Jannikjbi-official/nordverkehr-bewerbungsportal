@@ -15,7 +15,7 @@ Bewerber loggen sich mit Discord ein, füllen ein Formular in Ruhe aus und verfo
 - [Schnellstart (lokal)](#schnellstart-lokal)
 - [Einrichtung](#einrichtung) – Discord, Datenbank, Umgebungsvariablen, Hosting, KI
 - [Für andere Server einrichten](#für-andere-server-einrichten)
-- [Betrieb](#betrieb) – Cron-Jobs, Worker, Changelog & Releases
+- [Betrieb](#betrieb) – Alles auf Abruf, Worker, Changelog & Releases
 - [Sicherheit & Datenschutz](#sicherheit--datenschutz)
 - [Entwicklung](#entwicklung) – Projektstruktur, Skripte, Tests
 - [Mitmachen](#mitmachen)
@@ -69,7 +69,7 @@ Zusammenfassungen, Fragen-Vorschläge, beschreibende Kategorien, Punkte als Orie
 
 Next.js 16 (App Router, Cache Components) · TypeScript · Tailwind CSS 4 · PostgreSQL (Neon) + Prisma 6 · Auth.js v5 (Discord) · Discord REST & Gateway · zod · Anthropic SDK · Vitest
 
-Läuft auf **Vercel** (Serverless, Cron) mit **Neon** (Postgres) – oder komplett selbst gehostet mit **Docker**. Ein optionaler **Worker** hält die Discord-Gateway-Verbindung.
+Läuft auf **Vercel** (Serverless, ohne Crons) mit **Neon** (Postgres) – oder komplett selbst gehostet mit **Docker**. Ein optionaler **Worker** hält die Discord-Gateway-Verbindung.
 
 ---
 
@@ -126,7 +126,6 @@ Vorlage: [`.env.example`](.env.example). Die wichtigsten:
 | `DATABASE_URL` | Postgres-Verbindung (bei Neon automatisch, dazu `DATABASE_URL_UNPOOLED` für Migrationen) |
 | `AUTH_SECRET`, `AUTH_DISCORD_ID`, `AUTH_DISCORD_SECRET`, `AUTH_TRUST_HOST` | Login |
 | `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, `TEAM_ROLE_ID`, `ADMIN_ROLE_ID` | Bot & Rollen |
-| `CRON_SECRET` | Schutz der Cron-Routen (zufällig, ≥ 16 Zeichen) |
 | `ANTHROPIC_API_KEY` | KI (optional, kostenpflichtig – siehe [5. KI](#5-ki-optional)) |
 | `PUBLIC_ID_PREFIX` | Präfix der Bewerbungs-IDs (Standard `NV`) |
 
@@ -134,7 +133,7 @@ Kanäle (Bewerbungen, Bot-Log, Teamchat, Leitung, Changelog …) werden **im Por
 
 ### 4. Hosting
 
-**Vercel:** Repo importieren, Umgebungsvariablen setzen (nicht `DEV_LOGIN`), eigene Domain verbinden. Die Cron-Jobs stehen in [`vercel.json`](vercel.json).
+**Vercel:** Repo importieren, Umgebungsvariablen setzen (nicht `DEV_LOGIN`), eigene Domain verbinden. Es gibt keine Cron-Jobs – siehe [Betrieb](#betrieb).
 
 **Docker (selbst gehostet):**
 
@@ -180,12 +179,14 @@ Das Portal ist auf Nordverkehr zugeschnitten, lässt sich aber für euren Server
 
 ## Betrieb
 
-### Cron-Jobs (Vercel)
-- `/api/cron/outbox` – Zustellung ausstehender Discord-Nachrichten, Changelog-Post, nachts Stellen-Zeitplan und Prüfungen. Läuft um 0/1 Uhr und stündlich von 5 bis 13 Uhr (deutsche Zeit) – passt zu kleinen Vercel-Plänen.
-- `/api/cron/summary` – 8 Uhr: Team-Übersicht, Erinnerungen, Probezeit, Entwürfe.
-- `/api/cron/retention` – Löschfristen und Datenbank-Einrichtung.
+### Alles auf Abruf (keine Crons, kein Polling)
+Das Portal hat **keine Hintergrund-Aktivität**: keine Cron-Jobs, keine regelmäßigen Abfragen, keine Pings. Es arbeitet nur, wenn jemand es benutzt.
+- **Nachrichten** gehen sofort nach jeder Aktion raus. Was warten musste (Nachtruhe, Fehlversuch), geht beim nächsten Aufruf im Team-Bereich raus (höchstens alle 5 Minuten geprüft).
+- **Tagesaufgaben** – Team-Übersicht, Gesprächs-/Probezeit-/Entwurfs-Erinnerungen, liegengebliebene Claims, Rückfrage-Fristen, Stellen-Zeitplan, Changelog-Post, Löschfristen – laufen einmal am Tag beim **ersten Aufruf im Team-Bereich ab 8 Uhr**. Oder sofort per Knopf: *Admin-Bereich → Discord → Tagesaufgaben jetzt ausführen*.
+- **Seiten** laden ihre Daten neu, wenn man nach einer Weile in den Tab zurückkommt – sonst über Neuladen.
+- Nicht mehr automatisch: Discord-Prüfung aller Bewerber (passiert beim Öffnen einer Bewerbung) und KI-Punkte nachholen (Knopf an der Bewerbung).
 
-Vercel rechnet in UTC; Einträge stehen deshalb für Sommer- und Winterzeit doppelt drin, nur der passende Lauf arbeitet. Nachrichten gehen zusätzlich **sofort** nach jeder Aktion raus.
+Schaut an einem Tag niemand ins Team-Portal, passiert an dem Tag auch nichts – es wird beim nächsten Besuch nachgeholt.
 
 ### Worker (optional)
 Vercel hat keinen Dauerprozess. Der Worker (`npm run worker`, im Docker-Setup enthalten) hält die Discord-Verbindung und ermöglicht:
@@ -202,7 +203,7 @@ Vercel hat keinen Dauerprozess. Der Worker (`npm run worker`, im Docker-Setup en
 ## Sicherheit & Datenschutz
 
 - **Zugriff:** Discord-Login, Rollenprüfung über den Bot (fail closed), Proxy vor allen geschützten Routen und zusätzlich Prüfung in jeder Seite, Server Action und API-Route. Admin = Team-Rolle **und** Admin-Rolle. Zuständigkeit pro Stelle über Discord-Rollen.
-- **CSRF & Missbrauch:** Origin-Prüfung, Cron nur mit `CRON_SECRET`, Rate Limits, Honeypot, Mindest-Ausfüllzeit, Namens-Check.
+- **CSRF & Missbrauch:** Origin-Prüfung, Rate Limits, Honeypot, Mindest-Ausfüllzeit, Namens-Check.
 - **Uploads:** nur JPG/PNG/WebP, echte Inhaltsprüfung, Neucodierung ohne Metadaten, max. 8 MB, nur für Besitzer und zuständiges Team.
 - **KI:** Nutzertexte nur in zufällig benannten Datenblöcken, Erkennung von Manipulationsversuchen (auch mit Leetspeak/unsichtbaren Zeichen), Ausgabefilter, Limits und Budget. An Anthropic gehen keine Namen, IDs oder Bilder.
 - **DSGVO:** versionierte Einwilligung, Datenschutzseite, Datenexport, Konto-Löschung, automatische Löschfristen, Audit-Log, Mindestalter.

@@ -1,6 +1,6 @@
 /**
  * Basisdaten (Bewerbungsart, Positionen, Fragen, Nachrichtenbausteine) und
- * Datenbank-Einrichtung. Von Seed-Skript, Cron und Ersteinrichtung genutzt.
+ * Datenbank-Einrichtung. Von Seed-Skript und Ersteinrichtung genutzt.
  *
  * Idempotent und sicher bei parallelen Aufrufen: Abschnitte und Fragen haben
  * eindeutige Keys (Unique-Indizes), doppelte Anlage scheitert am Index.

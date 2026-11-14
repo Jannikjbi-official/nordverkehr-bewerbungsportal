@@ -31,23 +31,15 @@ export async function requireUser(callbackUrl = "/dashboard"): Promise<CurrentUs
 }
 
 /**
- * Hintergrund-Aufgabe bei Team-Aufrufen: fällige Discord-Zustellungen senden.
- * Unabhängig davon, wer gerade klickt, höchstens alle 2 Minuten pro
- * Server-Instanz (läuft per after() nach der Antwort). Der Changelog wird
- * NICHT hier gepostet, sondern nur vom Cron um 0 Uhr.
+ * Kein Cron, kein Polling: Fällige Zustellungen und die Tagesaufgaben laufen
+ * nur, wenn jemand den Team-Bereich benutzt (lib/due-tasks.ts, per after()).
  */
-let lastBackgroundRun = 0;
 async function scheduleBackgroundWork() {
-  if (Date.now() - lastBackgroundRun < 120_000) return;
-  lastBackgroundRun = Date.now();
   try {
-    const { after } = await import("next/server");
-    after(async () => {
-      const { runOutbox } = await import("@/lib/discord/outbox-db");
-      await runOutbox({ limit: 10 }).catch(() => {});
-    });
-  } catch {
-    // außerhalb eines Requests (z. B. Tests) – egal
+    const { runDueOnRequest } = await import("@/lib/due-tasks");
+    await runDueOnRequest();
+  } catch (e) {
+    console.error("[due]", e);
   }
 }
 

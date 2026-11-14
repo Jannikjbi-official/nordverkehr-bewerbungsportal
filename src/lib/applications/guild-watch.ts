@@ -6,7 +6,8 @@
  * Einmal pro Austritt: `guildLeftNotifiedAt` merkt sich die Nachricht; ist die
  * Person wieder da, wird das Feld zurückgesetzt.
  *
- * Erkannt wird beim Öffnen der Bewerbung (Team oder Bewerber) und morgens per Cron.
+ * Erkannt wird beim Öffnen der Bewerbung (Team oder Bewerber) oder per Admin-Knopf –
+ * keine Prüfung im Hintergrund.
  */
 import { db } from "@/lib/db";
 import { publicEnv } from "@/lib/env";
@@ -171,24 +172,9 @@ export async function scanApplicantsInGuild(opts: { limit?: number; fresh?: bool
     if (res === "back") r.back++;
   };
   for (let i = 0; i < apps.length; i += 5) {
-    // Zeitbudget (Crons): lieber abbrechen, als dass die ganze Funktion am Limit scheitert
+    // Zeitbudget: lieber abbrechen, als dass die ganze Funktion am Limit scheitert
     if (opts.deadline && Date.now() >= opts.deadline) break;
     await Promise.all(apps.slice(i, i + 5).map(one));
   }
   return r;
-}
-
-/** Höchstens alle 15 Minuten im Hintergrund prüfen (z. B. wenn das Team das Dashboard öffnet). */
-export async function scanIfDue(minutes = 15) {
-  // Ein Eintrag pro Zeitfenster: nur wer ihn anlegen kann, prüft (eindeutiger Key)
-  const key = `guildscan:${Math.floor(Date.now() / (minutes * 60_000))}`;
-  if (await db.setting.findUnique({ where: { key }, select: { key: true } })) return null;
-  try {
-    await db.setting.create({ data: { key, value: { at: new Date().toISOString() } } });
-  } catch {
-    return null; // andere Instanz war schneller
-  }
-  // Alte Fenster aufräumen
-  await db.setting.deleteMany({ where: { key: { startsWith: "guildscan:" }, NOT: { key } } }).catch(() => {});
-  return scanApplicantsInGuild();
 }

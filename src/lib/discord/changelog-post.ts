@@ -60,7 +60,7 @@ export async function postNewChangelogEntries(db: PrismaClient, now = new Date()
 /**
  * Alle Changelog-Posts des Bots aus dem Kanal löschen (nur eigene, über die
  * Outbox gesendete) und die Markierungen zurücksetzen – danach postet der
- * nächste Cron-Lauf die veröffentlichten Versionen neu.
+ * nächste Tageslauf die veröffentlichten Versionen neu.
  */
 export async function deleteChangelogPosts(db: PrismaClient) {
   const s = await getSettings();

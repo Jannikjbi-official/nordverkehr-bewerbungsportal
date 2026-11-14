@@ -5,7 +5,7 @@
  *  - erscheint die Bewerbung nach `followup.closeDays` in der Team-Übersicht unter
  *    „Keine Antwort – schließen?“ (Vorschlag, nichts passiert automatisch).
  * Antwortet der Bewerber, endet die Frist (siehe replyToTeamAction).
- * Läuft im Morgen-Cron.
+ * Läuft mit den Tagesaufgaben (lib/due-tasks.ts).
  */
 import type { PrismaClient } from "@prisma/client";
 import { ACTIVE_STATUSES } from "@/lib/applications/status";

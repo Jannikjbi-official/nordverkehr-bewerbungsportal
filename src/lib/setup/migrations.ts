@@ -1,7 +1,7 @@
 /**
  * Daten-Migrationen (Inhalte, z. B. Fragen umbauen) – das Schema selbst kommt aus prisma/migrations.
  *
- * Laufen automatisch beim Serverstart (instrumentation.ts), beim täglichen Cron
+ * Laufen automatisch beim Serverstart (instrumentation.ts),
  * und per CLI (`npm run db:migrate-questions`, Probelauf ohne `--apply`).
  * Jede Migration läuft genau einmal (Markierung in `Setting`), parallele
  * Instanzen werden über ein Sperr-Dokument ausgeschlossen.

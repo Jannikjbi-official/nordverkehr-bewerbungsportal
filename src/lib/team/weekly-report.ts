@@ -1,6 +1,6 @@
 /**
  * Wochenbericht an die Leitung (Einstellung report.weeklyEnabled): montags im
- * Morgenlauf eine kurze Statistik der letzten 7 Tage in den Leitungs-Chat
+ * Tageslauf eine kurze Statistik der letzten 7 Tage in den Leitungs-Chat
  * (sonst Teamchat). Ohne Testbewerbungen. Pro Woche genau einmal.
  */
 import type { PrismaClient } from "@prisma/client";

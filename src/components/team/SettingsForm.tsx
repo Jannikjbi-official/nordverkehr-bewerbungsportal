@@ -168,7 +168,7 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
             </div>
             <p className="nv-help sm:mt-7">
               Deutsche Zeit. 00:00 = um Mitternacht, wenn der Tag vorbei ist. Andere Uhrzeit (z. B. 20:00) = am selben Tag um diese Uhrzeit. Dann erscheint der Eintrag im
-              Team-Bereich und geht beim nächsten Zustell-Lauf in den Changelog-Kanal (Läufe um 0 Uhr und stündlich 5–13 Uhr). Sofort geht es über „Jetzt veröffentlichen“ in der Admin-Übersicht.
+              Team-Bereich und geht mit den Tagesaufgaben in den Changelog-Kanal (erster Aufruf im Team-Bereich ab 8 Uhr). Sofort geht es über „Jetzt veröffentlichen“ in der Admin-Übersicht.
               {clDuringNight && (
                 <span className="block mt-1 text-amber-500">
                   Hinweis: {s["changelog.publishTime"]} liegt in der Nachtruhe – der Discord-Post kommt erst um {s["night.end"]} Uhr (im Portal sofort).
@@ -228,7 +228,7 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
           {toggle(
             "discord.dailySummaryEnabled",
             "Tägliche Team-Übersicht im Teamchat",
-            "Jeden Morgen um 8 Uhr: Gespräche heute, unbeantwortete Nachrichten, liegengebliebene Bewerbungen, offene Rückzüge. Ist nichts zu tun, kommt kein Post.",
+            "Einmal am Tag beim ersten Aufruf im Team-Bereich ab 8 Uhr: Gespräche heute, unbeantwortete Nachrichten, liegengebliebene Bewerbungen, offene Rückzüge. Ist nichts zu tun, kommt kein Post.",
           )}
           {toggle(
             "team.personalDigestEnabled",
@@ -262,7 +262,7 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
       {show("zustellung") && (
       <Card title="Störungs-Alarm & Wochenbericht" desc="Meldungen an die Leitung (Leitungs-Chat, sonst Bot-Log bzw. Teamchat).">
         <div className="space-y-3">
-          {toggle("alerts.enabled", "Störungs-Alarm", "Warnt, wenn viele Zustellungen fehlschlagen oder der Nacht- bzw. Morgenlauf über 26 Stunden nicht lief. Höchstens einmal pro Tag und Art.")}
+          {toggle("alerts.enabled", "Störungs-Alarm", "Warnt mit den Tagesaufgaben, wenn in den letzten 24 Stunden viele Zustellungen fehlgeschlagen sind. Höchstens einmal pro Tag.")}
           <div className="grid gap-4 sm:grid-cols-2">{num("alerts.failedThreshold", "Alarm ab fehlgeschlagenen Zustellungen (24 h)")}</div>
           {toggle("report.weeklyEnabled", "Wochenbericht montags", "Eingänge, Annahmequote, Bearbeitungszeit, häufigste Absagegründe und Feedback der letzten 7 Tage. Testen: Admin-Bereich → Discord → „Wochenbericht jetzt senden“.")}
         </div>
@@ -346,7 +346,7 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
                   </table>
                 </div>
                 <p className="nv-help mt-2">
-                  „warten“ = geht gesammelt zum Ende der Nachtruhe raus ({s["night.end"]} Uhr; Cron stündlich zwischen 5 und 13 Uhr – Ende am besten in diesem Bereich wählen).
+                  „warten“ = geht gesammelt zum Ende der Nachtruhe raus (ab {s["night.end"]} Uhr, sobald danach jemand den Team-Bereich benutzt – es gibt keine Läufe im Hintergrund).
                   Gesprächserinnerungen gehen immer sofort raus, wenn das Gespräch vor Ende der Nachtruhe ist.
                 </p>
               </div>
@@ -388,7 +388,7 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
           <div className="grid gap-4 sm:grid-cols-2">
             {channelField("interview.voiceChannelId", "Sprachkanal fürs Gespräch")}
             {channelField("interview.waitingRoomChannelId", "Warteraum-Sprachkanal")}
-            {num("interview.teamReminderMinutes", "Erinnerung an den Betreuer (Minuten vorher)", "DM an den Betreuer vor dem Gespräch. 0 = aus. Pünktlich nur mit laufendem Worker, sonst beim nächsten Cron.")}
+            {num("interview.teamReminderMinutes", "Erinnerung an den Betreuer (Minuten vorher)", "DM an den Betreuer vor dem Gespräch. 0 = aus. Pünktlich nur mit laufendem Worker, sonst mit den Tagesaufgaben.")}
           </div>
           <p className="nv-help">
             Sprachkanal fürs Gespräch: das Server-Event hängt daran, und mit laufendem Worker sieht das Team, wann der Bewerber im Kanal war (sonst nach 10 Minuten

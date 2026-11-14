@@ -424,12 +424,12 @@ try {
     const { postWeeklyReport } = await import("../src/lib/team/weekly-report");
     await saveSettings({ "discord.leadChannelId": "123456789012345678", "alerts.failedThreshold": 3 }, team.id);
     for (let k = 0; k < 3; k++) await db.outboxJob.create({ data: { type: "DM", payload: {}, status: "FAILED", lastError: "DM geschlossen" } });
-    await db.setting.upsert({ where: { key: "heartbeat:summary" }, create: { key: "heartbeat:summary", value: { at: new Date(Date.now() - 30 * 3_600_000).toISOString() } }, update: { value: { at: new Date(Date.now() - 30 * 3_600_000).toISOString() } } });
-    const al1 = await checkAlerts(db, ["summary"]);
+    await db.setting.upsert({ where: { key: "heartbeat:worker" }, create: { key: "heartbeat:worker", value: { at: new Date(Date.now() - 30 * 3_600_000).toISOString() } }, update: { value: { at: new Date(Date.now() - 30 * 3_600_000).toISOString() } } });
+    const al1 = await checkAlerts(db, ["worker"]);
     const before = await db.outboxJob.count({ where: { type: "CHANNEL_MESSAGE" } });
-    await checkAlerts(db, ["summary"]);
+    await checkAlerts(db, ["worker"]);
     check(al1.length === 2 && (await db.outboxJob.count({ where: { type: "CHANNEL_MESSAGE" } })) === before, `Alarm: Fehlschläge + ausgefallener Lauf, je einmal pro Tag (${al1.join(",")})`);
-    await beat(db, "summary");
+    await beat(db, "worker");
     const wid = await postWeeklyReport(db, { force: true });
     check(!!wid, "Wochenbericht wird gepostet");
 
@@ -713,6 +713,17 @@ try {
   dup = false;
   try { await db.feedback.create({ data: { applicationId: app1.id, rating: 1 } }); } catch { dup = true; }
   check(dup, "Ein Feedback pro Bewerbung");
+
+  // Keine Crons: Tagesaufgaben auf Abruf
+  const due = await import("../src/lib/due-tasks");
+  const morning = new Date("2026-11-14T08:30:00Z"); // 9:30 Uhr deutsche Zeit
+  const run = await due.runDailyTasks({ now: morning });
+  check(run.steps.length >= 10 && run.steps.every((x) => x.ok), `Tagesaufgaben laufen fehlerfrei (${run.steps.filter((x) => !x.ok).map((x) => x.name).join(", ") || "alle ok"})`);
+  await due.runDueOnRequest(new Date("2026-11-14T05:00:00Z")); // 6 Uhr: noch zu früh
+  check(!(await db.setting.findUnique({ where: { key: "daily-run:2026-11-14" } })), "Vor 8 Uhr: keine Tagesaufgaben");
+  await due.runDueOnRequest(morning);
+  check(!!(await db.setting.findUnique({ where: { key: "daily-run:2026-11-14" } })), "Erster Team-Aufruf ab 8 Uhr sperrt den Tag");
+  check(!!(await due.dailyRunToday(morning)), "Admin sieht den heutigen Lauf");
 } finally {
   await testDb.drop();
 }

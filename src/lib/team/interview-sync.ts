@@ -5,7 +5,7 @@
  *    Ohne Bewerbernamen – Events sieht der ganze Server.
  *  - Erinnerungs-DM an den Betreuer X Minuten vorher planen (Outbox mit runAt) bzw.
  *    die alte Planung verwerfen. Pünktlich zugestellt wird sie vom Worker; ohne Worker
- *    beim nächsten Cron/Besuch im Team-Bereich.
+ *    beim nächsten Besuch im Team-Bereich.
  * Fehler bei Discord werden nur protokolliert – der Termin selbst steht im Portal.
  */
 import { db } from "@/lib/db";

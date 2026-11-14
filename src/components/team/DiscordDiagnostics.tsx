@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import { useState, useTransition } from "react";
 import { ArrowClockwise, CheckCircle, PaperPlaneTilt, WarningCircle } from "@phosphor-icons/react/ssr";
-import { deleteChangelogPostsAction, discordTestAction, flushOutboxAction, postChangelogNowAction, postSummaryNowAction, postWeeklyNowAction, registerCommandsAction, scanGuildNowAction, setupInteractionsAction } from "@/app/actions/admin";
+import { deleteChangelogPostsAction, discordTestAction, flushOutboxAction, postChangelogNowAction, postSummaryNowAction, postWeeklyNowAction, registerCommandsAction, runDailyTasksAction, scanGuildNowAction, setupInteractionsAction } from "@/app/actions/admin";
 
 export interface FailedJob {
   id: string;
@@ -34,6 +34,21 @@ export function DiscordDiagnostics({ failed, pending }: { failed: FailedJob[]; p
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="nv-btn nv-btn-primary nv-btn-sm"
+          disabled={busy}
+          data-testid="run-daily"
+          onClick={async () =>
+            (await confirmDialog({
+              title: "Tagesaufgaben jetzt ausführen?",
+              body: "Team-Übersicht, Erinnerungen, liegengebliebene Claims, Rückfrage-Fristen, Stellen-Zeitplan, Changelog-Post und Löschfristen laufen sofort. Was heute schon verschickt wurde, geht nicht doppelt raus.\n\nOhne Knopf passiert das einmal am Tag beim ersten Aufruf im Team-Bereich ab 8 Uhr.",
+              confirmLabel: "Ausführen",
+            })) && run("Tagesaufgaben", () => runDailyTasksAction())
+          }
+        >
+          <ArrowClockwise size={14} aria-hidden /> Tagesaufgaben jetzt ausführen
+        </button>
         {(
           [
             ["applications", "Test: Bewerbungs-Kanal"],
@@ -71,7 +86,7 @@ export function DiscordDiagnostics({ failed, pending }: { failed: FailedJob[]; p
           onClick={async () =>
             (await confirmDialog({
               title: "Changelog-Posts löschen?",
-              body: "Alle Changelog-Posts des Bots im Kanal werden gelöscht. Die Versionen werden beim nächsten Lauf neu gepostet.",
+              body: "Alle Changelog-Posts des Bots im Kanal werden gelöscht. Die Versionen werden beim nächsten Tageslauf (oder per Knopf) neu gepostet.",
               confirmLabel: "Löschen",
               tone: "danger",
             })) && run("Changelog", () => deleteChangelogPostsAction())

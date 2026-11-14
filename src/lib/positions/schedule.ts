@@ -1,6 +1,6 @@
 /**
  * Stellen automatisch öffnen und schließen:
- *  - nach Datum (`opensAt` / `closesAt`) – läuft in den täglichen Crons
+ *  - nach Datum (`opensAt` / `closesAt`) – läuft mit den Tagesaufgaben (lib/due-tasks.ts)
  *  - nach Höchstzahl (`maxApplications`) – direkt nach jeder neuen Bewerbung
  * Öffnet eine Stelle, bekommen alle, die sich vorgemerkt haben, eine DM.
  * Danach wird der Stellenaufruf in Discord automatisch aktualisiert.
@@ -92,7 +92,7 @@ export async function closeIfFull(db: PrismaClient, positionId: string) {
   if (!p || p.status !== "OPEN" || !p.maxApplications) return false;
   const count = await db.application.count({ where: countingWhere(p.id) });
   if (count < p.maxApplications) return false;
-  // Voll → auch geplante Daten leeren, sonst öffnet der Cron die volle Stelle am Startdatum wieder
+  // Voll → auch geplante Daten leeren, sonst öffnet der Tageslauf die volle Stelle am Startdatum wieder
   const res = await db.position.updateMany({ where: { id: p.id, status: "OPEN" }, data: { status: "CLOSED", opensAt: null, closesAt: null } });
   if (!res.count) return false;
   await db.auditLog.create({ data: { action: "position.auto", targetType: "position", targetId: p.id, meta: { to: "CLOSED", reason: "max", count } } });
@@ -119,7 +119,7 @@ export async function notifyPositionOpened(db: PrismaClient, position: { id: str
     ids.push(job.id);
   }
   // DMs gleich zustellen (in Paketen) – höchstens ~15 s lang, der Rest geht mit der
-  // nächsten Zustellung raus (der Cron läuft danach weiter und darf nicht ins Zeitlimit laufen)
+  // nächsten Zustellung raus (der Tageslauf läuft danach weiter und darf nicht ins Zeitlimit laufen)
   await runOutboxAll(ids, { deadline: Date.now() + 15_000 }).catch(() => {});
   return ids.length;
 }

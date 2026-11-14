@@ -3,7 +3,7 @@
  * `applications.draftReminderDays` Tagen nicht angefasst hat, bekommt EINMAL
  * eine freundliche DM mit Link zum Weitermachen (`draftRemindedAt`).
  * Übersprungen werden geschlossene/versteckte Stellen und gesperrte Nutzer.
- * Läuft im Morgen-Cron (/api/cron/summary).
+ * Läuft mit den Tagesaufgaben (lib/due-tasks.ts).
  */
 import type { PrismaClient } from "@prisma/client";
 import { enqueue, runOutboxAll } from "@/lib/discord/outbox-db";
@@ -49,7 +49,7 @@ export async function sendDraftReminders(db: PrismaClient, opts: { now?: Date; l
 
   const ids: string[] = [];
   for (const d of drafts) {
-    // Reservieren: auch bei doppeltem Cron höchstens eine Erinnerung pro Entwurf
+    // Reservieren: auch bei doppeltem Lauf höchstens eine Erinnerung pro Entwurf
     const claimed = await db.application.updateMany({
       where: { id: d.id, status: "DRAFT", OR: [{ draftRemindedAt: null }] },
       data: { draftRemindedAt: now },

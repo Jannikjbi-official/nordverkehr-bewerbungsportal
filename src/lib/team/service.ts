@@ -298,7 +298,7 @@ export async function sendTeamMessage(opts: {
   body: string;
   templateIds: string[];
   vars?: Partial<TemplateVars>;
-  /** Rückfrage mit Frist: Antwort erwartet (Erinnerung/Vorschlag „schließen“ per Morgen-Cron) */
+  /** Rückfrage mit Frist: Antwort erwartet (Erinnerung/Vorschlag „schließen“ mit den Tagesaufgaben) */
   expectReply?: boolean;
 }) {
   const app = await db.application.findUnique({ where: { id: opts.applicationId }, include: { user: true } });

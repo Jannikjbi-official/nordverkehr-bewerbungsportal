@@ -27,7 +27,6 @@ const serverSchema = z.object({
     .or(z.literal("").transform(() => undefined)),
   ROLE_CACHE_TTL_SECONDS: z.coerce.number().int().min(5).max(3600).default(60),
 
-  CRON_SECRET: z.string().min(16).optional(),
   PUBLIC_ID_PREFIX: z.string().regex(/^[A-Z]{1,6}$/).default("NV"),
 
   ANTHROPIC_API_KEY: z.string().optional(),

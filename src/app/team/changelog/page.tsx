@@ -18,7 +18,7 @@ export default function ChangelogPage() {
           Was ist <em>neu?</em>
         </h1>
         <p className="text-sm text-muted mt-2">
-          Alle Änderungen eines Tages als eine Version – veröffentlicht jeden Tag um 0 Uhr, gleichzeitig im Changelog-Kanal auf Discord.
+          Alle Änderungen eines Tages als eine Version – veröffentlicht jeden Tag um 0 Uhr, auf Discord mit den Tagesaufgaben am Morgen.
         </p>
       </header>
       <Suspense fallback={<div className="nv-skeleton h-96" />}>
@@ -50,7 +50,7 @@ async function Entries() {
           <article className={`nv-card p-5 ${preview ? "border-dashed border-red-line" : ""}`}>
             {preview && (
               <p className="mb-2 inline-flex items-center gap-1.5 rounded-full nv-tone-warn border px-2.5 py-0.5 text-xs font-medium">
-                Vorschau nur für Admins · wird um 0 Uhr veröffentlicht und auf Discord gepostet
+                Vorschau nur für Admins · wird um 0 Uhr veröffentlicht und danach auf Discord gepostet
               </p>
             )}
             <p className="nv-mono">{formatDay(new Date(`${e.date}T12:00:00`))}</p>

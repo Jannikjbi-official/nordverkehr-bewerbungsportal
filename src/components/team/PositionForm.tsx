@@ -301,7 +301,7 @@ export function PositionForm({ position, applicationCount = 0 }: { position: Pos
           </div>
         </div>
         <p className="nv-help">
-          Der Bot prüft die Daten jede Nacht um 0 Uhr (und morgens noch einmal) – also am besten ganze Tage wählen. „Öffnet am“ wirkt nur bei geschlossenen Stellen. Ist die Höchstzahl erreicht, schließt die Stelle sofort. Bei jeder Öffnung bekommen Vorgemerkte eine DM, der Stellenaufruf in Discord aktualisiert sich selbst.
+          Die Daten werden einmal am Tag mit den Tagesaufgaben geprüft (erster Aufruf im Team-Bereich ab 8 Uhr) – also am besten ganze Tage wählen. „Öffnet am“ wirkt nur bei geschlossenen Stellen. Ist die Höchstzahl erreicht, schließt die Stelle sofort. Bei jeder Öffnung bekommen Vorgemerkte eine DM, der Stellenaufruf in Discord aktualisiert sich selbst.
         </p>
       </fieldset>
 

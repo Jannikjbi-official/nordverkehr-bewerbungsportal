@@ -2,8 +2,9 @@
  * Störungs-Alarm (Einstellung alerts.enabled): Der Bot warnt im Leitungs-Chat
  * (sonst im Bot-Log), wenn …
  *  - in den letzten 24 h mindestens `alerts.failedThreshold` Zustellungen fehlschlugen,
- *  - der nächtliche Lauf (0 Uhr) oder der Morgen-Lauf (8 Uhr) seit über 26 h nicht lief.
- * Jeder Alarm höchstens einmal pro Tag. Die Läufe hinterlassen dafür einen „Herzschlag“.
+ *  - (optional) der Worker seit über 26 h keinen „Herzschlag“ hinterlassen hat.
+ * Jeder Alarm höchstens einmal pro Tag. Geprüft wird nur mit den Tagesaufgaben
+ * (lib/due-tasks.ts) – es gibt keine eigenen Prüf-Läufe.
  */
 import type { PrismaClient } from "@prisma/client";
 import { todayBerlin } from "@/lib/changelog";
@@ -13,10 +14,8 @@ import { buildBotLogMessage } from "@/lib/messages/embed";
 import { getSettings } from "@/lib/settings";
 
 const HOUR = 3_600_000;
-export type Heartbeat = "outbox-daily" | "summary" | "worker";
+export type Heartbeat = "worker";
 const LABEL: Record<Heartbeat, string> = {
-  "outbox-daily": "Nachtlauf (0 Uhr: Zustellung, Changelog, Stellen)",
-  summary: "Morgenlauf (8 Uhr: Team-Übersicht, Erinnerungen)",
   worker: "Worker (Discord-Gateway)",
 };
 
@@ -42,7 +41,7 @@ export function topError(errors: (string | null)[]) {
 }
 
 /** Prüft auf Störungen und postet ggf. einen Alarm. `check` = welche Läufe geprüft werden. */
-export async function checkAlerts(db: PrismaClient, check: Heartbeat[], now = new Date()) {
+export async function checkAlerts(db: PrismaClient, check: Heartbeat[] = [], now = new Date()) {
   const s = await getSettings();
   if (!s["alerts.enabled"]) return [];
   const channelId = s["discord.leadChannelId"] || (s["discord.botLogEnabled"] ? s["discord.botLogChannelId"] : "") || process.env.DISCORD_LOG_CHANNEL_ID || "";
@@ -63,7 +62,7 @@ export async function checkAlerts(db: PrismaClient, check: Heartbeat[], now = ne
     const last = await lastBeat(db, name);
     // Ohne Herzschlag (frische Installation) kein Alarm
     if (last && now.getTime() - last.getTime() > 26 * HOUR) {
-      alerts.push({ key: `alert:${name}:${day}`, text: `🚨 **Störung:** Der ${LABEL[name]} lief zuletzt am ${last.toLocaleString("de-DE", { timeZone: "Europe/Berlin" })} – über 26 Stunden her. Cron-Jobs in Vercel prüfen.` });
+      alerts.push({ key: `alert:${name}:${day}`, text: `🚨 **Störung:** Der ${LABEL[name]} lief zuletzt am ${last.toLocaleString("de-DE", { timeZone: "Europe/Berlin" })} – über 26 Stunden her. Bitte den Worker prüfen.` });
     }
   }
 

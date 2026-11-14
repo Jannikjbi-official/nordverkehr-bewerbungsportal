@@ -1,67 +1,39 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef } from "react";
-import { liveVersionAction, type LiveScope } from "@/app/actions/live";
+import { useEffect } from "react";
 
 /**
- * Hält die Seite aktuell, ohne dass man neu laden muss: fragt alle paar
- * Sekunden eine kleine Version ab und lädt nur bei Änderungen die Daten neu.
- * Eingaben (z. B. eine angefangene Nachricht) bleiben dabei erhalten.
- * Im Hintergrund-Tab pausiert die Abfrage; beim Zurückkommen wird sofort geprüft.
+ * Aktualisiert die Seite nur auf Abruf – kein Polling, keine Abfragen im Hintergrund:
+ * Kommt man nach einer Weile zurück in den Tab bzw. ins Fenster, werden die Daten
+ * einmal neu geladen (router.refresh). Eingaben (z. B. eine angefangene Nachricht)
+ * bleiben dabei erhalten. Sonst hilft Neuladen.
  */
-export function LiveRefresh({ scope, id, intervalMs = 5000 }: { scope: LiveScope; id?: string; intervalMs?: number }) {
+export function LiveRefresh({ awayMs = 30_000 }: { awayMs?: number } = {}) {
   const router = useRouter();
-  const last = useRef<string | null>(null);
-  const busy = useRef(false);
 
   useEffect(() => {
-    let stopped = false;
-    let fails = 0;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-
-    const check = async () => {
-      if (stopped || busy.current || document.visibilityState !== "visible") return;
-      busy.current = true;
-      try {
-        const v = await liveVersionAction(scope, id);
-        fails = 0;
-        if (v === null) {
-          stopped = true; // nicht (mehr) berechtigt – nicht weiter fragen
-          return;
-        }
-        if (last.current !== null && v !== last.current) router.refresh();
-        last.current = v;
-      } catch {
-        fails++; // Netz weg o. Ä. – langsamer weiterprobieren
-      } finally {
-        busy.current = false;
-      }
+    let hiddenAt: number | null = null;
+    const onHide = () => {
+      hiddenAt ??= Date.now();
     };
-
-    const schedule = () => {
-      if (stopped) return;
-      timer = setTimeout(async () => {
-        await check();
-        schedule();
-      }, intervalMs * Math.min(1 + fails, 6));
+    const onShow = () => {
+      if (hiddenAt === null) return;
+      const away = Date.now() - hiddenAt;
+      hiddenAt = null;
+      if (away >= awayMs) router.refresh();
     };
+    const onVisibility = () => (document.visibilityState === "hidden" ? onHide() : onShow());
 
-    const onVisible = () => {
-      if (document.visibilityState === "visible") void check();
-    };
-
-    void check();
-    schedule();
-    document.addEventListener("visibilitychange", onVisible);
-    window.addEventListener("focus", onVisible);
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("blur", onHide);
+    window.addEventListener("focus", onShow);
     return () => {
-      stopped = true;
-      if (timer) clearTimeout(timer);
-      document.removeEventListener("visibilitychange", onVisible);
-      window.removeEventListener("focus", onVisible);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("blur", onHide);
+      window.removeEventListener("focus", onShow);
     };
-  }, [scope, id, intervalMs, router]);
+  }, [awayMs, router]);
 
   return null;
 }

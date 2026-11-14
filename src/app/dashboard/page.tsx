@@ -67,7 +67,7 @@ async function ApplicationList() {
 
   return (
     <ul className="grid gap-4">
-      <LiveRefresh scope="my-list" intervalMs={8000} />
+      <LiveRefresh />
       {apps.map((a, i) => {
         const isDraft = a.status === "DRAFT";
         const dmIssue = a.confirmationDmStatus === "DM_CLOSED" || a.confirmationDmStatus === "FAILED";

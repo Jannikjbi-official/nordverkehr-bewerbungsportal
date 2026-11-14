@@ -39,7 +39,7 @@ async function Content({ searchParams }: Pick<PageProps<"/team/bewerbungen">, "s
 
   return (
     <div className="space-y-6">
-      <LiveRefresh scope="team-list" intervalMs={8000} />
+      <LiveRefresh />
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="nv-label">Team // Bewerbungen</p>

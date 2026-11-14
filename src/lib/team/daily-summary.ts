@@ -1,5 +1,5 @@
 /**
- * Tägliche Team-Übersicht: Jeden Morgen (Cron /api/cron/summary) postet der Bot
+ * Tägliche Team-Übersicht: Einmal am Tag (Tagesaufgaben, lib/due-tasks.ts) postet der Bot
  * in den Teamchat, was liegt – Gespräche heute, unbeantwortete Nachrichten,
  * liegengebliebene Bewerbungen, offene Rückzüge. Bewerbungen, auf die seit
  * `team.escalateDays` niemand reagiert hat, gehen zusätzlich an die Leitung.
@@ -182,7 +182,7 @@ export async function postDailySummary(db: PrismaClient, opts: { now?: Date; for
   const escalation = lead ? buildEscalationMessage(summary, publicEnv.appUrl) : null;
   const jobIds = await db
     .$transaction(async (tx) => {
-      // Markierung zuerst: läuft der Cron doppelt, gewinnt nur eine Instanz
+      // Markierung zuerst: laufen die Tagesaufgaben doppelt, gewinnt nur eine Instanz
       if (opts.force) await tx.setting.upsert({ where: { key }, create: { key, value: { at: now.toISOString() } }, update: { value: { at: now.toISOString(), forced: true } } });
       else await tx.setting.create({ data: { key, value: { at: now.toISOString() } } });
       const ids = [(await enqueue({ type: "CHANNEL_MESSAGE", kind: "summary", channelId, message: buildDailySummaryMessage(summary, publicEnv.appUrl) }, { tx })).id];
@@ -205,7 +205,7 @@ export async function sendPersonalDigests(db: PrismaClient, opts: { now?: Date; 
   const s = await getSettings();
   if (!s["team.personalDigestEnabled"]) return 0;
   const now = opts.now ?? new Date();
-  // Schon gesammelte Übersicht wiederverwenden (Morgen-Cron) – sonst selbst sammeln
+  // Schon gesammelte Übersicht wiederverwenden (Tagesaufgaben) – sonst selbst sammeln
   const summary = opts.summary ?? (await collectDailySummary(db, { now, staleDays: s["team.staleDays"], escalateDays: s["team.escalateDays"], closeDays: s["followup.closeDays"] }));
   const groups = groupByClaimer(summary);
   if (!groups.size) return 0;
@@ -217,7 +217,7 @@ export async function sendPersonalDigests(db: PrismaClient, opts: { now?: Date; 
   const ids: string[] = [];
   for (const u of users) {
     const key = `digest:${date}:${u.id}`;
-    // Eindeutiger Key: läuft der Cron doppelt, bekommt trotzdem jeder nur eine DM
+    // Eindeutiger Key: laufen die Tagesaufgaben doppelt, bekommt trotzdem jeder nur eine DM
     const created = await db.setting.create({ data: { key, value: { at: now.toISOString() } } }).then(() => true, () => false);
     if (!created) continue;
     const job = await enqueue({

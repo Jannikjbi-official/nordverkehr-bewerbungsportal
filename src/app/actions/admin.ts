@@ -328,15 +328,26 @@ export async function discordTestAction(kind: z.input<typeof CHANNEL_KIND>): Pro
   }
 }
 
-/** Alle Changelog-Posts des Bots im Kanal löschen; der nächste Cron postet die veröffentlichten Versionen neu. */
+/** Tagesaufgaben sofort ausführen (sonst beim ersten Team-Aufruf ab 8 Uhr, siehe lib/due-tasks.ts). */
+export async function runDailyTasksAction(): Promise<ActionResult<{ message: string }>> {
+  await requireAdmin();
+  const { runDailyTasksNow } = await import("@/lib/due-tasks");
+  const r = await runDailyTasksNow();
+  revalidatePath("/team", "layout");
+  const failed = r.steps.filter((s) => !s.ok).map((s) => s.name);
+  const text = `${r.steps.length - failed.length}/${r.steps.length} Aufgaben erledigt, ${r.delivered} Nachricht(en) zugestellt.`;
+  return failed.length ? { ok: false, error: `${text} Nicht geklappt: ${failed.join(", ")} (Details im Server-Log).` } : { ok: true, data: { message: text } };
+}
+
+/** Alle Changelog-Posts des Bots im Kanal löschen; beim nächsten Tageslauf werden die veröffentlichten Versionen neu gepostet. */
 export async function deleteChangelogPostsAction(): Promise<ActionResult<{ message: string }>> {
   await requireAdmin();
   const { deleteChangelogPosts } = await import("@/lib/discord/changelog-post");
   const r = await deleteChangelogPosts(db);
-  return { ok: true, data: { message: `${r.deleted} Changelog-Post(s) gelöscht. Der nächste Post kommt um 0 Uhr.` } };
+  return { ok: true, data: { message: `${r.deleted} Changelog-Post(s) gelöscht. Neu gepostet wird mit „Fertige Changelog-Tage jetzt posten“ oder beim nächsten Tageslauf.` } };
 }
 
-/** Veröffentlichte, noch nicht gepostete Versionen sofort posten (sonst übernimmt das der Cron um 0 Uhr). */
+/** Veröffentlichte, noch nicht gepostete Versionen sofort posten (sonst übernimmt das der nächste Tageslauf). */
 export async function postChangelogNowAction(): Promise<ActionResult<{ message: string }>> {
   await requireAdmin();
   const { postNewChangelogEntries } = await import("@/lib/discord/changelog-post");

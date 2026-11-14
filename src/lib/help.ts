@@ -233,12 +233,12 @@ export const HELP: HelpSection[] = [
       {
         id: "discord-kanaele",
         term: "Discord-Kanäle",
-        text: "**Bewerbungs-Kanal:** ein Post pro neuer Bewerbung. **Bot-Log:** Status, Claims, Nachrichten, Antworten von Bewerbern, Zustellfehler. **Changelog:** einmal am Tag um 0 Uhr alle Änderungen des Vortags als neue Version (gleichzeitig unter „Changelog“ im Team-Bereich). **Teamchat:** jeden Morgen die Team-Übersicht. **Leitungs-Chat:** Hinweis, wenn Bewerbungen zu lange liegen. Admins ändern die Kanäle in den Einstellungen und können dort mit „Discord-Zustellung prüfen“ eine Testnachricht schicken.",
+        text: "**Bewerbungs-Kanal:** ein Post pro neuer Bewerbung. **Bot-Log:** Status, Claims, Nachrichten, Antworten von Bewerbern, Zustellfehler. **Changelog:** einmal am Tag alle Änderungen des Vortags als neue Version (gleichzeitig unter „Changelog“ im Team-Bereich). **Teamchat:** einmal am Tag die Team-Übersicht. **Leitungs-Chat:** Hinweis, wenn Bewerbungen zu lange liegen. Admins ändern die Kanäle in den Einstellungen und können dort mit „Discord-Zustellung prüfen“ eine Testnachricht schicken.",
       },
       {
         id: "discord-pflicht",
         term: "Discord-Pflicht",
-        text: "Absenden geht nur, wenn die Person auf dem Nordverkehr-Discord ist – das Formular zeigt sonst einen Hinweis mit Einladungslink (ausfüllen und speichern geht trotzdem). Verlässt jemand den Server, während die Bewerbung läuft, schreibt der Bot ihm **automatisch** eine Nachricht ins Portal (per DM geht nicht mehr) – einmal pro Austritt. Das Team sieht oben in der Bewerbung einen roten Hinweis, im Bot-Log eine Zeile und morgens in der Team-Übersicht die Liste „Nicht mehr auf dem Discord“. Kommt die Person zurück, verschwindet der Hinweis von selbst. Geprüft wird beim Öffnen einer Bewerbung, im Hintergrund höchstens alle 15 Minuten, wenn jemand das Team-Dashboard öffnet, nachts und morgens per Cron – Admins können unter Admin-Bereich → Discord → „Bewerber auf dem Discord prüfen“ sofort alle prüfen.",
+        text: "Absenden geht nur, wenn die Person auf dem Nordverkehr-Discord ist – das Formular zeigt sonst einen Hinweis mit Einladungslink (ausfüllen und speichern geht trotzdem). Verlässt jemand den Server, während die Bewerbung läuft, schreibt der Bot ihm **automatisch** eine Nachricht ins Portal (per DM geht nicht mehr) – einmal pro Austritt. Das Team sieht oben in der Bewerbung einen roten Hinweis, im Bot-Log eine Zeile und morgens in der Team-Übersicht die Liste „Nicht mehr auf dem Discord“. Kommt die Person zurück, verschwindet der Hinweis von selbst. Geprüft wird beim Öffnen einer Bewerbung (im Hintergrund läuft nichts) – Admins können unter Admin-Bereich → Discord → „Bewerber auf dem Discord prüfen“ sofort alle prüfen.",
       },
       {
         id: "discord-knoepfe",
@@ -278,12 +278,12 @@ export const HELP: HelpSection[] = [
       {
         id: "stellen-automatisch",
         term: "Stellen automatisch öffnen & schließen",
-        text: "Pro Stelle lassen sich ein **Startdatum**, ein **Enddatum** und eine **Höchstzahl** an Bewerbungen eintragen. Der Bot prüft die Daten jede Nacht um 0 Uhr; ist die Höchstzahl erreicht, schließt die Stelle sofort nach der letzten Bewerbung. Bei jeder Öffnung bekommen alle eine DM, die „Bei neuen Stellen benachrichtigen“ eingeschaltet haben – und der Stellenaufruf im Discord aktualisiert sich selbst.",
+        text: "Pro Stelle lassen sich ein **Startdatum**, ein **Enddatum** und eine **Höchstzahl** an Bewerbungen eintragen. Die Daten werden einmal am Tag mit den Tagesaufgaben geprüft; ist die Höchstzahl erreicht, schließt die Stelle sofort nach der letzten Bewerbung. Bei jeder Öffnung bekommen alle eine DM, die „Bei neuen Stellen benachrichtigen“ eingeschaltet haben – und der Stellenaufruf im Discord aktualisiert sich selbst.",
       },
       {
         id: "team-uebersicht",
         term: "Team-Übersicht",
-        text: "Jeden Morgen gegen 8 Uhr postet der Bot in den Teamchat, was ansteht: **Gespräche heute**, Bewerbungen, bei denen der Bewerber zuletzt geschrieben hat (**wartet auf Antwort**), Bewerbungen, bei denen das Team seit ein paar Tagen nichts gemacht hat (**liegengeblieben** – kein Statuswechsel, keine Nachricht, kein Kommentar) und **noch nicht bestätigte Rückzüge**. Liegt etwas länger als eine Woche, bekommt der Leitungs-Chat einen kurzen Hinweis. Ist nichts zu tun, kommt kein Post. Die Tage stellen Admins in den Einstellungen ein.",
+        text: "Einmal am Tag – beim ersten Aufruf im Team-Bereich ab 8 Uhr – postet der Bot in den Teamchat, was ansteht: **Gespräche heute**, Bewerbungen, bei denen der Bewerber zuletzt geschrieben hat (**wartet auf Antwort**), Bewerbungen, bei denen das Team seit ein paar Tagen nichts gemacht hat (**liegengeblieben** – kein Statuswechsel, keine Nachricht, kein Kommentar) und **noch nicht bestätigte Rückzüge**. Liegt etwas länger als eine Woche, bekommt der Leitungs-Chat einen kurzen Hinweis. Ist nichts zu tun, kommt kein Post. Die Tage stellen Admins in den Einstellungen ein.",
       },
       {
         id: "stellenaufruf",
