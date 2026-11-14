@@ -7,6 +7,8 @@ import {
   Headset,
   ShieldCheck,
   UsersThree,
+  IdentificationCard,
+  Flask,
 } from "@phosphor-icons/react/ssr";
 import type { Icon } from "@phosphor-icons/react";
 import type { ApplicationStatus, DeliveryStatus } from "@prisma/client";
@@ -164,6 +166,8 @@ const POSITION_ICONS: Record<string, Icon> = {
   cube: Cube,
   confetti: Confetti,
   users: UsersThree,
+  id: IdentificationCard,
+  flask: Flask,
 };
 export const POSITION_ICON_KEYS = Object.keys(POSITION_ICONS);
 

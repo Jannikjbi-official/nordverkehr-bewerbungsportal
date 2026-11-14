@@ -7,7 +7,8 @@ import { NotifyToggle } from "@/components/NotifyToggle";
 import { Container, EmptyState, IconTile, PageHero, StatusBadge, formatDay, formatRelative } from "@/components/ui";
 import { requireUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
-import { STATUS_HINT } from "@/lib/applications/status";
+import { statusHintFor } from "@/lib/applications/status";
+import { kindOf } from "@/lib/kinds";
 import { DiscardDraftButton } from "@/components/dashboard/DiscardDraftButton";
 
 export const metadata: Metadata = { title: "Meine Bewerbungen", robots: { index: false } };
@@ -39,7 +40,7 @@ async function ApplicationList() {
   const apps = await db.application.findMany({
     where: { userId: user.id },
     include: {
-      position: { select: { title: true, slug: true, icon: true } },
+      position: { select: { title: true, slug: true, icon: true, type: { select: { key: true } } } },
       messages: { where: { direction: "TEAM_TO_APPLICANT", readAt: null }, select: { id: true } },
     },
     orderBy: [{ updatedAt: "desc" }],
@@ -51,12 +52,12 @@ async function ApplicationList() {
         icon={ClipboardText}
         title="Noch keine Bewerbung"
         action={
-          <Link href="/#positionen" className="nv-btn nv-btn-primary">
-            Offene Positionen ansehen <ArrowRight size={16} aria-hidden />
+          <Link href="/#bewerben" className="nv-btn nv-btn-primary">
+            Jetzt bewerben <ArrowRight size={16} aria-hidden />
           </Link>
         }
       >
-        Such dir eine Position aus – dein Entwurf wird automatisch gespeichert.
+        Whitelist, Beta-Test oder Team – such dir aus, wo du mitmachen willst. Dein Entwurf wird automatisch gespeichert.
         <div className="mt-5 max-w-sm mx-auto">
           <NotifyToggle on={!!user.notifyNewPositions} compact />
         </div>
@@ -87,7 +88,7 @@ async function ApplicationList() {
                     ? `Entwurf · zuletzt gespeichert ${formatRelative(a.updatedAt)}`
                     : `${a.publicId} · eingereicht am ${formatDay(a.submittedAt)}`}
                 </p>
-                <p className="mt-2 text-sm text-fg-2">{STATUS_HINT[a.status]}</p>
+                <p className="mt-2 text-sm text-fg-2">{statusHintFor(a.status, kindOf(a.position.type.key))}</p>
                 {dmIssue && (
                   <p className="mt-2 flex items-center gap-1.5 text-xs text-[var(--tone-danger)]">
                     <WarningCircle size={14} aria-hidden /> Wir konnten dir keine Discord-DM schicken.

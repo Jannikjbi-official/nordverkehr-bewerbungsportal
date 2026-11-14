@@ -49,6 +49,13 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  // Kurz-Links für die eigenen Bewerbungsarten (URL bleibt /whitelist bzw. /beta)
+  async rewrites() {
+    return [
+      { source: "/whitelist", destination: "/positionen/whitelist" },
+      { source: "/beta", destination: "/positionen/beta" },
+    ];
+  },
   // Alte Einstellungsseite → Admin-Bereich (Lesezeichen, Links in Hilfetexten)
   async redirects() {
     return [{ source: "/team/einstellungen", destination: "/team/admin", permanent: false }];

@@ -25,6 +25,13 @@ Bewerber loggen sich mit Discord ein, füllen ein Formular in Ruhe aus und verfo
 
 ## Funktionen
 
+### Bewerbungsarten
+- **Whitelist** (`/whitelist`) – Formular mit Charakter, Regel-Quiz und Szenarien, danach Whitelist-Gespräch auf Discord; bei Annahme automatisch die Whitelist-Rolle.
+- **Beta-Test** (`/beta`) – kurzes Formular, begrenzte Plätze, kein Gespräch; bei Annahme die Beta-Rolle.
+- **Team** – Stellen wie Support oder Moderation mit Gespräch, Einarbeitung und Probezeit.
+
+Whitelist und Beta starten **geschlossen**: unter *Positionen & Fragen* Rolle eintragen, Fragen prüfen und öffnen.
+
 ### Für Bewerber
 - **Login mit Discord** – kein eigener Account, nur der Scope `identify`.
 - **Mehrstufiges Formular** mit Autosave, Regel-Quiz und Szenario-Fragen pro Stelle; allgemeine Antworten werden fürs nächste Mal vorausgefüllt.

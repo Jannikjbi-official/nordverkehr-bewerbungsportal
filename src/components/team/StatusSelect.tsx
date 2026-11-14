@@ -10,7 +10,7 @@ const HINT: Partial<Record<ApplicationStatus, string>> = {
   SUBMITTED: "Zurück in den Eingang",
   IN_REVIEW: "Wird gerade gelesen",
   INTERVIEW: "Gespräch geplant",
-  ACCEPTED: "Ins Team aufnehmen",
+  ACCEPTED: "Annehmen",
   REJECTED: "Absage, Sperrfrist startet",
 };
 
@@ -42,6 +42,8 @@ interface Props {
   allowNone?: boolean;
   label: string;
   disabled?: boolean;
+  /** Erklärung bei „Angenommen“ je nach Art (z. B. „Ins Team aufnehmen“) */
+  acceptHint?: string;
 }
 
 /** Eigenes Dropdown (Listbox) im Nordverkehr-Stil – voll per Tastatur bedienbar. */
@@ -53,7 +55,9 @@ export function StatusSelect({
   allowNone,
   label,
   disabled,
+  acceptHint,
 }: Props) {
+  const hintOf = (s: ApplicationStatus) => (s === "ACCEPTED" && acceptHint ? acceptHint : HINT[s]);
   const [open, setOpen] = useState(false);
   const items: (ApplicationStatus | null)[] = allowNone
     ? [null, ...options]
@@ -258,9 +262,9 @@ export function StatusSelect({
                     <span className="block font-medium">
                       {s ? STATUS_LABEL[s] : "Status nicht ändern"}
                     </span>
-                    {s && HINT[s] && (
+                    {s && hintOf(s) && (
                       <span className="block text-xs text-muted">
-                        {HINT[s]}
+                        {hintOf(s)}
                       </span>
                     )}
                   </span>

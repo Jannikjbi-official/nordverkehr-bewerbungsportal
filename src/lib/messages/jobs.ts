@@ -21,6 +21,8 @@ export interface JobPosition {
   minAge: number | null;
   /** Discord-Rolle der Position – wird als Erwähnung angezeigt (ohne Ping) */
   acceptRoleId: string | null;
+  /** Bewerbungsart (Whitelist/Beta haben eigene Texte im Einzelaufruf) */
+  type?: { key: string } | null;
 }
 
 interface Opts {
@@ -37,6 +39,8 @@ const ICON_EMOJI: Record<string, string> = {
   cube: "🧱",
   confetti: "🎉",
   users: "👥",
+  id: "🪪",
+  flask: "🧪",
 };
 export const jobEmoji = (icon: string) => ICON_EMOJI[icon] ?? "📌";
 
@@ -111,11 +115,15 @@ export function buildJobsMessage(positions: JobPosition[], opts: Opts): RESTPost
 /** Einzelaufruf „Wir suchen <Stelle>!“ – wie das Beispiel, ein durchgehender Block. */
 export function buildSpotlightMessage(p: JobPosition, opts: Opts): RESTPostAPIChannelMessageJSONBody {
   const open = p.status === "OPEN";
-  const parts: string[] = [
-    `## Wir suchen ${roleOrTitle(p)}! ${jobEmoji(p.icon)}`,
-    `${p.tagline} ${p.description}`,
-  ];
-  if (p.tasks.length) parts.push("", "📋 **Deine Aufgaben:**", ...p.tasks.map((t) => `> ${t}`));
+  const kind = p.type?.key ?? "team";
+  const headline =
+    kind === "whitelist"
+      ? `## ${open ? "Die Whitelist ist offen!" : "Whitelist"} ${jobEmoji(p.icon)}`
+      : kind === "beta"
+        ? `## ${open ? "Beta-Tester gesucht!" : "Beta-Test"} ${jobEmoji(p.icon)}`
+        : `## Wir suchen ${roleOrTitle(p)}! ${jobEmoji(p.icon)}`;
+  const parts: string[] = [headline, `${p.tagline} ${p.description}`];
+  if (p.tasks.length) parts.push("", kind === "team" ? "📋 **Deine Aufgaben:**" : "📋 **So läuft's:**", ...p.tasks.map((t) => `> ${t}`));
   const reqs = p.requirements.length ? p.requirements : [`Mindestens ${p.minAge ?? opts.defaultMinAge} Jahre alt`];
   parts.push("", "🔧 **Das solltest du mitbringen:**", ...reqs.map((r) => `> ${r}`));
   parts.push(
@@ -123,7 +131,9 @@ export function buildSpotlightMessage(p: JobPosition, opts: Opts): RESTPostAPICh
     "📩 **Interesse?**",
     open
       ? "Bewirb dich direkt im **Bewerbungsportal** – Login mit Discord, dauert ca. 15–25 Minuten."
-      : "Die Stelle ist gerade geschlossen. Schau bald wieder vorbei – wir melden uns hier, sobald sie wieder offen ist.",
+      : kind === "team"
+        ? "Die Stelle ist gerade geschlossen. Schau bald wieder vorbei – wir melden uns hier, sobald sie wieder offen ist."
+        : "Gerade geschlossen. Wir melden uns hier, sobald es losgeht.",
     "",
     "Mit freundlichen Grüßen",
     "Euer Nordverkehr-Team",
@@ -132,7 +142,15 @@ export function buildSpotlightMessage(p: JobPosition, opts: Opts): RESTPostAPICh
   const children: APIComponentInContainer[] = [text(truncate(parts.join(NL), 3800))];
   if (open && isHttps(opts.appUrl)) {
     children.push(
-      ...buttonRows([{ type: 2, style: 5, label: `Jetzt als ${truncate(p.title, 60)} bewerben`, url: `${opts.appUrl}/positionen/${p.slug}`, emoji: { name: jobEmoji(p.icon) } }]),
+      ...buttonRows([
+        {
+          type: 2,
+          style: 5,
+          label: kind === "whitelist" ? "Jetzt zur Whitelist bewerben" : kind === "beta" ? "Jetzt für die Beta bewerben" : `Jetzt als ${truncate(p.title, 60)} bewerben`,
+          url: `${opts.appUrl}/positionen/${p.slug}`,
+          emoji: { name: jobEmoji(p.icon) },
+        },
+      ]),
     );
   }
   children.push(...footer(opts));

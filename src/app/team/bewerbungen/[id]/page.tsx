@@ -1,3 +1,4 @@
+import { kindOf } from "@/lib/kinds";
 import type { Metadata } from "next";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import Link from "next/link";
@@ -78,7 +79,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
     where: { id },
     include: {
       user: true,
-      position: true,
+      position: { include: { type: { select: { key: true } } } },
       claimedBy: { select: { id: true, globalName: true, username: true, discordId: true, avatar: true } },
       answers: { orderBy: { sortOrder: "asc" } },
       votes: { include: { user: { select: { globalName: true, username: true } } }, orderBy: { createdAt: "asc" } },
@@ -149,8 +150,9 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
   // Schnitt inkl. Bewertungen von vor einem Wechsel auf eigene Kriterien (Panel zeigt nur die aktuellen Kriterien)
   const ratingSummary = summarizeRatings(app.ratings, withLegacy(criteria));
   // Phase 2 (Gespräch) erst ab X Sternen Team-Schnitt
-  const interviewBlock = ["SUBMITTED", "IN_REVIEW"].includes(app.status) ? interviewBlockText(ratingSummary.overall, settings["interview.minStars"], formatScore) : null;
-  const statusTargets = allowedTeamTargets(app.status).filter((s) => !(s === "INTERVIEW" && interviewBlock));
+  const interviewBlock = kindOf(app.position.type.key).interview && ["SUBMITTED", "IN_REVIEW"].includes(app.status) ? interviewBlockText(ratingSummary.overall, settings["interview.minStars"], formatScore) : null;
+  const kind = kindOf(app.position.type.key);
+  const statusTargets = allowedTeamTargets(app.status, { interview: kind.interview }).filter((s) => !(s === "INTERVIEW" && interviewBlock));
   // Noch keine KI-Punkte? Dann jetzt im Hintergrund nachholen (einmal, gesperrt gegen Doppelaufrufe)
   const wantsAutoScore = aiEnabled && settings["ai.autoScoreEnabled"] && app.status !== "WITHDRAWN" && !readAiRating(app.aiRating) && aiScoreAllowed(app);
   // Budget aufgebraucht o. Ä.? Dann nicht „bewertet gerade …“ anzeigen, sondern den Grund
@@ -184,7 +186,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
     app.interviewNotes,
   );
   // Reiter „Gespräch“: ab Einladung zum Gespräch oder sobald schon etwas notiert ist
-  const showProtocol = protocol.started || ["INTERVIEW", "ACCEPTED", "REJECTED"].includes(app.status);
+  const showProtocol = protocol.started || (kind.interview && ["INTERVIEW", "ACCEPTED", "REJECTED"].includes(app.status));
   // Teammitglieder für die Paten-Auswahl (nur bei angenommenen Bewerbungen)
   const teamMembers =
     app.status === "ACCEPTED"
@@ -543,7 +545,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
 
         <aside className="space-y-4 min-w-0">
           <div className="nv-card p-5 space-y-5">
-            <StatusControl applicationId={app.id} current={app.status} targets={statusTargets} />
+            <StatusControl applicationId={app.id} current={app.status} targets={statusTargets} kind={kind.key} />
             {interviewBlock && <p className="text-xs text-[var(--tone-warn)]">⭐ {interviewBlock}</p>}
             {acceptRuleText(app.position) && app.status !== "ACCEPTED" && (
               <p className="text-xs text-muted">
@@ -553,7 +555,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
             <HelpLink id="status" label="Was bedeuten die Status?" />
             {["SUBMITTED", "IN_REVIEW", "INTERVIEW"].includes(app.status) && <MuteControl applicationId={app.id} until={app.mutedUntil?.toISOString() ?? null} nowMs={nowMs()} />}
             <div className="nv-divider" />
-            <InterviewForm applicationId={app.id} at={app.interviewAt?.toISOString() ?? null} note={app.interviewNote} />
+            {kind.interview && <InterviewForm applicationId={app.id} at={app.interviewAt?.toISOString() ?? null} note={app.interviewNote} />}
             {app.status === "INTERVIEW" && voiceInfo && <p className="text-xs text-muted">🎙️ Im Gesprächskanal: {voiceInfo}</p>}
             {app.status === "INTERVIEW" && suspectNoShow && (
               <p className="text-xs text-[var(--tone-warn)]">⚠ War bisher nicht im Gesprächskanal – nicht erschienen?</p>
@@ -571,7 +573,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
             )}
           </div>
 
-          {app.status === "ACCEPTED" && (
+          {app.status === "ACCEPTED" && kind.teamFeatures && (
             <div className="nv-card p-5">
               <p className="nv-mono mb-3 flex items-center justify-between gap-2">
                 Einarbeitung <HelpLink id="einarbeitung" label="Was ist das?" />

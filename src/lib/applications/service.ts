@@ -1,3 +1,4 @@
+import { kindOf } from "@/lib/kinds";
 import "server-only";
 import { db } from "@/lib/db";
 import { env, publicEnv } from "@/lib/env";
@@ -5,7 +6,7 @@ import { getSettings, type Settings } from "@/lib/settings";
 import { checkEligibility, effectiveMinAge } from "@/lib/applications/rules";
 import {
   CONSENT_VERSION,
-  confirmationsSchema,
+  confirmationsSchemaFor,
   normalizeAnswers,
   scoreQuiz,
   validateAll,
@@ -89,9 +90,10 @@ export async function submitApplication(
   const settings = await getSettings();
   const draft = await db.application.findFirst({
     where: { id: input.draftId, userId: user.id, status: "DRAFT" },
-    include: { position: true },
+    include: { position: { include: { type: { select: { key: true } } } } },
   });
   if (!draft) throw new UserFacingError("Entwurf nicht gefunden. Lade die Seite neu.");
+  const kind = kindOf(draft.position.type.key);
 
   // Spam-Schutz: Honeypot + Mindest-Ausfüllzeit
   if (input.honeypot) throw new UserFacingError("Das hat nicht geklappt. Bitte lade die Seite neu.");
@@ -108,7 +110,7 @@ export async function submitApplication(
     throw new UserFacingError("Bitte gib dein Alter an.", { age: "Bitte gib dein Alter an." });
   }
   if (input.age < minAge) {
-    throw new UserFacingError(`Für Team-Positionen gilt ein Mindestalter von ${minAge} Jahren.`, {
+    throw new UserFacingError(`Für die ${kind.noun} gilt ein Mindestalter von ${minAge} Jahren.`, {
       age: `Mindestalter ${minAge} Jahre.`,
     });
   }
@@ -118,7 +120,7 @@ export async function submitApplication(
   const validation = validateAll(sections, answers);
   if (!validation.ok) throw new UserFacingError("Ein paar Angaben fehlen noch.", validation.errors);
 
-  const confirmations = confirmationsSchema.safeParse(input.confirmations);
+  const confirmations = confirmationsSchemaFor(kind.key).safeParse(input.confirmations);
   if (!confirmations.success) throw new UserFacingError("Bitte bestätige alle Punkte im letzten Schritt.");
 
   const uploadIds = await verifyUploads(user.id, sections, answers);
@@ -214,7 +216,7 @@ export async function submitApplication(
 
     // Automatische Bestätigung: im Portal + per DM
     const rendered = renderTemplate(
-      settings["messages.confirmationTemplate"],
+      kind.confirmationTemplate ?? settings["messages.confirmationTemplate"],
       buildTemplateVars({
         applicant: user,
         positionTitle: draft.position.title,
@@ -265,6 +267,7 @@ export async function submitApplication(
             teamUrl: `${publicEnv.appUrl}/team/bewerbungen/${draft.id}`,
             flags: flags.map((f) => f.message),
             claimCustomId: settings["discord.claimButton"] ? claimCustomId(draft.id) : null,
+            interview: kind.interview,
           }),
           ...(settings["discord.threadPerApplication"] ? { startThread: threadName(publicId, draft.position.title) } : {}),
         },

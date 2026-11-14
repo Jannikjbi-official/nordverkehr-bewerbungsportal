@@ -144,6 +144,8 @@ export interface LogEmbedInput {
   flags: string[];
   /** Knopf „Übernehmen“ direkt in Discord (custom_id), sonst nur der Link */
   claimCustomId?: string | null;
+  /** Hat die Art ein Gespräch? (Beta nicht → kein Knopf „Zum Gespräch“) */
+  interview?: boolean;
 }
 
 /** Post für neue Bewerbungen im Bewerbungs-Kanal. */
@@ -159,18 +161,18 @@ export function buildLogMessage(input: LogEmbedInput): RESTPostAPIChannelMessage
     input.flags.length > 0 && text(truncate(`**Hinweise** (keine Bewertung)\n${input.flags.map((f) => `• ${f}`).join("\n")}`, 1000)),
     separator(false),
     text(`-# Eingegangen ${discordTime(new Date(), "R")}`),
-    input.claimCustomId ? claimRow(input.teamUrl, input.claimCustomId) : linkButtons([{ label: "Im Team-Bereich öffnen", url: input.teamUrl }]),
+    input.claimCustomId ? claimRow(input.teamUrl, input.claimCustomId, input.interview ?? true) : linkButtons([{ label: "Im Team-Bereich öffnen", url: input.teamUrl }]),
   ]);
 }
 
 /** „Übernehmen“, „In Prüfung“, „Zum Gespräch“ (Interaktionen, siehe lib/discord/interactions.ts) + Link. */
-function claimRow(url: string, customId: string): APIActionRowComponent<APIButtonComponent> {
+function claimRow(url: string, customId: string, interview: boolean): APIActionRowComponent<APIButtonComponent> {
   const id = customId.slice(customId.lastIndexOf(":") + 1);
   return buttonRow(
     [
       { label: "Übernehmen", customId, emoji: "📌", style: 1 },
       { label: "In Prüfung", customId: `nv:status:IN_REVIEW:${id}`, emoji: "🔎" },
-      { label: "Zum Gespräch", customId: `nv:status:INTERVIEW:${id}`, emoji: "🎙️" },
+      ...(interview ? [{ label: "Zum Gespräch", customId: `nv:status:INTERVIEW:${id}`, emoji: "🎙️" }] : []),
     ],
     { label: "Öffnen", url },
   );

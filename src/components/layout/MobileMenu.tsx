@@ -24,7 +24,10 @@ export function MobileMenu({ discordInvite }: Props) {
   }, [open]);
 
   const portal = [
-    { href: "/", label: "Positionen" },
+    { href: "/", label: "Bewerben" },
+    { href: "/whitelist", label: "Whitelist" },
+    { href: "/beta", label: "Beta-Test" },
+    { href: "/#positionen", label: "Team-Stellen" },
     { href: "/passt-zu-mir", label: "Welche Stelle passt?" },
     { href: "/dashboard", label: "Meine Bewerbungen" },
     { href: "/ideen", label: "Ideen & Fehler" },

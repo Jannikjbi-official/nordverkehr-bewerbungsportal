@@ -1,3 +1,4 @@
+import { kindOf } from "@/lib/kinds";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -42,14 +43,16 @@ async function List() {
   const [positions, general, jobsPost, settings, spotlights] = await Promise.all([
     db.position.findMany({
       orderBy: { sortOrder: "asc" },
-      include: { _count: { select: { applications: { where: { status: { not: "DRAFT" } } }, sections: true } } },
+      include: { type: { select: { key: true } }, _count: { select: { applications: { where: { status: { not: "DRAFT" } } }, sections: true } } },
     }),
-    db.formSection.count({ where: { positionId: null, NOT: { archived: true } } }),
+    db.formSection.count({ where: { positionId: null, type: { key: "team" }, NOT: { archived: true } } }),
     getJobsPost(db),
     getSettings(),
     getSpotlights(db),
   ]);
-  const jobsMessage = buildJobsMessage(positions as unknown as JobPosition[], { appUrl: publicEnv.appUrl, defaultMinAge: settings["applications.minAge"] });
+  // Stellenaufruf in Discord: nur Team-Stellen (Whitelist/Beta haben eigene Seiten)
+  const teamPositions = positions.filter((p) => p.type.key === "team");
+  const jobsMessage = buildJobsMessage(teamPositions as unknown as JobPosition[], { appUrl: publicEnv.appUrl, defaultMinAge: settings["applications.minAge"] });
   return (
     <div className="space-y-4">
       <Link href="/team/positionen/allgemein" className="nv-card nv-card-hover flex items-center gap-4 p-5">
@@ -58,7 +61,7 @@ async function List() {
         </div>
         <div className="flex-1">
           <p className="font-semibold">Allgemeine Fragen</p>
-          <p className="text-sm text-muted">{general} Schritte – gelten für alle Positionen (Über dich, Erfahrung & Motivation). Szenarien hat jede Stelle selbst.</p>
+          <p className="text-sm text-muted">{general} Schritte – gelten für alle Team-Positionen (Über dich, Erfahrung & Motivation). Szenarien hat jede Stelle selbst. Whitelist und Beta haben eigene Fragen.</p>
         </div>
         <ArrowRight size={16} className="text-muted" aria-hidden />
       </Link>
@@ -67,7 +70,10 @@ async function List() {
           <li key={p.id} className="nv-card p-5 flex flex-col gap-4 sm:flex-row sm:items-center">
             <IconTile icon={p.icon} />
             <div className="flex-1 min-w-0">
-              <p className="font-display text-2xl">{p.title}</p>
+              <p className="font-display text-2xl flex flex-wrap items-center gap-2">
+                {p.title}
+                {p.type.key !== "team" && <span className="nv-pill nv-pill-red !text-[0.7rem] !py-0.5">{kindOf(p.type.key).noun}</span>}
+              </p>
               <p className="text-sm text-muted">
                 /{p.slug} · {p._count.applications} Bewerbungen · {p._count.sections} eigene Schritte
               </p>

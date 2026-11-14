@@ -44,7 +44,10 @@ try {
   const s = await getSettings();
   check(typeof s["night.start"] === "string", "Einstellungen lesbar");
   const { runMigrations } = await import("../src/lib/setup/migrations");
-  check((await runMigrations(db)).length === 0, "Keine Migration läuft erneut (Markierungen übernommen)");
+  // Alte Migrationen sind markiert – nur neue (z. B. Whitelist & Beta) laufen danach
+  const ran = await runMigrations(db);
+  check(ran.every((m) => m === "2026-11-whitelist-beta"), `Nur neue Migrationen laufen (${ran.join(", ") || "keine"})`);
+  check((await db.position.count({ where: { slug: { in: ["whitelist", "beta"] } } })) === 2, "Nach der Übernahme: Whitelist & Beta vorhanden");
   // Zweiter Lauf ersetzt sauber (idempotent)
   const r2 = await importFromMongo(db, mongoUrl);
   check(r2.totalInserted === r.totalInserted, "Zweiter Lauf: gleiches Ergebnis");

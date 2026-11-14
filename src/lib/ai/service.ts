@@ -4,6 +4,7 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { db } from "@/lib/db";
+import { kindOf } from "@/lib/kinds";
 import { type Settings } from "@/lib/settings";
 import { rateLimit } from "@/lib/rate-limit";
 import { FEATURE_CONFIG, SERVER_FALLBACK_MODELS, costMicroUsd, dayStart, isAiConfigured, monthStart, type AiFeature } from "@/lib/ai/config";
@@ -63,7 +64,7 @@ export async function assertAiAllowed(userId: string, settings: Settings) {
 export async function loadApplicationContext(applicationId: string, settings: Settings): Promise<ApplicationContext> {
   const app = await db.application.findUnique({
     where: { id: applicationId },
-    include: { position: true, answers: { orderBy: { sortOrder: "asc" } } },
+    include: { position: { include: { type: { select: { key: true } } } }, answers: { orderBy: { sortOrder: "asc" } } },
   });
   if (!app || app.status === "DRAFT") throw new AiError("Bewerbung nicht gefunden.", 404);
 
@@ -83,7 +84,7 @@ export async function loadApplicationContext(applicationId: string, settings: Se
     if (budget <= 0) break;
   }
   return {
-    position: { title: app.position.title, tasks: app.position.tasks, requirements: app.position.requirements },
+    position: { title: app.position.title, tasks: app.position.tasks, requirements: app.position.requirements, kind: kindOf(app.position.type.key).noun },
     answers,
     suspicious,
   };

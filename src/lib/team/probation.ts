@@ -95,7 +95,8 @@ export async function decideProbation(db: PrismaClient, opts: { applicationId: s
 /** Morgens: Probezeit endet (heute/vorbei) → DM an den Betreuer; Pate nach 14 Tagen → DM für die Rückmeldung. */
 export async function sendProbationReminders(db: PrismaClient, now = new Date()) {
   const ids: string[] = [];
-  const base = { status: "ACCEPTED" as const, isTest: { not: true }, OR: [{ probationResult: null }] };
+  // Probezeit und Pate gibt es nur bei Team-Bewerbungen (nicht Whitelist/Beta)
+  const base = { status: "ACCEPTED" as const, isTest: { not: true }, position: { type: { key: "team" } }, OR: [{ probationResult: null }] };
   const due = await db.application.findMany({
     where: { ...base, probationUntil: { not: null, lte: new Date(now.getTime() + DAY) } },
     include: { user: { select: { globalName: true, username: true } }, position: { select: { title: true } }, claimedBy: { select: { discordId: true } } },

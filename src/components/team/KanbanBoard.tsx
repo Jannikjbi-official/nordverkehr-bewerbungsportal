@@ -1,5 +1,6 @@
 "use client";
 
+import { kindOf, type KindKey } from "@/lib/kinds";
 import Link from "next/link";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import { useRouter } from "next/navigation";
@@ -32,6 +33,8 @@ export interface BoardItem {
   discordId: string;
   avatar: string | null;
   position: string;
+  /** Bewerbungsart (Team, Whitelist, Beta) – Beta ohne Gespräch */
+  kind?: KindKey;
   submittedAt: string | null;
   votes: { pro: number; contra: number; abstain: number };
   flags: number;
@@ -55,13 +58,19 @@ export function KanbanBoard({ items: initial }: { items: BoardItem[] }) {
     const item = items.find((i) => i.id === e.active.id);
     const to = e.over?.id as ApplicationStatus | undefined;
     if (!item || !to || item.status === to) return;
-    if (!canTeamTransition(item.status, to)) {
+    const kind = kindOf(item.kind);
+    if (!canTeamTransition(item.status, to, { interview: kind.interview })) {
       setMessage({ tone: "err", text: `${STATUS_LABEL[item.status]} → ${STATUS_LABEL[to]} ist nicht möglich.` });
       return;
     }
     if ((to === "ACCEPTED" || to === "REJECTED") && !(await confirmDialog({
         title: `${item.name} auf „${STATUS_LABEL[to]}“ setzen?`,
-        body: to === "REJECTED" ? "Die Bewerbung wird abgelehnt, die Sperrfrist startet." : "Die Person wird ins Team aufgenommen.",
+        body:
+          to === "REJECTED"
+            ? "Die Bewerbung wird abgelehnt, die Sperrfrist startet."
+            : kind.key === "team"
+              ? "Die Person wird ins Team aufgenommen."
+              : `Die ${kind.noun} wird angenommen – die Rolle der Stelle wird vergeben.`,
         confirmLabel: STATUS_LABEL[to],
         tone: to === "REJECTED" ? "danger" : "default",
       }))) return;

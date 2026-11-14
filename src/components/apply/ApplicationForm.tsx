@@ -1,5 +1,6 @@
 "use client";
 
+import { kindOf, type KindKey } from "@/lib/kinds";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -16,7 +17,7 @@ import {
   WarningCircle,
 } from "@phosphor-icons/react/ssr";
 import {
-  CONFIRMATIONS,
+  confirmationsFor,
   formatAnswerForDisplay,
   validateSection,
   type AnswerMap,
@@ -29,7 +30,7 @@ import { QuestionField } from "@/components/apply/QuestionField";
 import type { UploadedFile } from "@/components/apply/FileUpload";
 
 interface Props {
-  position: { id: string; title: string; slug: string };
+  position: { id: string; title: string; slug: string; kind: KindKey };
   sections: FormSectionDef[];
   minAge: number;
   displayName: string;
@@ -90,13 +91,9 @@ export function ApplicationForm({ position, sections, minAge, displayName, initi
   const [age, setAge] = useState<number | null>(initial.age);
   const [draftId, setDraftId] = useState<string | null>(initial.draftId);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [confirm, setConfirm] = useState<Record<ConfirmationKey, boolean>>({
-    voice: false,
-    rules: false,
-    unpaid: false,
-    truth: false,
-    privacy: false,
-  });
+  const kind = kindOf(position.kind);
+  const CONFIRMATIONS = confirmationsFor(kind.key);
+  const [confirm, setConfirm] = useState<Partial<Record<ConfirmationKey, boolean>>>({});
   const [uploads, setUploads] = useState(initialUploads);
   const [save, setSave] = useState<SaveState>(initial.draftId ? { kind: "saved", at: new Date() } : { kind: "idle" });
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -377,7 +374,8 @@ export function ApplicationForm({ position, sections, minAge, displayName, initi
             {step === 0 && (
               <div className="mt-6 space-y-6">
                 <p className="text-muted">
-                  Du bewirbst dich als <strong className="text-fg">{position.title}</strong>. Nimm dir Zeit – dein
+                  {kind.key === "team" ? "Du bewirbst dich als" : kind.key === "beta" ? "Du bewirbst dich für den" : "Du bewirbst dich für die"}{" "}
+                  <strong className="text-fg">{position.title}</strong>. Nimm dir Zeit – dein
                   Entwurf wird automatisch gespeichert, du kannst jederzeit pausieren und später weitermachen.
                 </p>
                 <div className="max-w-xs" data-q="age">
@@ -401,7 +399,7 @@ export function ApplicationForm({ position, sections, minAge, displayName, initi
                     }}
                   />
                   <p id="age-help" className="nv-help mt-1.5">
-                    Mindestalter für Team-Positionen: {minAge} Jahre.
+                    Mindestalter für die {kind.noun}: {minAge} Jahre.
                   </p>
                   {errors.age && <p className="nv-error mt-1" role="alert">{errors.age}</p>}
                 </div>
@@ -409,8 +407,9 @@ export function ApplicationForm({ position, sections, minAge, displayName, initi
                   <div className="rounded-xl border nv-tone-warn px-4 py-3 text-sm" role="alert">
                     <p className="font-semibold">Leider noch zu früh.</p>
                     <p className="text-fg-2 mt-0.5">
-                      Aus Jugendschutzgründen nehmen wir ins Team erst Leute ab {minAge} Jahren auf. Spiel gern weiter auf
-                      dem Server – und komm wieder, wenn&apos;s so weit ist.
+                      {kind.key === "team"
+                        ? <>Aus Jugendschutzgründen nehmen wir ins Team erst Leute ab {minAge} Jahren auf. Spiel gern weiter auf dem Server – und komm wieder, wenn&apos;s so weit ist.</>
+                        : <>Für die {kind.noun} gilt ein Mindestalter von {minAge} Jahren. Komm gern wieder, wenn&apos;s so weit ist.</>}
                     </p>
                   </div>
                 )}
@@ -584,7 +583,7 @@ export function ApplicationForm({ position, sections, minAge, displayName, initi
               </button>
             ) : (
               <Link href={`/positionen/${position.slug}`} className="nv-btn nv-btn-quiet">
-                <ArrowLeft size={16} aria-hidden /> Zur Position
+                <ArrowLeft size={16} aria-hidden /> {kind.key === "team" ? "Zur Position" : "Zurück"}
               </Link>
             )}
             {step < last ? (

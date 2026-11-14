@@ -4,6 +4,7 @@ import { env, publicEnv } from "@/lib/env";
 import { getSettings } from "@/lib/settings";
 import { enqueue } from "@/lib/discord/outbox-db";
 import { canTeamTransition } from "@/lib/applications/status";
+import { kindOf } from "@/lib/kinds";
 import { cooldownUntil, effectiveCooldownDays } from "@/lib/applications/rules";
 import { buildApplicantMessage } from "@/lib/messages/embed";
 import { PORTAL_ANSWER_LABEL, portalAnswerUrl } from "@/lib/discord/interactions";
@@ -34,10 +35,12 @@ export async function changeStatus(opts: {
   /** Termin wurde gerade vom Team gesetzt – nicht als „alter Termin“ wegräumen */
   keepInterview?: boolean;
 }) {
-  const app = await db.application.findUnique({ where: { id: opts.applicationId }, include: { position: true, user: true } });
+  const app = await db.application.findUnique({ where: { id: opts.applicationId }, include: { position: { include: { type: { select: { key: true } } } }, user: true } });
   if (!app) throw new UserFacingError("Bewerbung nicht gefunden.");
   if (app.status === opts.to) return { jobIds: [] as string[] };
-  if (!canTeamTransition(app.status, opts.to)) {
+  const kind = kindOf(app.position.type.key);
+  if (opts.to === "INTERVIEW" && !kind.interview) throw new UserFacingError(`Bei der ${kind.noun} gibt es kein Gespräch – direkt annehmen oder absagen.`);
+  if (!canTeamTransition(app.status, opts.to, { interview: kind.interview })) {
     throw new UserFacingError(`Wechsel von „${app.status}“ nach „${opts.to}“ ist nicht möglich.`);
   }
   // Vier-Augen-Prinzip (pro Stelle): Annahme erst ab X Pro-Stimmen bzw. nur durch Admins
@@ -64,8 +67,8 @@ export async function changeStatus(opts: {
         decidedById: FINAL.includes(opts.to) ? opts.actorId : null,
         rejectionReason: opts.to === "REJECTED" ? (opts.reason ?? app.rejectionReason) : null,
         rejectionCategory: opts.to === "REJECTED" ? (isRejectionCategory(opts.category) ? opts.category : app.rejectionCategory) : null,
-        // Angenommen → Probezeit startet (Einarbeitung siehe lib/team/onboarding.ts)
-        ...(opts.to === "ACCEPTED" && settings["onboarding.probationDays"] > 0
+        // Angenommen → Probezeit startet (Einarbeitung siehe lib/team/onboarding.ts) – nur im Team
+        ...(opts.to === "ACCEPTED" && kind.teamFeatures && settings["onboarding.probationDays"] > 0
           ? { probationUntil: new Date(now.getTime() + settings["onboarding.probationDays"] * 86_400_000) }
           : {}),
       },
@@ -113,16 +116,17 @@ export async function changeStatus(opts: {
           mode: accepting ? "accept" : "revert",
           guildId: e.DISCORD_GUILD_ID,
           discordUserId: app.user.discordId,
-          roles: acceptRoles(app.position, settings["discord.acceptExtraRoleIds"]),
-          nickPrefix: app.position.nickPrefix,
+          // Zusatzrollen (z. B. „Team“) und Namens-Präfix nur für Team-Bewerbungen – Whitelist/Beta: nur die Rolle der Stelle
+          roles: acceptRoles(app.position, kind.teamFeatures ? settings["discord.acceptExtraRoleIds"] : ""),
+          nickPrefix: kind.teamFeatures ? app.position.nickPrefix : null,
           fallbackName: app.user.globalName || app.user.username,
           applicationId: app.id,
           publicId: app.publicId,
         })),
       );
     }
-    // Willkommensgruß im Teamchat (pingt nur die neue Person)
-    if (accepting && settings["discord.welcomeChannelId"] && !app.isTest) {
+    // Willkommensgruß im Teamchat (pingt nur die neue Person) – nur für neue Teammitglieder
+    if (accepting && kind.teamFeatures && settings["discord.welcomeChannelId"] && !app.isTest) {
       const { welcomeText } = await import("@/lib/discord/roles");
       const { buildWelcomeMessage } = await import("@/lib/messages/embed");
       const job = await enqueue(

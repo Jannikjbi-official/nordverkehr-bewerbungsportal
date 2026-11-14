@@ -25,7 +25,9 @@ export function SiteFooter() {
         <div className="grid gap-8 grid-cols-2 sm:grid-cols-3">
           <nav aria-label="Portal" className="space-y-2 text-sm">
             <p className="nv-mono mb-3">Portal</p>
-            <Link className="block text-fg-2 hover:text-fg" href="/">Offene Positionen</Link>
+            <Link className="block text-fg-2 hover:text-fg" href="/whitelist">Whitelist</Link>
+            <Link className="block text-fg-2 hover:text-fg" href="/beta">Beta-Test</Link>
+            <Link className="block text-fg-2 hover:text-fg" href="/#positionen">Team-Stellen</Link>
             <Link className="block text-fg-2 hover:text-fg" href="/passt-zu-mir">Welche Stelle passt zu mir?</Link>
             <Link className="block text-fg-2 hover:text-fg" href="/gespraech">So läuft das Gespräch</Link>
             <Link className="block text-fg-2 hover:text-fg" href="/dashboard">Meine Bewerbungen</Link>

@@ -640,6 +640,47 @@ try {
     check((await db.suggestion.count({ where: { authorId: sub.id } })) === 0, "Ideen: Konto gelöscht → Einreichungen mitgelöscht");
   }
 
+  // ── Whitelist & Beta: Anlage, Formular, Ablauf (Beta ohne Gespräch), nur Rolle der Stelle
+  {
+    const { seedKinds } = await import("../src/lib/setup/base-seed");
+    const { getFormDefinition } = await import("../src/lib/data/positions");
+    const { saveSettings } = await import("../src/lib/settings");
+    await seedKinds(db);
+    check((await db.applicationType.count({ where: { key: { in: ["whitelist", "beta"] } } })) === 2 && (await db.position.count({ where: { slug: { in: ["whitelist", "beta"] } } })) === 2, "Whitelist & Beta angelegt (2 Arten, 2 Stellen)");
+    check((await seedKinds(db)) === 0, "Anlage ist idempotent");
+    const wl = await db.position.findUniqueOrThrow({ where: { slug: "whitelist" }, include: { type: true } });
+    const beta = await db.position.findUniqueOrThrow({ where: { slug: "beta" }, include: { type: true } });
+    check(wl.type.key === "whitelist" && beta.type.key === "beta" && wl.status === "CLOSED" && beta.status === "CLOSED", "Arten stimmen, Stellen starten geschlossen");
+    const wlForm = await getFormDefinition(wl);
+    const quizQs = wlForm.flatMap((x) => x.questions).filter((q) => q.type === "QUIZ");
+    check(wlForm.length === 4 && quizQs.length === 6, `Whitelist-Formular: ${wlForm.length} Schritte, ${quizQs.length} Quizfragen`);
+    check(!wlForm.some((x) => x.general), "Whitelist ohne allgemeine Team-Fragen");
+    check((await db.question.count({ where: { key: { startsWith: "whitelist.quiz_" }, correctOption: null } })) === 0, "Quiz-Lösungen gespeichert");
+    check((await db.messageTemplate.count({ where: { title: { in: ["Whitelist – Freigegeben", "Beta – Zusage"] } } })) === 2, "Bausteine für Whitelist und Beta");
+
+    await saveSettings({ "discord.autoRoleOnAccept": true, "discord.acceptExtraRoleIds": "300000000000000001", "discord.welcomeChannelId": "300000000000000002", "interview.minStars": 0, "onboarding.probationDays": 30 }, team.id);
+    await db.position.update({ where: { id: beta.id }, data: { acceptRoleId: "300000000000000003", nickPrefix: "[Beta]" } });
+    const bu = await mk("Bea", "100000000000000401");
+    const ba = await db.application.create({ data: { userId: bu.id, positionId: beta.id, status: "SUBMITTED", publicId: "NV-B-1", submittedAt: new Date() } });
+    let err = "";
+    try { await changeStatus({ applicationId: ba.id, to: "INTERVIEW", actorId: team.id }); } catch (e) { err = (e as Error).message; }
+    check(err.includes("kein Gespräch"), "Beta: kein Status „Gespräch“");
+    const before = new Set((await db.outboxJob.findMany({ select: { id: true } })).map((j) => j.id));
+    await changeStatus({ applicationId: ba.id, to: "ACCEPTED", actorId: team.id });
+    const jobs = (await db.outboxJob.findMany()).filter((j) => !before.has(j.id));
+    const payload = JSON.stringify(jobs.map((j) => j.payload));
+    const accepted = await db.application.findUniqueOrThrow({ where: { id: ba.id } });
+    check(payload.includes("300000000000000003") && !payload.includes("300000000000000001"), "Beta-Annahme: Rolle der Stelle, keine Team-Zusatzrolle");
+    check(!payload.includes("300000000000000002") && !payload.includes("SET_NICK"), "Beta-Annahme: keine Begrüßung im Teamchat, kein Präfix");
+    check(!accepted.probationUntil, "Beta-Annahme: keine Probezeit");
+
+    const wu = await mk("Willi", "100000000000000402");
+    const wa = await db.application.create({ data: { userId: wu.id, positionId: wl.id, status: "SUBMITTED", publicId: "NV-W-1", submittedAt: new Date() } });
+    await changeStatus({ applicationId: wa.id, to: "INTERVIEW", actorId: team.id });
+    check((await db.application.findUniqueOrThrow({ where: { id: wa.id } })).status === "INTERVIEW", "Whitelist: mit Gespräch");
+    await saveSettings({ "discord.autoRoleOnAccept": false, "discord.acceptExtraRoleIds": "", "discord.welcomeChannelId": "" }, team.id);
+  }
+
   // ── Feedback (eins pro Bewerbung)
   await db.feedback.create({ data: { applicationId: app1.id, rating: 5 } });
   dup = false;

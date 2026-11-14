@@ -1,3 +1,4 @@
+import { kindOf } from "@/lib/kinds";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -183,6 +184,7 @@ async function Apply({
           id: position.id,
           title: position.title,
           slug: position.slug,
+          kind: kindOf(position.type.key).key,
         }}
         sections={sections}
         minAge={effectiveMinAge(position, {

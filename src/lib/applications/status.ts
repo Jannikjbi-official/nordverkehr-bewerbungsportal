@@ -21,6 +21,11 @@ export const STATUS_HINT: Record<ApplicationStatus, string> = {
   WITHDRAWN: "Du hast die Bewerbung zurückgezogen.",
 };
 
+/** Hinweis je nach Bewerbungsart (z. B. nach der Annahme: Team vs. Whitelist vs. Beta). */
+export function statusHintFor(status: ApplicationStatus, kind: { acceptedHint: string }) {
+  return status === "ACCEPTED" ? kind.acceptedHint : STATUS_HINT[status];
+}
+
 /** Tonalität der Status-Badges (CSS-Klassen in globals.css). */
 export const STATUS_TONE: Record<ApplicationStatus, "muted" | "info" | "warn" | "accent" | "success" | "danger"> = {
   DRAFT: "muted",
@@ -60,6 +65,8 @@ export const FINAL_STATUSES: ApplicationStatus[] = ["ACCEPTED", "REJECTED", "WIT
 export const BOARD_STATUSES: ApplicationStatus[] = ["SUBMITTED", "IN_REVIEW", "INTERVIEW", "ACCEPTED", "REJECTED"];
 /** Fortschritt für Bewerber. */
 export const TIMELINE: ApplicationStatus[] = ["SUBMITTED", "IN_REVIEW", "INTERVIEW", "ACCEPTED"];
+/** Fortschritt je nach Art (ohne Gespräch → ohne „Gespräch“). */
+export const timelineFor = (interview: boolean): ApplicationStatus[] => (interview ? TIMELINE : TIMELINE.filter((s) => s !== "INTERVIEW"));
 
 /** Welche Statuswechsel darf das Team vornehmen? */
 const TEAM_TRANSITIONS: Record<ApplicationStatus, ApplicationStatus[]> = {
@@ -72,12 +79,18 @@ const TEAM_TRANSITIONS: Record<ApplicationStatus, ApplicationStatus[]> = {
   WITHDRAWN: [],
 };
 
-export function canTeamTransition(from: ApplicationStatus, to: ApplicationStatus) {
-  return TEAM_TRANSITIONS[from].includes(to);
+/**
+ * Erlaubte Wechsel; `interview: false` (z. B. Beta) → ohne Phase „Gespräch“.
+ * Steht eine Bewerbung (z. B. aus einer Umstellung) noch im Gespräch, darf sie
+ * trotzdem weiter.
+ */
+export function canTeamTransition(from: ApplicationStatus, to: ApplicationStatus, opts: { interview?: boolean } = {}) {
+  return allowedTeamTargets(from, opts).includes(to);
 }
 
-export function allowedTeamTargets(from: ApplicationStatus) {
-  return TEAM_TRANSITIONS[from];
+export function allowedTeamTargets(from: ApplicationStatus, opts: { interview?: boolean } = {}) {
+  const targets = TEAM_TRANSITIONS[from];
+  return opts.interview === false ? targets.filter((t) => t !== "INTERVIEW") : targets;
 }
 
 /** Bei Statuswechsel vorgeschlagene Baustein-Kategorien. */

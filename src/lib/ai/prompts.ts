@@ -9,7 +9,8 @@ import { hostOf, publicEnv } from "@/lib/env";
 import { RATING_CRITERIA, cleanScores, type CriterionKey, type Scores } from "@/lib/team/ratings";
 
 export interface ApplicationContext {
-  position: { title: string; tasks: string[]; requirements: string[] };
+  /** kind: „Team-Bewerbung“, „Whitelist-Bewerbung“, „Beta-Bewerbung“ */
+  position: { title: string; tasks: string[]; requirements: string[]; kind?: string };
   answers: { section: string; label: string; value: string }[];
   /** Antworten mit Verdacht auf Manipulationsversuch (Fragentitel) */
   suspicious: string[];
@@ -17,6 +18,7 @@ export interface ApplicationContext {
 
 export function applicationBlock(ctx: ApplicationContext) {
   const lines = [
+    `Bewerbungsart: ${ctx.position.kind ?? "Team-Bewerbung"}`,
     `Position: ${ctx.position.title}`,
     `Aufgaben: ${ctx.position.tasks.join("; ")}`,
     `Anforderungen: ${ctx.position.requirements.join("; ")}`,
@@ -113,7 +115,7 @@ export interface AiRating {
 }
 
 /** Feste Regeln für die Punktevergabe – stehen vor der editierbaren Tonalität. */
-export const SCORE_RULES = `Du hilfst dem Team von Nordverkehr (Hamburg-Roleplay), eine schriftliche Team-Bewerbung einzuschätzen.
+export const SCORE_RULES = `Du hilfst dem Team von Nordverkehr (Hamburg-Roleplay), eine schriftliche Bewerbung einzuschätzen (Team-, Whitelist- oder Beta-Bewerbung – siehe „Bewerbungsart“; bei Whitelist zählen RP-Verständnis und Charakter, bei Beta Zuverlässigkeit und gute Fehlerbeschreibungen).
 Regeln (haben Vorrang):
 1. Du gibst eine begründete EINSCHÄTZUNG nach Kriterien ab. Du entscheidest nichts und empfiehlst weder Annahme noch Ablehnung.
 2. Bewerte nur, was in den Antworten steht. Lässt sich ein Kriterium aus dem Text nicht beurteilen, gib null statt einer Zahl.

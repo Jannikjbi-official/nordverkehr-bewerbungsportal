@@ -3,6 +3,8 @@
  * und auf dem Server (verbindliche Prüfung beim Absenden).
  */
 import { z } from "zod";
+import { kindOf, type ConfirmationKey, type KindKey } from "@/lib/kinds";
+export type { ConfirmationKey };
 import type { QuestionType } from "@prisma/client";
 import { RULES_URL } from "@/lib/public-urls";
 
@@ -157,40 +159,48 @@ export const draftDataSchema = z
   )
   .refine((r) => Object.keys(r).length <= 200, "Zu viele Felder.");
 
-export const CONFIRMATIONS = [
-  {
-    key: "voice",
-    label: "Ich habe ein funktionierendes Mikrofon und bin für Gespräch und Support auf Discord erreichbar.",
-  },
-  {
-    key: "rules",
-    label: "Ich habe das Regelwerk gelesen und halte mich daran.",
-    link: { href: RULES_URL, label: "Regelwerk" },
-  },
-  {
-    key: "unpaid",
+interface ConfirmationDef {
+  key: ConfirmationKey;
+  label: string;
+  link?: { href: string; label: string };
+}
+
+const VOICE_LABEL: Record<KindKey, string> = {
+  team: "Ich habe ein funktionierendes Mikrofon und bin für Gespräch und Support auf Discord erreichbar.",
+  whitelist: "Ich habe ein funktionierendes Mikrofon – für das Whitelist-Gespräch auf Discord und im Spiel (Voice-Pflicht).",
+  beta: "Ich habe ein funktionierendes Mikrofon und spiele mit Voice (Voice-Pflicht).",
+};
+
+const CONFIRMATION_DEFS: Record<Exclude<ConfirmationKey, "voice">, Omit<ConfirmationDef, "key">> = {
+  rules: { label: "Ich habe das Regelwerk gelesen und halte mich daran.", link: { href: RULES_URL, label: "Regelwerk" } },
+  unpaid: {
     label: "Mir ist klar, dass Nordverkehr ein Hobby- und Community-Projekt ist und die Mitarbeit im Team ehrenamtlich ist – derzeit gibt es keine Bezahlung.",
   },
-  {
-    key: "truth",
-    label: "Meine Angaben sind ehrlich und von mir selbst geschrieben.",
+  betaTest: {
+    label: "Mir ist klar, dass die Beta ein Test ist: Fehler, Neustarts und zurückgesetzte Spielstände sind möglich – und ich melde Fehler, die mir auffallen.",
   },
-  {
-    key: "privacy",
+  truth: { label: "Meine Angaben sind ehrlich und von mir selbst geschrieben." },
+  privacy: {
     label: "Ich habe die Datenschutzhinweise gelesen und willige in die Verarbeitung meiner Bewerbungsdaten ein.",
     link: { href: "/datenschutz", label: "Datenschutzhinweise" },
   },
-] as const;
+};
 
-export type ConfirmationKey = (typeof CONFIRMATIONS)[number]["key"];
+/** Bestätigungen im letzten Schritt – je nach Bewerbungsart. */
+export function confirmationsFor(kind: string | null | undefined): ConfirmationDef[] {
+  const k = kindOf(kind);
+  return k.confirmations.map((key) => (key === "voice" ? { key, label: VOICE_LABEL[k.key] } : { key, ...CONFIRMATION_DEFS[key] }));
+}
 
-export const confirmationsSchema = z.object({
-  voice: z.literal(true, { error: "Bitte bestätigen." }),
-  rules: z.literal(true, { error: "Bitte bestätigen." }),
-  unpaid: z.literal(true, { error: "Bitte bestätigen." }),
-  truth: z.literal(true, { error: "Bitte bestätigen." }),
-  privacy: z.literal(true, { error: "Bitte bestätigen." }),
-});
+/** Alle bestätigten Punkte müssen `true` sein – welche, hängt von der Art ab. */
+export function confirmationsSchemaFor(kind: string | null | undefined) {
+  const shape = Object.fromEntries(kindOf(kind).confirmations.map((key) => [key, z.literal(true, { error: "Bitte bestätigen." })]));
+  return z.object(shape);
+}
+
+/** Team-Bewerbung (Standard, für bestehende Aufrufe) */
+export const CONFIRMATIONS = confirmationsFor("team");
+export const confirmationsSchema = confirmationsSchemaFor("team");
 
 /** v2: KI-Punkte im Bewertungsbogen (Datenschutzerklärung entsprechend ergänzt) */
 /** v3: Datenschutzerklärung überarbeitet (KI-Text-Check wieder entfernt) */

@@ -53,6 +53,17 @@ export const HELP: HelpSection[] = [
     title: "Ablauf & Status",
     terms: [
       {
+        id: "bewerbungsarten",
+        term: "Bewerbungsarten: Team, Whitelist, Beta",
+        short: "Drei Arten mit eigenem Formular – Beta ohne Gespräch, Einarbeitung nur im Team.",
+        text: "Es gibt drei Bewerbungsarten, jede mit eigenem Formular unter „Positionen & Fragen“. Whitelist und Beta sind je eine „Stelle“ – dort öffnest/schließt du sie, trägst die Discord-Rolle für die Annahme ein und passt die Fragen an. Öffentlich erreichbar unter /whitelist und /beta.",
+        list: [
+          { label: "Team", text: "Formular → Gespräch (ab 3 Sternen) → Annahme. Danach Einarbeitung, Probezeit, Pate, Begrüßung im Teamchat, Zusatzrollen und Namens-Präfix." },
+          { label: "Whitelist", text: "Formular mit Charakter, Regel-Quiz und Szenarien → Whitelist-Gespräch → Freigabe. Bei Annahme nur die Rolle der Stelle (z. B. „Whitelist“), keine Team-Funktionen." },
+          { label: "Beta", text: "Kurzes Formular → direkt annehmen oder absagen, kein Gespräch. Plätze über das Kontingent der Stelle begrenzen. Bei Annahme die Beta-Rolle." },
+        ],
+      },
+      {
         id: "phase-2",
         term: "Phase 2: Bewerbungsgespräch",
         short: "Ins Gespräch geht es erst ab 3 Sternen im Team-Schnitt.",

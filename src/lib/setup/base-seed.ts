@@ -8,6 +8,7 @@
 import type { PrismaClient } from "@prisma/client";
 import { GENERAL_SECTIONS, POSITIONS, POSITION_COOLDOWNS, TEMPLATES, type SeedSection } from "@/lib/setup/seed-data";
 import { markMigrationsDone, runMigrations } from "@/lib/setup/migrations";
+import { KIND_SEEDS } from "@/lib/setup/kinds-seed";
 
 function isUniqueViolation(e: unknown) {
   return typeof e === "object" && e !== null && (e as { code?: string }).code === "P2002";
@@ -101,7 +102,49 @@ export async function seedBase(db: PrismaClient, log: (m: string) => void = () =
     await db.messageTemplate.createMany({ data: TEMPLATES.map((t, i) => ({ ...t, sortOrder: i })) });
     log(`✓ ${TEMPLATES.length} Nachrichtenbausteine`);
   }
+  await seedKinds(db, log);
   return type;
+}
+
+/**
+ * Bewerbungsarten Whitelist und Beta: Art, Stelle (geschlossen), Abschnitte und
+ * Bausteine anlegen, falls noch nicht vorhanden. Idempotent – auch für
+ * bestehende Installationen (Daten-Migration „2026-11-whitelist-beta“).
+ */
+export async function seedKinds(db: PrismaClient, log: (m: string) => void = () => {}) {
+  let created = 0;
+  for (const k of KIND_SEEDS) {
+    let type = await db.applicationType.findUnique({ where: { key: k.type.key } });
+    if (!type) {
+      try {
+        type = await db.applicationType.create({ data: k.type });
+        log(`✓ Bewerbungsart ${k.type.name}`);
+        created++;
+      } catch (e) {
+        if (!isUniqueViolation(e)) throw e;
+        type = await db.applicationType.findUniqueOrThrow({ where: { key: k.type.key } });
+      }
+    }
+    let pos = await db.position.findUnique({ where: { slug: k.position.slug } });
+    if (!pos) {
+      const { sections, ...p } = k.position;
+      try {
+        pos = await db.position.create({ data: { ...p, typeId: type.id, sortOrder: 0 } });
+        log(`✓ ${k.type.name}: Stelle „${p.title}“ (geschlossen)`);
+        created++;
+      } catch (e) {
+        if (!isUniqueViolation(e)) throw e;
+        pos = await db.position.findUniqueOrThrow({ where: { slug: k.position.slug } });
+      }
+      for (const [si, s] of sections.entries()) await ensureSection(db, type.id, pos.id, s, 100 + si);
+    }
+    for (const t of k.templates) {
+      if (await db.messageTemplate.findFirst({ where: { title: t.title }, select: { id: true } })) continue;
+      const last = await db.messageTemplate.aggregate({ _max: { sortOrder: true }, where: { category: t.category } });
+      await db.messageTemplate.create({ data: { ...t, sortOrder: (last._max.sortOrder ?? 0) + 1 } });
+    }
+  }
+  return created;
 }
 
 export interface BootstrapResult {

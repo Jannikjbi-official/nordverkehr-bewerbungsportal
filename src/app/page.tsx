@@ -5,14 +5,18 @@ import {
   ArrowRight,
   ChatCircleDots,
   ClipboardText,
-  Compass,
   DiscordLogo,
   FloppyDisk,
+  Flask,
   Handshake,
+  IdentificationCard,
   Microphone,
   ShieldCheck,
+  UsersThree,
 } from "@phosphor-icons/react/ssr";
-import { Container, IconTile, PageHero, SectionTitle, cn } from "@/components/ui";
+import { Container, IconTile, PageHero, SectionTitle, cn, formatDay } from "@/components/ui";
+import { db } from "@/lib/db";
+import { KINDS, kindOf } from "@/lib/kinds";
 import { listPublicPositions } from "@/lib/data/positions";
 import { getSettings } from "@/lib/settings";
 
@@ -20,24 +24,21 @@ const STEPS = [
   { icon: DiscordLogo, title: "Mit Discord einloggen", text: "Kein extra Account. Wir brauchen nur deinen Discord-Namen." },
   { icon: FloppyDisk, title: "In Ruhe ausfüllen", text: "Dein Entwurf wird automatisch gespeichert. Du kannst jederzeit weitermachen." },
   { icon: ChatCircleDots, title: "Team prüft & meldet sich", text: "Du bekommst eine Bestätigung per DM und siehst den Status im Dashboard." },
-  { icon: Microphone, title: "Gespräch auf Discord", text: "Passt es, lernen wir uns kurz im Sprachkanal kennen. Ehrlich und ohne Druck." },
+  { icon: Microphone, title: "Gespräch auf Discord", text: "Bei Whitelist und Team lernen wir uns kurz im Sprachkanal kennen. Ehrlich und ohne Druck." },
 ];
 
 export default function HomePage() {
   return (
     <>
       <PageHero
-        label="NORDVERKEHR // TEAM"
-        title="Werde Teil"
-        emphasis="des Teams."
+        label="NORDVERKEHR // BEWERBUNG"
+        title="Bewirb dich"
+        emphasis="bei Nordverkehr."
         aside={
           <div className="flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row">
-            <a href="#positionen" className="nv-btn nv-btn-primary">
-              Offene Positionen <ArrowRight size={16} aria-hidden />
+            <a href="#bewerben" className="nv-btn nv-btn-primary">
+              Jetzt bewerben <ArrowRight size={16} aria-hidden />
             </a>
-            <Link href="/passt-zu-mir" className="nv-btn nv-btn-ghost">
-              <Compass size={16} aria-hidden /> Welche Stelle passt zu mir?
-            </Link>
             <Link href="/dashboard" className="nv-btn nv-btn-ghost">
               <ClipboardText size={16} aria-hidden /> Meine Bewerbungen
             </Link>
@@ -45,17 +46,14 @@ export default function HomePage() {
         }
       >
         <p>
-          Klein, direkt und mit klarem Plan. Wir suchen Leute, die Nordverkehr mit aufbauen – erst auf GTA 5, danach beim
-          Umzug auf GTA 6.
+          Ob als Spieler auf der Whitelist, als Beta-Tester vor dem Start oder im Team – hier bewirbst du dich. Ehrliches
+          Hamburg-RP: erst auf GTA 5, danach beim Umzug auf GTA 6.
         </p>
         <div className="mt-6 flex flex-wrap gap-2">
-          <span className="nv-pill nv-pill-red">
-            <span className="h-1.5 w-1.5 rounded-full bg-red nv-pulse-dot" aria-hidden /> Bewerbungsphase offen
-          </span>
           <Suspense fallback={<span className="nv-pill">Mindestalter …</span>}>
             <MinAgePill />
           </Suspense>
-          <span className="nv-pill">Community-Projekt · ehrenamtlich</span>
+          <span className="nv-pill">Login mit Discord</span>
           <span className="nv-pill">Gespräch &amp; Support auf Discord</span>
           <span className="nv-pill">Hamburg RP</span>
         </div>
@@ -76,10 +74,22 @@ export default function HomePage() {
         </ol>
       </Container>
 
+      <section id="bewerben" className="scroll-mt-28 pt-24">
+        <Container>
+          <SectionTitle label="Bewerben" title="Wo willst du" emphasis="mitmachen?">
+            Drei Wege zu Nordverkehr – jeder mit eigenem Formular. Du kannst dich für mehrere gleichzeitig bewerben.
+          </SectionTitle>
+          <Suspense fallback={<div className="grid gap-4 md:grid-cols-3">{[0, 1, 2].map((i) => <div key={i} className="nv-skeleton h-56" />)}</div>}>
+            <KindCards />
+          </Suspense>
+        </Container>
+      </section>
+
       <section id="positionen" className="scroll-mt-28 pt-24">
         <Container>
-          <SectionTitle label="Offene Stellen" title="Wir suchen" emphasis="Verstärkung.">
-            Klick auf eine Rolle, um Aufgaben und Anforderungen zu sehen. Beworben wird direkt hier im Portal. Unsicher?{" "}
+          <SectionTitle label="Team // Offene Stellen" title="Wir suchen" emphasis="Verstärkung.">
+            Nordverkehr ist ein Community-Projekt – die Mitarbeit im Team ist ehrenamtlich. Klick auf eine Rolle, um Aufgaben
+            und Anforderungen zu sehen. Unsicher?{" "}
             <Link href="/passt-zu-mir" className="nv-link">
               Welche Stelle passt zu mir?
             </Link>
@@ -121,6 +131,65 @@ export default function HomePage() {
         </Container>
       </section>
     </>
+  );
+}
+
+/** Whitelist, Beta, Team – mit Status (offen/geschlossen) und Link. */
+async function KindCards() {
+  await connection();
+  await listPublicPositions(); // legt bei frischer Datenbank Basisdaten an
+  const [special, teamOpen] = await Promise.all([
+    db.position.findMany({
+      where: { slug: { in: ["whitelist", "beta"] }, status: { not: "HIDDEN" }, type: { active: true } },
+      select: { slug: true, title: true, status: true, opensAt: true, seats: true, type: { select: { key: true } } },
+    }),
+    db.position.count({ where: { status: "OPEN", type: { key: "team", active: true } } }),
+  ]);
+  const cards = [
+    ...["whitelist", "beta"].flatMap((slug) => {
+      const p = special.find((x) => x.slug === slug);
+      if (!p) return [];
+      const k = kindOf(p.type.key);
+      return [{ key: k.key, title: p.title, teaser: k.teaser, open: p.status === "OPEN", href: k.path, icon: k.key === "beta" ? Flask : IdentificationCard, note: p.status !== "OPEN" && p.opensAt ? `Öffnet am ${formatDay(p.opensAt)}` : p.status === "OPEN" && typeof p.seats === "number" && p.seats > 0 ? `Noch ${p.seats} Plätze` : null }];
+    }),
+    {
+      key: "team",
+      title: "Team",
+      teaser: KINDS.team.teaser,
+      open: teamOpen > 0,
+      href: "/#positionen",
+      icon: UsersThree,
+      note: teamOpen > 0 ? `${teamOpen} ${teamOpen === 1 ? "Stelle" : "Stellen"} offen` : null,
+    },
+  ];
+  return (
+    <ul className={cn("grid gap-4", cards.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2")}>
+      {cards.map((c, i) => (
+        <li key={c.key} className="nv-anim" style={{ "--i": i } as React.CSSProperties}>
+          <Link href={c.href} className={cn("nv-card nv-card-hover group flex h-full flex-col gap-4 p-6", !c.open && "opacity-80")}>
+            <div className="flex items-center justify-between gap-3">
+              <span className="h-12 w-12 shrink-0 rounded-xl grid place-items-center text-red-text border border-red-line bg-red-soft">
+                <c.icon size={24} weight="duotone" aria-hidden />
+              </span>
+              {c.open ? (
+                <span className="nv-pill nv-tone-success !text-[0.7rem] !py-0.5">Offen</span>
+              ) : (
+                <span className="nv-pill !text-[0.7rem] !py-0.5">{c.key === "team" ? "Gerade keine Stellen" : "Noch geschlossen"}</span>
+              )}
+            </div>
+            <div className="flex-1">
+              <h3 className="font-display text-3xl">{c.title}</h3>
+              <p className="mt-2 text-sm text-muted">{c.teaser}</p>
+              {c.note && <p className="mt-2 text-xs text-fg-2">{c.note}</p>}
+            </div>
+            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-red-text">
+              {c.open ? (c.key === "team" ? "Stellen ansehen" : "Jetzt bewerben") : "Mehr erfahren"}
+              <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" aria-hidden />
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
   );
 }
 

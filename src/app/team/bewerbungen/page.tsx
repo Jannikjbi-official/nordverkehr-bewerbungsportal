@@ -1,3 +1,4 @@
+import { kindOf } from "@/lib/kinds";
 import type { Metadata } from "next";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import Link from "next/link";
@@ -87,6 +88,7 @@ async function Content({ searchParams }: Pick<PageProps<"/team/bewerbungen">, "s
             discordId: r.user.discordId,
             avatar: r.user.avatar,
             position: r.position.title,
+            kind: kindOf(r.position.type.key).key,
             submittedAt: r.submittedAt?.toISOString() ?? null,
             votes: voteSummary(r.votes),
             flags: (r.flags as unknown as ApplicationFlag[]).length,

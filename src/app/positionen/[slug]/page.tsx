@@ -11,6 +11,7 @@ import { getSettings } from "@/lib/settings";
 import { effectiveMinAge } from "@/lib/applications/rules";
 import { NotifyToggle } from "@/components/NotifyToggle";
 import { db } from "@/lib/db";
+import { kindOf } from "@/lib/kinds";
 
 export default function PositionPage({ params }: PageProps<"/positionen/[slug]">) {
   return (
@@ -30,19 +31,21 @@ async function PositionDetail({ params }: Pick<PageProps<"/positionen/[slug]">, 
   const settings = await getSettings();
   const minAge = effectiveMinAge(position, { minAge: settings["applications.minAge"] });
   const open = position.status === "OPEN";
+  const kind = kindOf(position.type.key);
+  const isTeam = kind.key === "team";
 
   return (
     <>
       <section className="relative overflow-hidden pt-32 pb-10 sm:pt-40">
         <div className="absolute inset-0 nv-hero-glow pointer-events-none" aria-hidden />
         <Container className="relative">
-          <Link href="/#positionen" className="nv-btn nv-btn-quiet nv-btn-sm -ml-3 mb-6">
-            <ArrowLeft size={14} aria-hidden /> Alle Positionen
+          <Link href={isTeam ? "/#positionen" : "/#bewerben"} className="nv-btn nv-btn-quiet nv-btn-sm -ml-3 mb-6">
+            <ArrowLeft size={14} aria-hidden /> {isTeam ? "Alle Positionen" : "Alle Bewerbungen"}
           </Link>
           <div className="flex items-start gap-5 nv-anim">
             <IconTile icon={position.icon} className="h-14 w-14" />
             <div>
-              <p className="nv-label">Position // {position.title}</p>
+              <p className="nv-label">{isTeam ? `Position // ${position.title}` : `${kind.noun} // Nordverkehr`}</p>
               <h1 className="nv-headline text-5xl sm:text-6xl mt-3">
                 {position.title}
                 <em>.</em>
@@ -60,7 +63,7 @@ async function PositionDetail({ params }: Pick<PageProps<"/positionen/[slug]">, 
               {position.description}
             </p>
             <div className="grid gap-4 md:grid-cols-2">
-              <ListCard icon={<ListChecks size={20} aria-hidden />} title="Deine Aufgaben" items={position.tasks} />
+              <ListCard icon={<ListChecks size={20} aria-hidden />} title={isTeam ? "Deine Aufgaben" : "So läuft's"} items={position.tasks} />
               <ListCard icon={<Target size={20} aria-hidden />} title="Was du mitbringst" items={position.requirements} />
             </div>
           </div>
@@ -92,17 +95,19 @@ async function PositionDetail({ params }: Pick<PageProps<"/positionen/[slug]">, 
                 <dd>{minAge} Jahre</dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt className="text-muted">Gespräch &amp; Support</dt>
+                <dt className="text-muted">{kind.interview ? "Gespräch & Support" : "Support"}</dt>
                 <dd>Discord</dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-muted">Ingame-Voice</dt>
                 <dd>TeamSpeak &amp; SaltyChat</dd>
               </div>
-              <div className="flex justify-between gap-3">
-                <dt className="text-muted">Vergütung</dt>
-                <dd className="text-right">Ehrenamtlich – derzeit keine Bezahlung</dd>
-              </div>
+              {isTeam && (
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted">Vergütung</dt>
+                  <dd className="text-right">Ehrenamtlich – derzeit keine Bezahlung</dd>
+                </div>
+              )}
               <div className="flex justify-between gap-3">
                 <dt className="text-muted">Sperrfrist nach Absage</dt>
                 <dd>{position.cooldownDays ?? settings["applications.cooldownDays"]} Tage</dd>
@@ -116,12 +121,14 @@ async function PositionDetail({ params }: Pick<PageProps<"/positionen/[slug]">, 
             <Suspense fallback={<div className="nv-skeleton h-11" />}>
               <ApplyCta position={position} />
             </Suspense>
-            <p className="mt-4 text-xs text-muted text-center">
-              Unsicher, ob die Stelle passt?{" "}
-              <Link href="/passt-zu-mir" className="nv-link">
-                Mach den Selbsttest
-              </Link>
-            </p>
+            {isTeam && (
+              <p className="mt-4 text-xs text-muted text-center">
+                Unsicher, ob die Stelle passt?{" "}
+                <Link href="/passt-zu-mir" className="nv-link">
+                  Mach den Selbsttest
+                </Link>
+              </p>
+            )}
           </aside>
         </div>
       </Container>

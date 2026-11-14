@@ -54,6 +54,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="de"
       data-theme="dark"
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
       className={`${dmSerif.variable} ${dmSans.variable} ${jetbrains.variable}`}
     >

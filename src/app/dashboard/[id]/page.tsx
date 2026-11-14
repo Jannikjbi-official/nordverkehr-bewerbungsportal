@@ -1,3 +1,4 @@
+import { kindOf } from "@/lib/kinds";
 import type { Metadata } from "next";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import Link from "next/link";
@@ -26,7 +27,7 @@ import { getBotProfile } from "@/lib/discord/bot-profile";
 import { getAccess } from "@/lib/auth/user-access";
 import { applyGuildState, guildStateKnown } from "@/lib/applications/guild-watch";
 import { publicEnv } from "@/lib/env";
-import { ACTIVE_STATUSES, FOLLOW_UP_DAYS, STATUS_HINT, STATUS_LABEL, TIMELINE, canFollowUp, isInProcessing } from "@/lib/applications/status";
+import { ACTIVE_STATUSES, FOLLOW_UP_DAYS, STATUS_LABEL, canFollowUp, statusHintFor, timelineFor, isInProcessing } from "@/lib/applications/status";
 import { formatAnswerForDisplay, type AnswerValue } from "@/lib/applications/form";
 import { getSettings } from "@/lib/settings";
 import { AMENDABLE_TYPES, canAmend, getQueueInfo, queueText } from "@/lib/applications/queue";
@@ -57,7 +58,7 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
   const app = await db.application.findFirst({
     where: { id, userId: user.id },
     include: {
-      position: true,
+      position: { include: { type: { select: { key: true } } } },
       answers: { orderBy: { sortOrder: "asc" } },
       statusChanges: { orderBy: { createdAt: "asc" } },
       slot: true,
@@ -302,8 +303,8 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
         <aside className="space-y-6">
           <div className="nv-card p-5">
             <p className="nv-mono">Status</p>
-            <p className="mt-2 text-sm text-fg-2">{STATUS_HINT[app.status]}</p>
-            <Timeline status={app.status} changes={app.statusChanges} />
+            <p className="mt-2 text-sm text-fg-2">{statusHintFor(app.status, kindOf(app.position.type.key))}</p>
+            <Timeline status={app.status} changes={app.statusChanges} interview={kindOf(app.position.type.key).interview} />
           </div>
           <div className="nv-card p-5 text-sm space-y-2">
             <div className="flex justify-between gap-3">
@@ -328,10 +329,12 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
   );
 }
 
-function Timeline({ status, changes }: { status: ApplicationStatus; changes: { to: ApplicationStatus; createdAt: Date }[] }) {
+function Timeline({ status, changes, interview }: { status: ApplicationStatus; changes: { to: ApplicationStatus; createdAt: Date }[]; interview: boolean }) {
   const reachedAt = (s: ApplicationStatus) => [...changes].reverse().find((c) => c.to === s)?.createdAt;
   const final = status === "REJECTED" || status === "WITHDRAWN" ? status : null;
-  const steps: ApplicationStatus[] = final ? [...TIMELINE.slice(0, 3), final] : TIMELINE;
+  // Ohne Gespräch (Beta) – außer die Bewerbung stand tatsächlich schon im Gespräch
+  const base = timelineFor(interview || status === "INTERVIEW" || !!reachedAt("INTERVIEW"));
+  const steps: ApplicationStatus[] = final ? [...base.slice(0, base.length - 1), final] : base;
   const currentIdx = steps.indexOf(status);
 
   return (

@@ -1,5 +1,6 @@
 "use client";
 
+import type { KindKey } from "@/lib/kinds";
 import { useRouter } from "next/navigation";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import { useState, useTransition } from "react";
@@ -36,7 +37,13 @@ function useAction() {
   return { pending, error, run };
 }
 
-export function StatusControl({ applicationId, current, targets }: { applicationId: string; current: ApplicationStatus; targets: ApplicationStatus[] }) {
+const ACCEPT_TEXT: Record<KindKey, { hint: string; confirm: string }> = {
+  team: { hint: "Ins Team aufnehmen", confirm: "Die Person wird ins Team aufgenommen." },
+  whitelist: { hint: "Whitelist freigeben", confirm: "Die Whitelist wird freigegeben – die Rolle der Stelle wird vergeben." },
+  beta: { hint: "In die Beta aufnehmen", confirm: "Die Person kommt in die Beta – die Rolle der Stelle wird vergeben." },
+};
+
+export function StatusControl({ applicationId, current, targets, kind = "team" }: { applicationId: string; current: ApplicationStatus; targets: ApplicationStatus[]; kind?: KindKey }) {
   const { pending, error, run } = useAction();
   const [to, setTo] = useState<ApplicationStatus | "">("");
   const [reason, setReason] = useState("");
@@ -50,7 +57,7 @@ export function StatusControl({ applicationId, current, targets }: { application
         if (!to) return;
         if ((to === "ACCEPTED" || to === "REJECTED") && !(await confirmDialog({
             title: `Status auf „${STATUS_LABEL[to]}“ setzen?`,
-            body: to === "REJECTED" ? "Die Bewerbung wird abgelehnt, die Sperrfrist startet." : "Die Person wird ins Team aufgenommen.",
+            body: to === "REJECTED" ? "Die Bewerbung wird abgelehnt, die Sperrfrist startet." : ACCEPT_TEXT[kind].confirm,
             confirmLabel: STATUS_LABEL[to],
             tone: to === "REJECTED" ? "danger" : "default",
           }))) return;
@@ -82,6 +89,7 @@ export function StatusControl({ applicationId, current, targets }: { application
             onChange={(s) => setTo(s ?? "")}
             placeholder="Neuer Status …"
             disabled={pending}
+            acceptHint={ACCEPT_TEXT[kind].hint}
           />
         </div>
         <button type="submit" className="nv-btn nv-btn-primary nv-btn-sm" disabled={!to || pending}>

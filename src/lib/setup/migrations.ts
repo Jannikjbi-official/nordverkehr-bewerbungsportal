@@ -440,6 +440,11 @@ const MIGRATIONS: { id: string; run: (db: PrismaClient, opts: Options) => Promis
   { id: "2026-11-kanal-ids-sichern", run: (db, o) => (o.dryRun ? Promise.resolve(0) : keepLegacyChannelIds(db)) },
   // Kommende Gespräche: Termin-Notizen und Discord-Events auf Discord umstellen
   { id: "2026-11-kommende-gespraeche-discord", run: (db, o) => (o.dryRun ? Promise.resolve(0) : upcomingInterviewsOnDiscord(db)) },
+  // Neue Bewerbungsarten Whitelist und Beta (je eine Stelle, startet geschlossen)
+  {
+    id: "2026-11-whitelist-beta",
+    run: async (db, o) => (o.dryRun ? 0 : (await import("@/lib/setup/base-seed")).seedKinds(db)),
+  },
 ];
 
 /** „TeamSpeak-Channel …“ in Notizen → Discord-Sprachkanal (rein, für Tests) */

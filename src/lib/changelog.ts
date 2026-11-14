@@ -85,6 +85,17 @@ export const versionLabel = (e: Pick<ChangelogEntry, "version">) => `Version ${e
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "v1.3",
+    version: "1.3",
+    date: "2026-11-14",
+    items: [
+      { kind: "neu", text: "**Whitelist-Bewerbung** – eigenes Formular mit Charakter, Regel-Quiz und Szenarien, danach Whitelist-Gespräch auf Discord. Bei Annahme gibt es automatisch die Whitelist-Rolle. Zu finden unter /whitelist." },
+      { kind: "neu", text: "**Beta-Bewerbung** – kurzes Formular für Beta-Tester, ohne Gespräch und mit begrenzten Plätzen; bei Annahme die Beta-Rolle. Zu finden unter /beta." },
+      { kind: "besser", text: "**Startseite** – drei Wege zu Nordverkehr: Whitelist, Beta-Test und Team, jeweils mit Status. Menü und Fußbereich verlinken alles direkt." },
+      { kind: "besser", text: "**Pro Bewerbungsart passend** – Bestätigungen, Texte, Status und Discord-Knöpfe richten sich nach der Art. Einarbeitung, Probezeit, Pate und Begrüßung im Teamchat gibt es nur bei Team-Bewerbungen." },
+    ],
+  },
+  {
     id: "v1.2",
     version: "1.2",
     date: "2026-11-13",

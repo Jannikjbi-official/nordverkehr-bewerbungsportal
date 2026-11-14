@@ -21,7 +21,7 @@ export interface StoredPost {
 
 type Result = { ok: true; action: "updated" | "posted" | "none" } | { ok: false; error: string };
 
-const POSITION_SELECT = { slug: true, title: true, tagline: true, description: true, icon: true, status: true, tasks: true, requirements: true, minAge: true, acceptRoleId: true } as const;
+const POSITION_SELECT = { slug: true, title: true, tagline: true, description: true, icon: true, status: true, tasks: true, requirements: true, minAge: true, acceptRoleId: true, type: { select: { key: true } } } as const;
 
 async function loadPositions(db: PrismaClient) {
   return (await db.position.findMany({ where: { type: { key: "team", active: true } }, orderBy: { sortOrder: "asc" }, select: POSITION_SELECT })) as JobPosition[];
@@ -86,7 +86,8 @@ export async function publishSpotlight(db: PrismaClient, slug: string, opts: { m
   const s = await getSettings();
   const channelId = s["discord.spotlightChannelId"];
   if (!channelId) return { ok: false, error: "Kein Kanal für Einzelaufrufe eingetragen." };
-  const position = (await loadPositions(db)).find((p) => p.slug === slug);
+  // Einzelaufruf: auch Whitelist und Beta (Sammelaufruf bleibt Team-Stellen vorbehalten)
+  const position = (await db.position.findFirst({ where: { slug, type: { active: true } }, select: POSITION_SELECT })) as JobPosition | null;
   if (!position) return { ok: false, error: "Position nicht gefunden." };
   if (position.status === "HIDDEN") return { ok: false, error: "Versteckte Positionen werden nicht beworben." };
   const message = buildSpotlightMessage(position, { appUrl: publicEnv.appUrl, defaultMinAge: s["applications.minAge"] });
