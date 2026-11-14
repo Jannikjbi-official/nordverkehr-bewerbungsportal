@@ -50,7 +50,15 @@ export function hasDatabaseUrl(env: Record<string, string | undefined> = process
  * Postgres-Treiber `pg`. Spart ~17 MB pro Server-Funktion.
  */
 export function createPrismaClient(url: string = resolveDatabaseUrl()): PrismaClient {
-  return new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
+  return new PrismaClient({ adapter: new PrismaPg({ connectionString: withExplicitSslMode(url) }) });
+}
+
+/**
+ * `pg` behandelt sslmode=prefer/require/verify-ca heute schon wie verify-full und
+ * warnt bei jedem Start. Explizit verify-full setzen: gleiches Verhalten, keine Warnung.
+ */
+export function withExplicitSslMode(url: string): string {
+  return url.replace(/([?&]sslmode=)(prefer|require|verify-ca)(?=&|$)/i, "$1verify-full");
 }
 
 export function getDb(): PrismaClient {
