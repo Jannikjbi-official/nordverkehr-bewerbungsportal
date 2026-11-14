@@ -5,6 +5,7 @@ import { allowedTeamTargets, canTeamTransition, statusHintFor, timelineFor } fro
 import { buildLogMessage } from "@/lib/messages/embed";
 import { buildSpotlightMessage } from "@/lib/messages/jobs";
 import { KIND_SEEDS } from "@/lib/setup/kinds-seed";
+import { TEAM_ONLY_TEMPLATE_TITLES, TEMPLATES } from "@/lib/setup/seed-data";
 
 describe("Bewerbungsarten", () => {
   it("unbekannte Art → Team", () => {
@@ -55,5 +56,20 @@ describe("Bewerbungsarten", () => {
     for (const q of KIND_SEEDS.flatMap((k) => k.position.sections.flatMap((s) => s.questions)).filter((q) => q.type === "QUIZ")) {
       expect(q.options).toContain(q.correctOption);
     }
+  });
+  it("Bausteine: jede Art hat in jeder Kategorie mindestens einen", () => {
+    const categories = ["EINGANG", "RUECKFRAGE", "EINLADUNG", "ANNAHME", "ABLEHNUNG", "ERINNERUNG", "SONSTIGES"];
+    const all = [
+      ...TEMPLATES.map((t) => ({ category: t.category, title: t.title, kinds: TEAM_ONLY_TEMPLATE_TITLES.includes(t.title) ? ["team"] : [] })),
+      ...KIND_SEEDS.flatMap((k) => k.templates.map((t) => ({ category: t.category, title: t.title, kinds: [k.type.key] }))),
+    ];
+    for (const kind of ["team", "whitelist", "beta"]) {
+      for (const c of categories) {
+        const own = all.filter((t) => t.category === c && t.kinds.includes(kind));
+        expect(own.length, `${kind} / ${c}`).toBeGreaterThan(0);
+      }
+    }
+    const titles = all.map((t) => t.title);
+    expect(new Set(titles).size).toBe(titles.length);
   });
 });

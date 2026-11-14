@@ -447,6 +447,15 @@ const MIGRATIONS: { id: string; run: (db: PrismaClient, opts: Options) => Promis
   },
   // Bausteine je Bewerbungsart: mitgelieferte Team-/Whitelist-/Beta-Bausteine zuordnen (nur wenn noch nicht zugeordnet)
   { id: "2026-11-bausteine-arten", run: (db, o) => (o.dryRun ? Promise.resolve(0) : tagTemplateKinds(db)) },
+  // Bausteine in allen Kategorien für Whitelist und Beta; allgemeine Team-Texte dem Team zuordnen
+  {
+    id: "2026-11-bausteine-alle-kategorien",
+    run: async (db, o) => {
+      if (o.dryRun) return 0;
+      const tagged = await tagTemplateKinds(db);
+      return tagged + (await (await import("@/lib/setup/base-seed")).ensureKindTemplates(db));
+    },
+  },
 ];
 
 /** „TeamSpeak-Channel …“ in Notizen → Discord-Sprachkanal (rein, für Tests) */

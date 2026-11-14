@@ -677,6 +677,13 @@ try {
     await rm(db);
     check((await db.messageTemplate.findFirstOrThrow({ where: { title: "Willkommen im Team" } })).kinds.join() === "team", "Migration: „Willkommen im Team“ nur fürs Team");
     check((await db.messageTemplate.findFirstOrThrow({ where: { title: "Probezeit-Infos" } })).kinds.join() === "beta", "Migration: eigene Zuordnung bleibt");
+    // Jede Art hat in jeder Kategorie eigene Bausteine (nach den Migrationen)
+    await db.setting.deleteMany({ where: { key: "migration:2026-11-bausteine-alle-kategorien" } });
+    await rm(db);
+    const cats = ["EINGANG", "RUECKFRAGE", "EINLADUNG", "ANNAHME", "ABLEHNUNG", "ERINNERUNG", "SONSTIGES"] as const;
+    const missing: string[] = [];
+    for (const k of ["whitelist", "beta"]) for (const c of cats) if (!(await db.messageTemplate.count({ where: { category: c, kinds: { has: k } } }))) missing.push(`${k}/${c}`);
+    check(missing.length === 0, `Bausteine in allen Kategorien für Whitelist und Beta${missing.length ? ` – fehlt: ${missing.join(", ")}` : ""}`);
 
     await saveSettings({ "discord.autoRoleOnAccept": true, "discord.acceptExtraRoleIds": "300000000000000001", "discord.welcomeChannelId": "300000000000000002", "interview.minStars": 0, "onboarding.probationDays": 30 }, team.id);
     await db.position.update({ where: { id: beta.id }, data: { acceptRoleId: "300000000000000003", nickPrefix: "[Beta]" } });

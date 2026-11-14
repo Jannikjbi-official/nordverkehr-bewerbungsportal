@@ -140,13 +140,23 @@ export async function seedKinds(db: PrismaClient, log: (m: string) => void = () 
       }
       for (const [si, s] of sections.entries()) await ensureSection(db, type.id, pos.id, s, 100 + si);
     }
+  }
+  await ensureKindTemplates(db);
+  return created;
+}
+
+/** Bausteine für Whitelist und Beta anlegen, die es (nach Titel) noch nicht gibt. Gibt die Anzahl zurück. */
+export async function ensureKindTemplates(db: PrismaClient) {
+  let n = 0;
+  for (const k of KIND_SEEDS) {
     for (const t of k.templates) {
       if (await db.messageTemplate.findFirst({ where: { title: t.title }, select: { id: true } })) continue;
       const last = await db.messageTemplate.aggregate({ _max: { sortOrder: true }, where: { category: t.category } });
       await db.messageTemplate.create({ data: { ...t, kinds: [k.type.key], sortOrder: (last._max.sortOrder ?? 0) + 1 } });
+      n++;
     }
   }
-  return created;
+  return n;
 }
 
 export interface BootstrapResult {

@@ -92,7 +92,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       { kind: "neu", text: "**Whitelist-Bewerbung** – eigenes Formular mit Charakter, Regel-Quiz und Szenarien, danach Whitelist-Gespräch auf Discord. Bei Annahme gibt es automatisch die Whitelist-Rolle. Zu finden unter /whitelist." },
       { kind: "neu", text: "**Beta-Bewerbung** – kurzes Formular für Beta-Tester, ohne Gespräch und mit begrenzten Plätzen; bei Annahme die Beta-Rolle. Zu finden unter /beta." },
       { kind: "besser", text: "**Startseite** – drei Wege zu Nordverkehr: Whitelist, Beta-Test und Team, jeweils mit Status. Menü und Fußbereich verlinken alles direkt." },
-      { kind: "neu", text: "**Bausteine je Bewerbungsart** – unter „Nachrichtenbausteine“ festlegen, ob ein Baustein bei Team, Whitelist, Beta oder allen erscheint. Mitgelieferte Team-Bausteine (z. B. „Willkommen im Team“) sind schon zugeordnet." },
+      { kind: "neu", text: "**Bausteine je Bewerbungsart** – unter „Nachrichtenbausteine“ festlegen, ob ein Baustein bei Team, Whitelist, Beta oder allen erscheint. Team, Whitelist und Beta haben jetzt in jeder Kategorie (Eingang, Rückfrage, Einladung, Annahme, Absage, Erinnerung, Sonstiges) eigene Texte." },
       { kind: "besser", text: "**Claimen = In Prüfung** – wer eine eingereichte Bewerbung claimt, setzt sie damit automatisch auf „In Prüfung“ (im Portal, per Discord-Knopf und /claim)." },
       { kind: "besser", text: "**Pro Bewerbungsart passend** – Bestätigungen, Texte, Status und Discord-Knöpfe richten sich nach der Art. Einarbeitung, Probezeit, Pate und Begrüßung im Teamchat gibt es nur bei Team-Bewerbungen." },
     ],
