@@ -6,12 +6,15 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransiti
 import { createPortal } from "react-dom";
 import { PaperPlaneTilt, Plus, Star, WarningCircle, X } from "@phosphor-icons/react/ssr";
 import { sendMessageAction } from "@/app/actions/team";
-import { CATEGORY_LABEL, CATEGORY_ORDER } from "@/lib/applications/status";
+import { CATEGORY_LABEL, CATEGORY_ORDER, STATUS_LABEL } from "@/lib/applications/status";
 import { PLACEHOLDERS, renderTemplate, subjectFromTemplateTitle, type TemplateVars } from "@/lib/messages/placeholders";
 import { DiscordPreview } from "@/components/team/DiscordPreview";
 import { StatusSelect } from "@/components/team/StatusSelect";
 import { HelpLink } from "@/components/team/HelpLink";
 import type { ApplicationStatus, TemplateCategory } from "@prisma/client";
+
+/** Bausteine dieser Kategorien setzen den Status gleich mit */
+const AUTO_STATUS: Partial<Record<TemplateCategory, ApplicationStatus>> = { ANNAHME: "ACCEPTED", ABLEHNUNG: "REJECTED" };
 
 const DEFAULT_TITLE = "Nachricht vom Nordverkehr-Team";
 
@@ -54,6 +57,9 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
   const [used, setUsed] = useState<string[]>([]);
   const [grund, setGrund] = useState("");
   const [alsoStatus, setAlsoStatus] = useState<ApplicationStatus | "">("");
+  // Status wurde vom Baustein gesetzt (Annahme → Angenommen, Ablehnung → Abgelehnt) und nicht von Hand geändert
+  const [statusAuto, setStatusAuto] = useState(false);
+  const [statusTouched, setStatusTouched] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [pending, start] = useTransition();
@@ -91,6 +97,12 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
     setBody((b) => (b.trim() ? `${b.trimEnd()}\n\n${t.body}` : t.body));
     setUsed((u) => (u.includes(t.id) ? u : [...u, t.id]));
     if (t.category === "RUECKFRAGE" && !expectTouched) setExpectReply(true);
+    // Annahme-/Absage-Baustein → Status gleich mit setzen (sichtbar unten, abwählbar)
+    const autoTo = AUTO_STATUS[t.category];
+    if (autoTo && !statusTouched && statusTargets.includes(autoTo)) {
+      setAlsoStatus(autoTo);
+      setStatusAuto(true);
+    }
     setSent(false);
     requestAnimationFrame(() => textarea.current?.focus());
   }
@@ -106,7 +118,15 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
       }))
     )
       return;
-    if (!(await confirmDialog({ title: "Nachricht senden?", body: "Sie geht per Discord-DM raus und erscheint im Portal des Bewerbers.", confirmLabel: "Senden" }))) return;
+    if (
+      !(await confirmDialog({
+        title: alsoStatus ? `Senden und auf „${STATUS_LABEL[alsoStatus]}“ setzen?` : "Nachricht senden?",
+        body: `Sie geht per Discord-DM raus und erscheint im Portal des Bewerbers.${alsoStatus ? ` Der Status wird gleichzeitig auf „${STATUS_LABEL[alsoStatus]}“ gesetzt.` : ""}`,
+        confirmLabel: alsoStatus ? `Senden & ${STATUS_LABEL[alsoStatus]}` : "Senden",
+        tone: alsoStatus === "REJECTED" ? "danger" : "default",
+      }))
+    )
+      return;
     start(async () => {
       const res = await sendMessageAction({
         applicationId,
@@ -126,6 +146,8 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
         setTitle(DEFAULT_TITLE);
         setTitleTouched(false);
         setAlsoStatus("");
+        setStatusAuto(false);
+        setStatusTouched(false);
         setExpectReply(false);
         setExpectTouched(false);
         setSent(true);
@@ -228,6 +250,10 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
                     setBody("");
                     setUsed([]);
                     if (!titleTouched) setTitle(DEFAULT_TITLE);
+                    if (statusAuto) {
+                      setAlsoStatus("");
+                      setStatusAuto(false);
+                    }
                   }}>
                   <X size={12} aria-hidden /> Leeren
                 </button>
@@ -281,10 +307,19 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
                 label="Gleichzeitig Status ändern"
                 options={statusTargets}
                 value={alsoStatus || null}
-                onChange={(s) => setAlsoStatus(s ?? "")}
+                onChange={(s) => {
+                  setAlsoStatus(s ?? "");
+                  setStatusAuto(false);
+                  setStatusTouched(true);
+                }}
                 placeholder="Status nicht ändern"
                 allowNone
               />
+              {statusAuto && alsoStatus && (
+                <p className="nv-help mt-1">
+                  Vom Baustein gesetzt: Beim Senden wird die Bewerbung auf „{STATUS_LABEL[alsoStatus]}“ gestellt. Nicht gewünscht? Oben auf „Status nicht ändern“ stellen.
+                </p>
+              )}
             </div>
           )}
         </div>

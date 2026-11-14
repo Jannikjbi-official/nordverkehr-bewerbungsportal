@@ -117,7 +117,7 @@ export const HELP: HelpSection[] = [
       {
         id: "bausteine",
         term: "Bausteine & Betreff",
-        text: "Bausteine sind fertige Textstücke nach Kategorie, die sich kombinieren lassen. Der **erste gewählte Baustein setzt den Betreff** der DM; hast du den Betreff selbst geändert, bleibt er. Pflege unter „Nachrichtenbausteine“. Dort legst du auch fest, **bei welchen Bewerbungsarten** ein Baustein erscheint (Team, Whitelist, Beta – keine Auswahl = bei allen).",
+        text: "Bausteine sind fertige Textstücke nach Kategorie, die sich kombinieren lassen. Der **erste gewählte Baustein setzt den Betreff** der DM; hast du den Betreff selbst geändert, bleibt er. Pflege unter „Nachrichtenbausteine“. Dort legst du auch fest, **bei welchen Bewerbungsarten** ein Baustein erscheint (Team, Whitelist, Beta – keine Auswahl = bei allen). Ein Baustein aus **Annahme** stellt beim Senden automatisch auf „Angenommen“, einer aus **Ablehnung** auf „Abgelehnt“ – vorher sichtbar unter „Gleichzeitig Status ändern“ und dort abwählbar.",
       },
       {
         id: "platzhalter",
