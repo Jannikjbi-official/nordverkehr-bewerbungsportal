@@ -53,6 +53,9 @@ export async function POST(req: Request) {
     await audit("data.import", { actorId: actor?.id ?? null, meta: { from: "mongodb", inserted: report.totalInserted, source: report.totalSource, ms: report.ms } });
     const { clearSettingsCache } = await import("@/lib/settings");
     clearSettingsCache();
+    // Neuere Daten-Migrationen (z. B. Whitelist & Beta) gleich nachziehen – nicht erst beim nächsten Serverstart
+    const { runMigrations } = await import("@/lib/setup/migrations");
+    await runMigrations(db).catch((e) => console.error("[mongo-import] Migrationen", e));
     return Response.json({ ok: true, report });
   } catch (e) {
     console.error("[mongo-import]", e);
