@@ -445,6 +445,8 @@ const MIGRATIONS: { id: string; run: (db: PrismaClient, opts: Options) => Promis
     id: "2026-11-whitelist-beta",
     run: async (db, o) => (o.dryRun ? 0 : (await import("@/lib/setup/base-seed")).seedKinds(db)),
   },
+  // Bausteine je Bewerbungsart: mitgelieferte Team-/Whitelist-/Beta-Bausteine zuordnen (nur wenn noch nicht zugeordnet)
+  { id: "2026-11-bausteine-arten", run: (db, o) => (o.dryRun ? Promise.resolve(0) : tagTemplateKinds(db)) },
 ];
 
 /** „TeamSpeak-Channel …“ in Notizen → Discord-Sprachkanal (rein, für Tests) */
@@ -582,6 +584,18 @@ async function addKiConsentTemplate(db: PrismaClient) {
 async function removeTextCheckData(db: PrismaClient) {
   // Die Felder gibt es in Postgres nicht mehr – nur die Audit-Einträge aufräumen
   return db.auditLog.deleteMany({ where: { action: "application.textcheck" } });
+}
+
+async function tagTemplateKinds(db: PrismaClient) {
+  const { TEAM_ONLY_TEMPLATE_TITLES } = await import("@/lib/setup/seed-data");
+  const { KIND_SEEDS } = await import("@/lib/setup/kinds-seed");
+  let n = 0;
+  const tag = async (titles: string[], kinds: string[]) => {
+    n += (await db.messageTemplate.updateMany({ where: { title: { in: titles }, kinds: { isEmpty: true } }, data: { kinds } })).count;
+  };
+  await tag(TEAM_ONLY_TEMPLATE_TITLES, ["team"]);
+  for (const k of KIND_SEEDS) await tag(k.templates.map((t) => t.title), [k.type.key]);
+  return n;
 }
 
 const LOCK_KEY = "lock:migrations";

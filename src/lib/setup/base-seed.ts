@@ -6,7 +6,7 @@
  * eindeutige Keys (Unique-Indizes), doppelte Anlage scheitert am Index.
  */
 import type { PrismaClient } from "@prisma/client";
-import { GENERAL_SECTIONS, POSITIONS, POSITION_COOLDOWNS, TEMPLATES, type SeedSection } from "@/lib/setup/seed-data";
+import { GENERAL_SECTIONS, POSITIONS, POSITION_COOLDOWNS, TEAM_ONLY_TEMPLATE_TITLES, TEMPLATES, type SeedSection } from "@/lib/setup/seed-data";
 import { markMigrationsDone, runMigrations } from "@/lib/setup/migrations";
 import { KIND_SEEDS } from "@/lib/setup/kinds-seed";
 
@@ -99,7 +99,9 @@ export async function seedBase(db: PrismaClient, log: (m: string) => void = () =
   }
 
   if ((await db.messageTemplate.count()) === 0) {
-    await db.messageTemplate.createMany({ data: TEMPLATES.map((t, i) => ({ ...t, sortOrder: i })) });
+    await db.messageTemplate.createMany({
+      data: TEMPLATES.map((t, i) => ({ ...t, kinds: TEAM_ONLY_TEMPLATE_TITLES.includes(t.title) ? ["team"] : (t.kinds ?? []), sortOrder: i })),
+    });
     log(`✓ ${TEMPLATES.length} Nachrichtenbausteine`);
   }
   await seedKinds(db, log);
@@ -141,7 +143,7 @@ export async function seedKinds(db: PrismaClient, log: (m: string) => void = () 
     for (const t of k.templates) {
       if (await db.messageTemplate.findFirst({ where: { title: t.title }, select: { id: true } })) continue;
       const last = await db.messageTemplate.aggregate({ _max: { sortOrder: true }, where: { category: t.category } });
-      await db.messageTemplate.create({ data: { ...t, sortOrder: (last._max.sortOrder ?? 0) + 1 } });
+      await db.messageTemplate.create({ data: { ...t, kinds: [k.type.key], sortOrder: (last._max.sortOrder ?? 0) + 1 } });
     }
   }
   return created;

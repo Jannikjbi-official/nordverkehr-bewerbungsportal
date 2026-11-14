@@ -167,7 +167,18 @@ export const KI_CONSENT_TEMPLATE_TITLE = "KI-Einschätzung – Zustimmung";
 export const KI_CONSENT_TEMPLATE_BODY =
   "Moin {name},\n\nkurze Frage zu deiner Bewerbung {bewerbungs_id} als **{position}**:\n\nWir nutzen im Bewerbungsportal seit Kurzem eine KI, die Bewerbungen nach festen Kriterien einschätzt (z. B. Kommunikation, Erfahrung, Umgang mit Szenarien) und das kurz begründet. Deine Bewerbung kam kurz vor dieser Neuerung bei uns an – deshalb fragen wir dich vorher.\n\n**Was dabei passiert:**\n- Nur deine Antworten und die Stelle gehen an die KI (Claude von Anthropic) – nicht dein Name, deine Discord-ID oder Bilder.\n- Die Punkte sind nur eine Orientierung fürs Team. Entscheiden tun immer wir Menschen, im Gespräch und in der Abstimmung.\n- Die Daten werden nicht zum Training der KI genutzt.\n\n**Sagst du Nein, hat das keinerlei Nachteile** – dann bewerten wir deine Bewerbung ganz normal ohne KI.\n\nWenn du einverstanden bist, antworte einfach direkt im Portal unter „Meine Bewerbungen“ mit **„Ja“**. Mehr dazu steht in der Datenschutzerklärung im Portal.";
 
-export const TEMPLATES: { category: TemplateCategory; title: string; body: string }[] = [
+/** Mitgelieferte Bausteine, die nur zu Team-Bewerbungen passen (Gespräch, Probezeit, Team-Wortwahl) */
+export const TEAM_ONLY_TEMPLATE_TITLES = [
+  "Portfolio / Link fehlt",
+  "Einladung zum Gespräch",
+  "Willkommen im Team",
+  "Probezeit-Infos",
+  "Absage (freundlich)",
+  "Absage – zu wenig Zeit",
+  "Absage – Mindestalter",
+];
+
+export const TEMPLATES: { category: TemplateCategory; title: string; body: string; kinds?: string[] }[] = [
   {
     category: "EINGANG",
     title: "Bewerbung ist angekommen",

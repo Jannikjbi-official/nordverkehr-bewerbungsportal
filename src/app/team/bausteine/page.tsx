@@ -31,7 +31,7 @@ async function Templates() {
   const templates = await db.messageTemplate.findMany({ orderBy: [{ category: "asc" }, { sortOrder: "asc" }] });
   return (
     <TemplateManager
-      templates={templates.map((t) => ({ id: t.id, category: t.category, title: t.title, body: t.body, active: t.active }))}
+      templates={templates.map((t) => ({ id: t.id, category: t.category, title: t.title, body: t.body, active: t.active, kinds: t.kinds }))}
     />
   );
 }

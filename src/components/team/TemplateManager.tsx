@@ -13,6 +13,7 @@ import { CATEGORY_LABEL, CATEGORY_ORDER } from "@/lib/applications/status";
 import { PLACEHOLDERS, renderTemplate } from "@/lib/messages/placeholders";
 import { DiscordPreview } from "@/components/team/DiscordPreview";
 import type { TemplateCategory } from "@prisma/client";
+import { KINDS, KIND_KEYS, type KindKey } from "@/lib/kinds";
 
 interface Template {
   id: string;
@@ -20,6 +21,8 @@ interface Template {
   title: string;
   body: string;
   active: boolean;
+  /** Nur bei diesen Bewerbungsarten – leer = alle */
+  kinds: string[];
 }
 
 const SAMPLE = {
@@ -78,6 +81,7 @@ export function TemplateManager({ templates: initial }: { templates: Template[] 
         title: editing.title ?? "",
         body: editing.body ?? "",
         active: editing.active ?? true,
+        kinds: (editing.kinds ?? []) as KindKey[],
       });
       if (!res.ok) setError(res.error);
       else {
@@ -126,7 +130,7 @@ export function TemplateManager({ templates: initial }: { templates: Template[] 
           </SortableContext>
         </DndContext>
         {list.length === 0 && <p className="text-sm text-muted">Noch keine Bausteine in dieser Kategorie.</p>}
-        <button type="button" className="nv-btn nv-btn-ghost" onClick={() => setEditing({ category, title: "", body: "", active: true })}>
+        <button type="button" className="nv-btn nv-btn-ghost" onClick={() => setEditing({ category, title: "", body: "", active: true, kinds: [] })}>
           <Plus size={16} aria-hidden /> Neuer Baustein
         </button>
       </div>
@@ -167,6 +171,37 @@ export function TemplateManager({ templates: initial }: { templates: Template[] 
                 ))}
               </div>
             </div>
+            <fieldset>
+              <legend className="nv-field-label">Anzeigen bei</legend>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  aria-pressed={!(editing.kinds ?? []).length}
+                  className={`nv-pill transition-colors ${!(editing.kinds ?? []).length ? "nv-pill-red" : "hover:text-fg"}`}
+                  onClick={() => setEditing({ ...editing, kinds: [] })}
+                >
+                  Allen Bewerbungen
+                </button>
+                {KIND_KEYS.map((k) => {
+                  const on = (editing.kinds ?? []).includes(k);
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      aria-pressed={on}
+                      className={`nv-pill transition-colors ${on ? "nv-pill-red" : "hover:text-fg"}`}
+                      onClick={() => {
+                        const cur = editing.kinds ?? [];
+                        setEditing({ ...editing, kinds: on ? cur.filter((x) => x !== k) : [...cur, k] });
+                      }}
+                    >
+                      {KINDS[k].label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="nv-help mt-1">Der Baustein erscheint im Nachrichtenfeld nur bei Bewerbungen dieser Art(en).</p>
+            </fieldset>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" className="nv-check !mt-0" checked={editing.active ?? true} onChange={(e) => setEditing({ ...editing, active: e.target.checked })} />
               Aktiv (im Editor auswählbar)
@@ -208,6 +243,11 @@ function SortableItem({ t, active, onEdit, onDelete }: { t: Template; active: bo
         <p className="text-sm font-medium flex items-center gap-2">
           {t.title}
           {!t.active && <span className="nv-pill !text-[0.65rem] !py-0">inaktiv</span>}
+          {t.kinds.map((k) => (
+            <span key={k} className="nv-pill !text-[0.65rem] !py-0">
+              {KINDS[k as KindKey]?.label ?? k}
+            </span>
+          ))}
         </p>
         <p className="mt-0.5 text-xs text-muted line-clamp-2 whitespace-pre-wrap">{t.body}</p>
       </div>

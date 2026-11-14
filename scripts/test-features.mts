@@ -657,6 +657,26 @@ try {
     check(!wlForm.some((x) => x.general), "Whitelist ohne allgemeine Team-Fragen");
     check((await db.question.count({ where: { key: { startsWith: "whitelist.quiz_" }, correctOption: null } })) === 0, "Quiz-Lösungen gespeichert");
     check((await db.messageTemplate.count({ where: { title: { in: ["Whitelist – Freigegeben", "Beta – Zusage"] } } })) === 2, "Bausteine für Whitelist und Beta");
+    // Bausteine je Art: Filter wie in der Bewerbungsansicht
+    const forKind = (k: string) => db.messageTemplate.findMany({ where: { active: true, OR: [{ kinds: { isEmpty: true } }, { kinds: { has: k } }] }, select: { title: true } }).then((r) => r.map((t) => t.title));
+    await db.messageTemplate.createMany({
+      data: [
+        { category: "SONSTIGES", title: "T-Alle", body: "x", kinds: [] },
+        { category: "SONSTIGES", title: "T-Team", body: "x", kinds: ["team"] },
+        { category: "SONSTIGES", title: "T-WL-Beta", body: "x", kinds: ["whitelist", "beta"] },
+      ],
+    });
+    const teamT = await forKind("team");
+    const wlT = await forKind("whitelist");
+    check(teamT.includes("T-Alle") && teamT.includes("T-Team") && !teamT.includes("T-WL-Beta"), "Bausteine: Team sieht „alle“ + Team");
+    check(wlT.includes("T-Alle") && wlT.includes("T-WL-Beta") && !wlT.includes("T-Team") && wlT.includes("Whitelist – Freigegeben") && !wlT.includes("Beta – Zusage"), "Bausteine: Whitelist sieht „alle“ + Whitelist");
+    // Daten-Migration ordnet mitgelieferte Bausteine zu (nur unzugeordnete)
+    await db.messageTemplate.createMany({ data: [{ category: "ANNAHME", title: "Willkommen im Team", body: "x" }, { category: "ANNAHME", title: "Probezeit-Infos", body: "x", kinds: ["beta"] }] });
+    const { runMigrations: rm } = await import("../src/lib/setup/migrations");
+    await db.setting.deleteMany({ where: { key: "migration:2026-11-bausteine-arten" } });
+    await rm(db);
+    check((await db.messageTemplate.findFirstOrThrow({ where: { title: "Willkommen im Team" } })).kinds.join() === "team", "Migration: „Willkommen im Team“ nur fürs Team");
+    check((await db.messageTemplate.findFirstOrThrow({ where: { title: "Probezeit-Infos" } })).kinds.join() === "beta", "Migration: eigene Zuordnung bleibt");
 
     await saveSettings({ "discord.autoRoleOnAccept": true, "discord.acceptExtraRoleIds": "300000000000000001", "discord.welcomeChannelId": "300000000000000002", "interview.minStars": 0, "onboarding.probationDays": 30 }, team.id);
     await db.position.update({ where: { id: beta.id }, data: { acceptRoleId: "300000000000000003", nickPrefix: "[Beta]" } });

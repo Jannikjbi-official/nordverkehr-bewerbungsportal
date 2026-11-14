@@ -403,6 +403,8 @@ const templateSchema = z.object({
   title: z.string().trim().min(2).max(80),
   body: z.string().trim().min(2).max(3500),
   active: z.boolean().default(true),
+  /** Nur bei diesen Bewerbungsarten – leer = alle */
+  kinds: z.array(z.enum(["team", "whitelist", "beta"])).max(3).default([]),
 });
 
 export async function saveTemplateAction(input: z.input<typeof templateSchema>): Promise<ActionResult<{ id: string }>> {

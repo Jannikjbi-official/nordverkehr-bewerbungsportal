@@ -616,6 +616,8 @@ model MessageTemplate {
   body        String
   sortOrder   Int              @default(0)
   active      Boolean          @default(true)
+  /// Nur bei diesen Bewerbungsarten anzeigen („team“, „whitelist“, „beta“) – leer = bei allen
+  kinds       String[]         @default([])
   createdById String?
   createdBy   User?            @relation(fields: [createdById], references: [id], onDelete: SetNull)
   createdAt   DateTime         @default(now())

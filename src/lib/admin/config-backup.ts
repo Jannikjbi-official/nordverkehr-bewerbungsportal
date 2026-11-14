@@ -5,6 +5,7 @@
  * werden aktualisiert (Positionen per Slug, Schritte/Fragen per Key bzw. Titel/Text,
  * Bausteine per Kategorie + Titel), fehlende angelegt. Bewerbungen sind nie enthalten.
  */
+import { KINDS, type KindKey } from "@/lib/kinds";
 import { z } from "zod";
 import type { PrismaClient } from "@prisma/client";
 import { SETTING_KEYS, getSettings, saveSettings, settingsSchema, type Settings } from "@/lib/settings";
@@ -73,7 +74,19 @@ export const backupSchema = z.object({
       questions: z.array(questionSchema).max(100),
     }),
   ).max(200),
-  templates: z.array(z.object({ category: CATEGORY, title: str(200), body: str(5000), sortOrder: z.number().int(), active: z.boolean() })).max(300),
+  templates: z
+    .array(
+      z.object({
+        category: CATEGORY,
+        title: str(200),
+        body: str(5000),
+        sortOrder: z.number().int(),
+        active: z.boolean(),
+        // ältere Sicherungen haben das Feld nicht → für alle Arten
+        kinds: z.array(z.enum(["team", "whitelist", "beta"])).max(3).default([]),
+      }),
+    )
+    .max(300),
 });
 export type Backup = z.infer<typeof backupSchema>;
 
@@ -135,7 +148,7 @@ export async function exportConfig(db: PrismaClient): Promise<Backup> {
         archived: !!q.archived,
       })),
     })),
-    templates: templates.map((t) => ({ category: t.category, title: t.title, body: t.body, sortOrder: t.sortOrder, active: t.active })),
+    templates: templates.map((t) => ({ category: t.category, title: t.title, body: t.body, sortOrder: t.sortOrder, active: t.active, kinds: t.kinds.filter((k): k is KindKey => k in KINDS) })),
   };
 }
 

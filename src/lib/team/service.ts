@@ -229,8 +229,26 @@ export async function setClaim(opts: { applicationId: string; actor: Actor; acti
       data: { claimedById: opts.actor.id, claimedAt: new Date() },
     });
     if (res.count === 0) throw new UserFacingError("Gerade hat jemand anderes geclaimt. Lade die Seite neu.");
+    // Wer claimt, liest: „Eingereicht“ → „In Prüfung“ (bedingt, falls parallel schon geändert)
+    let toReview = false;
+    if (app.status === "SUBMITTED") {
+      const now = new Date();
+      toReview =
+        (
+          await db.application.updateMany({
+            where: { id: app.id, status: "SUBMITTED" },
+            data: { status: "IN_REVIEW", firstReviewedAt: app.firstReviewedAt ?? now },
+          })
+        ).count === 1;
+      if (toReview) {
+        await db.statusChange.create({ data: { applicationId: app.id, from: "SUBMITTED", to: "IN_REVIEW", actorId: opts.actor.id, note: "Beim Claimen" } });
+        await db.auditLog.create({
+          data: { actorId: opts.actor.id, action: "application.status", targetType: "application", targetId: app.id, meta: { from: "SUBMITTED", to: "IN_REVIEW", publicId: app.publicId, viaClaim: true } },
+        });
+      }
+    }
     const from = app.claimedBy ? ` (übernommen von ${esc(actorName(app.claimedBy))})` : "";
-    const j = await botLog(`📌 ${esc(actorName(opts.actor))} betreut jetzt **${app.publicId}** (${app.position.title})${from}`, { applicationId: app.id });
+    const j = await botLog(`📌 ${esc(actorName(opts.actor))} betreut jetzt **${app.publicId}** (${app.position.title})${from}${toReview ? " – Status: **In Prüfung**" : ""}`, { applicationId: app.id });
     if (j) jobIds.push(j);
     // Bewerber erfährt, wer ihn jetzt betreut (Portal + DM)
     const { notifyApplicantClaimed } = await import("@/lib/team/claim-notice");

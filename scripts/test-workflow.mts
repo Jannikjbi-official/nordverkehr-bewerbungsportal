@@ -33,6 +33,10 @@ try {
 
   await setClaim({ applicationId: app.id, actor: jonas, action: "claim" });
   check((await db.application.findUnique({ where: { id: app.id } }))?.claimedById === jonas.id, "Jonas claimt");
+  {
+    const a = await db.application.findUniqueOrThrow({ where: { id: app.id }, include: { statusChanges: true } });
+    check(a.status === "IN_REVIEW" && !!a.firstReviewedAt && a.statusChanges.some((c) => c.from === "SUBMITTED" && c.to === "IN_REVIEW" && c.actorId === jonas.id && c.note === "Beim Claimen"), "Claimen setzt „In Prüfung“ (mit Verlauf)");
+  }
   let err = ""; try { await setClaim({ applicationId: app.id, actor: lea, action: "release" }); } catch (e) { err = (e as Error).message; }
   check(err.includes("Nur wer"), "Lea (kein Admin) darf nicht freigeben");
   await setClaim({ applicationId: app.id, actor: lea, action: "claim" });

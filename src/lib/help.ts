@@ -107,7 +107,7 @@ export const HELP: HelpSection[] = [
       {
         id: "claimen",
         term: "Claimen",
-        text: "Wer eine Bewerbung **claimt**, betreut sie – die anderen sehen oben in der Bewerbung und in der Liste („Betreut von“), wer dran ist. **Übernehmen** kann jedes Teammitglied, **Freigeben** nur wer geclaimt hat oder ein Admin. Alles landet im Bot-Log. Passiert nach dem Claim ein paar Tage nichts (Standard 3), bekommt der Betreuer einmal eine **Erinnerung per DM**.",
+        text: "Wer eine Bewerbung **claimt**, betreut sie – steht sie noch auf „Eingereicht“, geht sie dabei automatisch auf **In Prüfung** (auch per Discord-Knopf und /claim). Die anderen sehen oben in der Bewerbung und in der Liste („Betreut von“), wer dran ist. **Übernehmen** kann jedes Teammitglied, **Freigeben** nur wer geclaimt hat oder ein Admin. Alles landet im Bot-Log. Passiert nach dem Claim ein paar Tage nichts (Standard 3), bekommt der Betreuer einmal eine **Erinnerung per DM**.",
       },
       {
         id: "absender",
@@ -117,7 +117,7 @@ export const HELP: HelpSection[] = [
       {
         id: "bausteine",
         term: "Bausteine & Betreff",
-        text: "Bausteine sind fertige Textstücke nach Kategorie, die sich kombinieren lassen. Der **erste gewählte Baustein setzt den Betreff** der DM; hast du den Betreff selbst geändert, bleibt er. Pflege unter „Nachrichtenbausteine“.",
+        text: "Bausteine sind fertige Textstücke nach Kategorie, die sich kombinieren lassen. Der **erste gewählte Baustein setzt den Betreff** der DM; hast du den Betreff selbst geändert, bleibt er. Pflege unter „Nachrichtenbausteine“. Dort legst du auch fest, **bei welchen Bewerbungsarten** ein Baustein erscheint (Team, Whitelist, Beta – keine Auswahl = bei allen).",
       },
       {
         id: "platzhalter",

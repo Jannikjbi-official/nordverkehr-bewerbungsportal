@@ -46,7 +46,8 @@ try {
   const { runMigrations } = await import("../src/lib/setup/migrations");
   // Alte Migrationen sind markiert – nur neue (z. B. Whitelist & Beta) laufen danach
   const ran = await runMigrations(db);
-  check(ran.every((m) => m === "2026-11-whitelist-beta"), `Nur neue Migrationen laufen (${ran.join(", ") || "keine"})`);
+  const NEW = ["2026-11-whitelist-beta", "2026-11-bausteine-arten"];
+  check(ran.every((m) => NEW.includes(m)), `Nur neue Migrationen laufen (${ran.join(", ") || "keine"})`);
   check((await db.position.count({ where: { slug: { in: ["whitelist", "beta"] } } })) === 2, "Nach der Übernahme: Whitelist & Beta vorhanden");
   // Zweiter Lauf ersetzt sauber (idempotent)
   const r2 = await importFromMongo(db, mongoUrl);

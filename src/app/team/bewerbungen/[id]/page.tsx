@@ -100,7 +100,11 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
 
   const [settings, templates, vars, otherApps, activeBan, applicantAccess, bot] = await Promise.all([
     getSettings(),
-    db.messageTemplate.findMany({ where: { active: true }, orderBy: [{ category: "asc" }, { sortOrder: "asc" }] }),
+    // Nur Bausteine für alle Arten oder genau diese Bewerbungsart (Team/Whitelist/Beta)
+    db.messageTemplate.findMany({
+      where: { active: true, OR: [{ kinds: { isEmpty: true } }, { kinds: { has: kindOf(app.position.type.key).key } }] },
+      orderBy: [{ category: "asc" }, { sortOrder: "asc" }],
+    }),
     getTemplateVarsFor(app.id, me),
     db.application.findMany({
       where: { userId: app.userId, NOT: { id: app.id }, status: { not: "DRAFT" } },
