@@ -7,12 +7,11 @@
  * Auf Vercel läuft dieselbe Migration automatisch beim Serverstart.
  */
 import "dotenv/config";
-import { PrismaClient } from "@prisma/client";
-import { resolveDatabaseUrl } from "../src/lib/db";
+import { createPrismaClient } from "../src/lib/db";
 import { migrateQuestionsV2, runMigrations } from "../src/lib/setup/migrations";
 
 const apply = process.argv.includes("--apply");
-const db = new PrismaClient({ datasourceUrl: resolveDatabaseUrl() });
+const db = createPrismaClient();
 try {
   if (!apply) {
     console.log("PROBELAUF – es wird nichts geändert. Mit --apply ausführen.\n");

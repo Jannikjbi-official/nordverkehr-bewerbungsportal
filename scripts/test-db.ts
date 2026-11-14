@@ -7,7 +7,7 @@
  */
 import "dotenv/config";
 import { spawnSync } from "node:child_process";
-import { PrismaClient } from "@prisma/client";
+import { createPrismaClient } from "../src/lib/db";
 
 export async function freshTestDatabase(name: string) {
   if (!/^[a-z0-9_]+$/.test(name)) throw new Error("Ungültiger Testdatenbank-Name");
@@ -19,7 +19,7 @@ export async function freshTestDatabase(name: string) {
   const target = new URL(base);
   target.pathname = `/${dbName}`;
 
-  const a = new PrismaClient({ datasourceUrl: admin.toString() });
+  const a = createPrismaClient(admin.toString());
   try {
     await a.$executeRawUnsafe(`DROP DATABASE IF EXISTS "${dbName}" WITH (FORCE)`);
     await a.$executeRawUnsafe(`CREATE DATABASE "${dbName}"`);
@@ -38,7 +38,7 @@ export async function freshTestDatabase(name: string) {
     async drop() {
       const { db } = await import("../src/lib/db");
       await db.$disconnect().catch(() => {});
-      const c = new PrismaClient({ datasourceUrl: admin.toString() });
+      const c = createPrismaClient(admin.toString());
       await c.$executeRawUnsafe(`DROP DATABASE IF EXISTS "${dbName}" WITH (FORCE)`).catch(() => {});
       await c.$disconnect();
     },

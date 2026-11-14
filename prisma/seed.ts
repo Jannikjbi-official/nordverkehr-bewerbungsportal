@@ -8,13 +8,13 @@
  * Idempotent: Bereits vorhandene Positionen/Bausteine werden nicht doppelt angelegt.
  */
 import "dotenv/config";
-import { PrismaClient, type Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import type { ApplicationStatus, QuestionType, VoteValue } from "@prisma/client";
-import { resolveDatabaseUrl } from "../src/lib/db";
+import { createPrismaClient } from "../src/lib/db";
 import { seedBase } from "../src/lib/setup/base-seed";
 import { markMigrationsDone, runMigrations } from "../src/lib/setup/migrations";
 
-const db = new PrismaClient({ datasourceUrl: resolveDatabaseUrl() });
+const db = createPrismaClient();
 
 // ─── Demo-Daten ──────────────────────────────────────────────
 

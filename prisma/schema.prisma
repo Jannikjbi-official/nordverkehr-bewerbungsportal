@@ -3,7 +3,10 @@
 // in prisma/migrations an). Beim Deploy spielt `npm run build` sie automatisch ein.
 
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
+  // Ohne native Query-Engine (~17 MB pro Server-Funktion): Abfragen übersetzt ein
+  // kleiner WASM-Compiler, ausgeführt über den Postgres-Treiber (src/lib/db.ts)
+  engineType = "client"
 }
 
 datasource db {

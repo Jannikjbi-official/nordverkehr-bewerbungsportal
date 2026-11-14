@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 
 /**
  * Eine PrismaClient-Instanz pro Prozess (auch über Hot-Reloads hinweg).
@@ -44,8 +45,16 @@ export function hasDatabaseUrl(env: Record<string, string | undefined> = process
   return !!firstPostgres(env, DATABASE_URL_KEYS);
 }
 
+/**
+ * Prisma ohne native Query-Engine (engineType = "client"): Verbindung über den
+ * Postgres-Treiber `pg`. Spart ~17 MB pro Server-Funktion.
+ */
+export function createPrismaClient(url: string = resolveDatabaseUrl()): PrismaClient {
+  return new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
+}
+
 export function getDb(): PrismaClient {
-  globalForPrisma.__nvPrisma ??= new PrismaClient({ datasourceUrl: resolveDatabaseUrl() });
+  globalForPrisma.__nvPrisma ??= createPrismaClient();
   return globalForPrisma.__nvPrisma;
 }
 
