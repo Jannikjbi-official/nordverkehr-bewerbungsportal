@@ -472,29 +472,49 @@ export function FollowUpDone({ id }: { id: string }) {
   );
 }
 
-/** Prüfliste: Punkte abhaken, mit Name und Zeit. */
-export function ReviewChecklist({ applicationId, items }: { applicationId: string; items: { item: string; by: string | null; at: string | null }[] }) {
-  const { pending, error, run } = useAction();
-  const done = items.filter((i) => i.at).length;
+/**
+ * Prüfliste: Punkte abhaken, mit Name und Zeit. Der Haken erscheint sofort (gespeichert wird im
+ * Hintergrund, mehrere Klicks hintereinander gehen). Schlägt das Speichern fehl, springt er zurück.
+ */
+export function ReviewChecklist({ applicationId, items, me }: { applicationId: string; items: { item: string; by: string | null; at: string | null }[]; me: string }) {
+  const [state, setState] = useState(items);
+  const [error, setError] = useState<string | null>(null);
+  // Neue Server-Daten (z. B. Live-Aktualisierung) übernehmen
+  const [prev, setPrev] = useState(items);
+  if (prev !== items) {
+    setPrev(items);
+    setState(items);
+  }
+  const done = state.filter((i) => i.at).length;
+  function toggle(item: string, checked: boolean) {
+    setError(null);
+    const before = state;
+    setState((cur) => cur.map((i) => (i.item === item ? { ...i, at: checked ? new Date().toISOString() : null, by: checked ? me : null } : i)));
+    void toggleReviewCheckAction(applicationId, item, checked)
+      .then((r) => {
+        if (!r.ok) {
+          setState(before);
+          setError(r.error);
+        }
+      })
+      .catch(() => {
+        setState(before);
+        setError("Konnte nicht gespeichert werden – bitte nochmal versuchen.");
+      });
+  }
   return (
     <div className="space-y-2" data-testid="review-checklist">
       <p className="nv-mono flex items-center justify-between gap-2">
         Prüfliste{" "}
-        <span className={`tabular-nums normal-case tracking-normal ${done === items.length ? "text-[var(--tone-success)]" : "text-muted"}`}>
-          {done}/{items.length}
+        <span className={`tabular-nums normal-case tracking-normal ${done === state.length ? "text-[var(--tone-success)]" : "text-muted"}`}>
+          {done}/{state.length}
         </span>
       </p>
       <ul className="space-y-1.5">
-        {items.map((i) => (
+        {state.map((i) => (
           <li key={i.item}>
             <label className="flex cursor-pointer items-start gap-2.5 text-sm">
-              <input
-                type="checkbox"
-                className="nv-check mt-0.5"
-                checked={!!i.at}
-                disabled={pending}
-                onChange={(e) => run(() => toggleReviewCheckAction(applicationId, i.item, e.target.checked))}
-              />
+              <input type="checkbox" className="nv-check mt-0.5" checked={!!i.at} onChange={(e) => toggle(i.item, e.target.checked)} />
               <span className="min-w-0">
                 <span className={i.at ? "text-fg-2 line-through decoration-[var(--nv-faint)]" : ""}>{i.item}</span>
                 {i.at && (

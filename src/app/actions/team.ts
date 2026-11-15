@@ -438,7 +438,7 @@ export async function toggleReviewCheckAction(applicationId: string, item: strin
     await db.reviewCheck.deleteMany({ where: { applicationId, item } });
   }
   await audit("application.review_check", { actorId: user.id, targetType: "application", targetId: applicationId, meta: { item: item.slice(0, 80), done } });
-  refresh();
+  // Kein refresh(): die Prüfliste zeigt den Haken sofort selbst – spart das Neuladen der ganzen Seite
   return { ok: true };
 }
 

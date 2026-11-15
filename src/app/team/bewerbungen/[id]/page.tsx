@@ -625,6 +625,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
                 <div className="nv-divider" />
                 <ReviewChecklist
                   applicationId={app.id}
+                  me={me.globalName || me.username}
                   items={checklist.map((item) => {
                     const c = reviewChecks.find((r) => r.item === item);
                     return { item, by: c ? (c.checkedBy?.globalName || c.checkedBy?.username || null) : null, at: c?.checkedAt.toISOString() ?? null };
