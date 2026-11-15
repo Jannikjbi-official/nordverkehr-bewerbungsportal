@@ -222,8 +222,20 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
               <label htmlFor="welcome" className="nv-field-label">
                 Willkommensgruß
               </label>
-              <textarea id="welcome" className="nv-input text-sm !min-h-16" rows={2} maxLength={1000} value={s["discord.welcomeMessage"]} onChange={(e) => set("discord.welcomeMessage", e.target.value)} />
+              <textarea id="welcome" className="nv-input text-sm !min-h-16" rows={3} maxLength={1000} value={s["discord.welcomeMessage"]} onChange={(e) => set("discord.welcomeMessage", e.target.value)} />
               <p className="nv-help mt-1">Platzhalter: {"{mention}"} (pingt nur die neue Person), {"{name}"}, {"{stelle}"}. Kanal leer = kein Gruß.</p>
+            </div>
+            <div className="sm:col-span-2 space-y-2">
+              {toggle("team.anniversaryEnabled", "Team-Jubiläen", "Am Jahrestag der Annahme postet der Bot einen Gruß in denselben Kanal (z. B. „seit einem Jahr im Team“).")}
+              {s["team.anniversaryEnabled"] && (
+                <div>
+                  <label htmlFor="anniv" className="nv-field-label">
+                    Jubiläumsgruß
+                  </label>
+                  <textarea id="anniv" className="nv-input text-sm !min-h-16" rows={3} maxLength={1000} value={s["team.anniversaryMessage"]} onChange={(e) => set("team.anniversaryMessage", e.target.value)} />
+                  <p className="nv-help mt-1">Platzhalter: {"{mention}"}, {"{name}"}, {"{stelle}"}, {"{jahre}"} („einem Jahr“, „2 Jahren“).</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

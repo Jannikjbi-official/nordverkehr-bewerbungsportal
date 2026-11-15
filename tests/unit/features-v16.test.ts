@@ -95,3 +95,22 @@ describe("Frist-Countdown (#101)", async () => {
     expect(reminderDue(new Date("2026-11-17T12:00:00Z"), now)).toBe(false);
   });
 });
+
+describe("Team-Jubiläen (#104)", async () => {
+  const { anniversaryYears, anniversaryText } = await import("@/lib/team/anniversary");
+  it("Jahrestag in deutscher Zeit", () => {
+    expect(anniversaryYears(new Date("2025-11-15T10:00:00Z"), new Date("2026-11-15T09:00:00Z"))).toBe(1);
+    expect(anniversaryYears(new Date("2024-11-15T10:00:00Z"), new Date("2026-11-15T09:00:00Z"))).toBe(2);
+    expect(anniversaryYears(new Date("2025-11-14T23:30:00Z"), new Date("2026-11-15T09:00:00Z"))).toBe(1); // 00:30 am 15.11. (DE)
+    expect(anniversaryYears(new Date("2025-11-16T10:00:00Z"), new Date("2026-11-15T09:00:00Z"))).toBe(0);
+    expect(anniversaryYears(new Date("2026-11-15T08:00:00Z"), new Date("2026-11-15T09:00:00Z"))).toBe(0); // selber Tag, kein Jubiläum
+  });
+  it("29. Februar feiert in Nicht-Schaltjahren am 28.", () => {
+    expect(anniversaryYears(new Date("2024-02-29T12:00:00Z"), new Date("2025-02-28T12:00:00Z"))).toBe(1);
+    expect(anniversaryYears(new Date("2024-02-29T12:00:00Z"), new Date("2028-02-29T12:00:00Z"))).toBe(4);
+  });
+  it("Text", () => {
+    expect(anniversaryText("seit {jahre}", 1)).toBe("seit einem Jahr");
+    expect(anniversaryText("seit {jahre}", 3)).toBe("seit 3 Jahren");
+  });
+});

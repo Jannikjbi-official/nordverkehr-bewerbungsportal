@@ -108,6 +108,9 @@ export const settingsSchema = z.object({
   "discord.revertOnUnaccept": bool(true),
   /** Willkommensnachricht bei Annahme in diesem Kanal (leer = aus) */
   "discord.welcomeChannelId": channel(""),
+  /** Team-Jubiläum: am Jahrestag der Annahme ein Gruß im selben Kanal */
+  "team.anniversaryEnabled": bool(true),
+  "team.anniversaryMessage": z.string().trim().min(1).max(1000).default("🎉 {mention} ist heute seit {jahre} als **{stelle}** bei Nordverkehr im Team – danke, dass du dabei bist!"),
   "discord.welcomeMessage": z.string().trim().min(1).max(1000).default("👋 Willkommen im Team, {mention}! Ab jetzt als **{stelle}** dabei – schön, dass du da bist."),
   /** Zu jeder neuen Bewerbung einen Thread im Bewerbungs-Kanal starten (Bot braucht „Öffentliche Threads erstellen“) */
   "discord.threadPerApplication": bool(false),
