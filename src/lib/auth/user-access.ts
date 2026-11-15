@@ -40,6 +40,12 @@ function accessDeps(): AccessDeps {
     persist: async (userId, state) => {
       await db.user.update({ where: { id: userId }, data: state });
     },
+    // Nach der Antwort weiterprüfen (nur innerhalb eines Requests möglich – sonst sofort im Hintergrund)
+    background: (task) => {
+      void import("next/server")
+        .then(({ after }) => after(task))
+        .catch(() => void task().catch(() => {}));
+    },
   };
 }
 

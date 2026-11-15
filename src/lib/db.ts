@@ -50,7 +50,17 @@ export function hasDatabaseUrl(env: Record<string, string | undefined> = process
  * Postgres-Treiber `pg`. Spart ~17 MB pro Server-Funktion.
  */
 export function createPrismaClient(url: string = resolveDatabaseUrl()): PrismaClient {
-  return new PrismaClient({ adapter: new PrismaPg({ connectionString: withExplicitSslMode(url) }) });
+  return new PrismaClient({
+    adapter: new PrismaPg({
+      connectionString: withExplicitSslMode(url),
+      // Verbindungen offen halten: Standard (10 s) schließt sie zwischen zwei Klicks –
+      // jeder Seitenwechsel bräuchte dann einen neuen TLS-Verbindungsaufbau zur Datenbank.
+      idleTimeoutMillis: 300_000,
+      keepAlive: true,
+      max: 5,
+      connectionTimeoutMillis: 15_000,
+    }),
+  });
 }
 
 /**

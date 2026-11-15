@@ -12,9 +12,19 @@ export default auth(async (req) => {
   const kind = classifyRoute(pathname);
   if (kind === "public") return NextResponse.next();
 
+  // Seiten: nur das signierte Login-Cookie prüfen (keine Datenbank) – jede Seite prüft Rolle und
+  // Sitzung selbst (requireTeam/requireUser). Das spart pro Seitenwechsel Datenbank-Abfragen.
+  // API-Routen: volle Prüfung mit Datenbank und Discord-Rolle als zusätzliche Sicherung.
+  if (kind !== "team-api" && kind !== "user-api") {
+    const loggedIn = !!(req.auth as { uid?: string } | null)?.uid;
+    const decision = decideAccess(kind, pathname + search, { loggedIn, isTeam: kind === "team-page" ? loggedIn : false });
+    if (decision.action === "redirect") return NextResponse.redirect(new URL(decision.to, req.nextUrl.origin));
+    return NextResponse.next();
+  }
+
   const user = await loadUserFromSession(req.auth);
   let isTeam = false;
-  if (user && (kind === "team-page" || kind === "team-api")) {
+  if (user && kind === "team-api") {
     isTeam = (await getAccess(user)).isTeam;
   }
 

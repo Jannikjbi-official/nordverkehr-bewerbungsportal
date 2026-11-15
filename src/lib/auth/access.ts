@@ -39,7 +39,16 @@ export interface AccessDeps {
   now: () => Date;
   fetchMember: (guildId: string, discordId: string) => Promise<GuildMemberInfo | null>;
   persist: (userId: string, state: AccessState) => Promise<void>;
+  /**
+   * Optional: Arbeit nach der Antwort erledigen (z. B. next/server after). Dann gilt für
+   * Teammitglieder „erst anzeigen, dann prüfen“: Bis STALE_TEAM_MS nach der letzten Prüfung
+   * wird das gespeicherte Ergebnis sofort genutzt und Discord im Hintergrund gefragt.
+   */
+  background?: (task: () => Promise<void>) => void;
 }
+
+/** So lange darf ein bekanntes Teammitglied ohne Warten auf Discord weiterarbeiten. */
+export const STALE_TEAM_MS = 15 * 60_000;
 
 export interface AccessSubject extends AccessState {
   id: string;
@@ -83,6 +92,24 @@ export async function resolveAccess(
       roleCheckedAt: subject.roleCheckedAt,
       source: "cache",
     };
+  }
+
+  // Bekanntes Teammitglied, Prüfung nur etwas älter: nicht warten, im Hintergrund auffrischen.
+  // Wer (noch) keinen Zugriff hat, wird sofort geprüft – neue Rollen wirken also gleich.
+  if (!opts.force && deps.background && subject.isTeam && isCacheFresh(subject.roleCheckedAt, now, STALE_TEAM_MS)) {
+    deps.background(async () => {
+      try {
+        const m = await deps.fetchMember(config.guildId!, subject.discordId);
+        const next: AccessState = m
+          ? { inGuild: true, ...evaluateRoles(m.roles, config), guildJoinedAt: m.joinedAt, roleCheckedAt: deps.now(), roleIds: [...m.roles] }
+          : { ...DENIED, guildJoinedAt: null, roleCheckedAt: deps.now(), roleIds: [] };
+        await deps.persist(subject.id, next);
+      } catch {
+        // nächster Request versucht es erneut
+      }
+    });
+    const isAdmin = subject.isAdmin && !!config.adminRoleId;
+    return { inGuild: subject.inGuild, isTeam: subject.isTeam, isAdmin: isAdmin && subject.isTeam, guildJoinedAt: subject.guildJoinedAt, roleCheckedAt: subject.roleCheckedAt, source: "cache" };
   }
 
   let member: GuildMemberInfo | null;

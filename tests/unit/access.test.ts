@@ -121,3 +121,30 @@ describe("resolveAccess", () => {
     expect(a).toMatchObject({ isAdmin: true, guildJoinedAt: joined });
   });
 });
+
+describe("Rollenprüfung: erst anzeigen, dann im Hintergrund prüfen", () => {
+  const fiveMinAgo = new Date(NOW.getTime() - 5 * 60_000);
+  it("Teammitglied mit etwas älterer Prüfung: sofort Zugriff, Discord im Hintergrund", async () => {
+    const tasks: (() => Promise<void>)[] = [];
+    const d = deps({ background: (t) => void tasks.push(t) });
+    const a = await resolveAccess(subject({ isTeam: true, inGuild: true, roleCheckedAt: fiveMinAgo }), d);
+    expect(a).toMatchObject({ isTeam: true, source: "cache" });
+    expect(d.fetchMember).not.toHaveBeenCalled();
+    await tasks[0]();
+    expect(d.fetchMember).toHaveBeenCalledOnce();
+    expect(d.persist).toHaveBeenCalledOnce();
+  });
+  it("ohne Zugriff wird sofort geprüft (neue Rolle wirkt gleich)", async () => {
+    const d = deps({ background: vi.fn() });
+    const a = await resolveAccess(subject({ isTeam: false, roleCheckedAt: fiveMinAgo }), d);
+    expect(a.isTeam).toBe(true);
+    expect(d.fetchMember).toHaveBeenCalledOnce();
+    expect(d.background).not.toHaveBeenCalled();
+  });
+  it("sehr alte Prüfung (> 15 Min.) wartet wieder auf Discord", async () => {
+    const d = deps({ background: vi.fn() });
+    await resolveAccess(subject({ isTeam: true, roleCheckedAt: new Date(NOW.getTime() - 20 * 60_000) }), d);
+    expect(d.fetchMember).toHaveBeenCalledOnce();
+    expect(d.background).not.toHaveBeenCalled();
+  });
+});
