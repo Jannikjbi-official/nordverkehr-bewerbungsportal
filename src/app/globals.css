@@ -507,6 +507,25 @@
   .nv-scroll-x { position: relative; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
 
+/* Lesbarkeit (Schalter im Fußbereich): größere Schrift skaliert alles (rem), Kontrast hebt graue Texte und Linien an */
+html[data-text="large"] { font-size: 112.5%; }
+html[data-contrast="high"] {
+  --nv-text-2: rgba(255, 255, 255, 0.92);
+  --nv-muted: rgba(255, 255, 255, 0.82);
+  --nv-faint: rgba(255, 255, 255, 0.66);
+  --nv-border: rgba(255, 255, 255, 0.2);
+  --nv-border-strong: rgba(255, 255, 255, 0.34);
+  --nv-red-text: #ff8a8a;
+}
+html[data-contrast="high"][data-theme="light"] {
+  --nv-text-2: rgba(10, 10, 12, 0.92);
+  --nv-muted: rgba(10, 10, 12, 0.8);
+  --nv-faint: rgba(10, 10, 12, 0.66);
+  --nv-border: rgba(10, 10, 12, 0.22);
+  --nv-border-strong: rgba(10, 10, 12, 0.38);
+  --nv-red-text: #8a1010;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .nv-anim, .nv-fade { animation: none; }

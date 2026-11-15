@@ -31,7 +31,9 @@ export const metadata: Metadata = {
   title: { default: "Team-Bewerbung | Nordverkehr", template: "%s | Nordverkehr" },
   description:
     "Werde Teil des Teams von Nordverkehr – Hamburg-Roleplay. Offene Positionen ansehen, ehrlich bewerben, Status jederzeit verfolgen.",
-  icons: { icon: "/logo.png", apple: "/logo.png" },
+  icons: { icon: "/logo.png", apple: "/icons/apple-180.png" },
+  // Vom Startbildschirm geöffnet: ohne Browserleiste, eigener Name
+  appleWebApp: { capable: true, title: "Nordverkehr", statusBarStyle: "black" },
   openGraph: {
     type: "website",
     siteName: "Nordverkehr Roleplay",
@@ -47,7 +49,8 @@ export const viewport: Viewport = {
 };
 
 // Setzt das Theme vor dem ersten Paint (kein Aufblitzen). Standard: dunkel.
-const themeScript = `(function(){try{var t=localStorage.getItem('nv-theme');if(t!=='light'&&t!=='dark'){t='dark'}document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme='dark'}})()`;
+// Dazu Lesbarkeit (größere Schrift, mehr Kontrast) – pro Gerät gespeichert.
+const themeScript = `(function(){var d=document.documentElement;try{var t=localStorage.getItem('nv-theme');if(t!=='light'&&t!=='dark'){t='dark'}d.dataset.theme=t;if(localStorage.getItem('nv-text')==='large')d.dataset.text='large';if(localStorage.getItem('nv-contrast')==='high')d.dataset.contrast='high'}catch(e){d.dataset.theme='dark'}})()`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowUpRight, DiscordLogo } from "@phosphor-icons/react/ssr";
 import { hostOf, publicEnv } from "@/lib/env";
 import { SOURCE_URL } from "@/lib/legal";
+import { ReadabilityToggles } from "@/components/layout/ReadabilityToggles";
 
 export function SiteFooter() {
   return (
@@ -48,9 +49,12 @@ export function SiteFooter() {
         </div>
       </div>
       <div className="border-t border-line">
-        <p className="mx-auto max-w-6xl px-4 sm:px-6 py-5 text-xs text-faint">
-          Nordverkehr ist ein Roleplay-Projekt und steht in keiner Verbindung zu Rockstar Games oder Take-Two Interactive.
-        </p>
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-faint">
+            Nordverkehr ist ein Roleplay-Projekt und steht in keiner Verbindung zu Rockstar Games oder Take-Two Interactive.
+          </p>
+          <ReadabilityToggles />
+        </div>
       </div>
     </footer>
   );
