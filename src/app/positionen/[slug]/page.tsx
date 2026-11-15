@@ -10,6 +10,8 @@ import { getEligibility } from "@/lib/applications/service";
 import { getSettings } from "@/lib/settings";
 import { effectiveMinAge } from "@/lib/applications/rules";
 import { NotifyToggle } from "@/components/NotifyToggle";
+import { DeadlineReminderToggle } from "@/components/DeadlineReminderToggle";
+import { deadlineLabel } from "@/lib/positions/deadline";
 import { db } from "@/lib/db";
 import { kindOf } from "@/lib/kinds";
 
@@ -83,7 +85,14 @@ async function PositionDetail({ params }: Pick<PageProps<"/positionen/[slug]">, 
               )}
             </div>
             {open && position.closesAt && (
-              <p className="mt-2 text-xs text-muted">Bewerbungen bis {formatDay(position.closesAt)} möglich.</p>
+              <p className="mt-2 text-xs text-muted">
+                Bewerbungen bis {formatDay(position.closesAt)} möglich.
+                {deadlineLabel(position.closesAt) && (
+                  <span className="ml-1.5 nv-pill nv-tone-warn !text-[0.7rem] !py-0" data-testid="deadline-label">
+                    {deadlineLabel(position.closesAt)}
+                  </span>
+                )}
+              </p>
             )}
             {!open && position.opensAt && <p className="mt-2 text-xs text-muted">Öffnet voraussichtlich am {formatDay(position.opensAt)}.</p>}
             {open && typeof position.seats === "number" && position.seats > 0 && (
@@ -165,10 +174,16 @@ async function ApplyCta({ position }: { position: PublicPosition }) {
 
   const e = await getEligibility(user.id, position);
   if (e.ok) {
+    const reminder = deadlineLabel(position.closesAt)
+      ? await db.deadlineReminder.findUnique({ where: { userId_positionId: { userId: user.id, positionId: position.id } }, select: { id: true } })
+      : undefined;
     return (
-      <Link href={`/bewerben/${position.slug}`} className="nv-btn nv-btn-primary w-full">
-        {e.draftId ? "Entwurf fortsetzen" : "Jetzt bewerben"} <ArrowRight size={16} aria-hidden />
-      </Link>
+      <div className="space-y-3">
+        <Link href={`/bewerben/${position.slug}`} className="nv-btn nv-btn-primary w-full">
+          {e.draftId ? "Entwurf fortsetzen" : "Jetzt bewerben"} <ArrowRight size={16} aria-hidden />
+        </Link>
+        {reminder !== undefined && <DeadlineReminderToggle positionId={position.id} on={!!reminder} />}
+      </div>
     );
   }
   switch (e.code) {

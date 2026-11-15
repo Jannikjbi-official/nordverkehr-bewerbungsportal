@@ -17,6 +17,7 @@ import {
 import { Container, IconTile, PageHero, SectionTitle, cn, formatDay } from "@/components/ui";
 import { db } from "@/lib/db";
 import { KINDS, kindOf } from "@/lib/kinds";
+import { deadlineLabel } from "@/lib/positions/deadline";
 import { listPublicPositions } from "@/lib/data/positions";
 import { getSettings } from "@/lib/settings";
 
@@ -219,6 +220,11 @@ async function PositionList() {
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="font-display text-2xl">{p.title}</h3>
+                  {open && deadlineLabel(p.closesAt) && (
+                    <span className="nv-pill nv-tone-warn !text-[0.7rem] !py-0.5" data-testid="deadline-label">
+                      {deadlineLabel(p.closesAt)}
+                    </span>
+                  )}
                   {open ? (
                     <span className="nv-pill nv-tone-success !text-[0.7rem] !py-0.5">Offen</span>
                   ) : (

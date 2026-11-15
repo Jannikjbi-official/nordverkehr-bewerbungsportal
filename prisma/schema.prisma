@@ -134,31 +134,32 @@ model User {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  applications       Application[]     @relation("Applicant")
-  decisions          Application[]     @relation("Decider")
-  claims             Application[]     @relation("Claimer")
+  applications       Application[]      @relation("Applicant")
+  decisions          Application[]      @relation("Decider")
+  claims             Application[]      @relation("Claimer")
   votes              Vote[]
   comments           Comment[]
   messages           Message[]
   statusChanges      StatusChange[]
   uploads            Upload[]
-  notesAbout         UserNote[]        @relation("NoteSubject")
-  notesWritten       UserNote[]        @relation("NoteAuthor")
-  bansAbout          UserBan[]         @relation("BanSubject")
-  bansCreated        UserBan[]         @relation("BanCreator")
-  bansLifted         UserBan[]         @relation("BanLifter")
+  notesAbout         UserNote[]         @relation("NoteSubject")
+  notesWritten       UserNote[]         @relation("NoteAuthor")
+  bansAbout          UserBan[]          @relation("BanSubject")
+  bansCreated        UserBan[]          @relation("BanCreator")
+  bansLifted         UserBan[]          @relation("BanLifter")
   templates          MessageTemplate[]
   auditLogs          AuditLog[]
   aiUsage            AiUsage[]
   profile            ApplicantProfile?
   ratings            Rating[]
-  reviewRequests     ReviewRequest[]   @relation("ReviewRequestUser")
-  reviewRequestsSent ReviewRequest[]   @relation("ReviewRequestBy")
-  slotsCreated       InterviewSlot[]   @relation("SlotCreator")
-  interviewNotes     InterviewNote[]   @relation("InterviewNoteAuthor")
-  interviewChecks    InterviewCheck[]  @relation("InterviewCheckAuthor")
-  suggestions        Suggestion[]      @relation("SuggestionAuthor")
-  suggestionsHandled Suggestion[]      @relation("SuggestionHandler")
+  reviewRequests     ReviewRequest[]    @relation("ReviewRequestUser")
+  reviewRequestsSent ReviewRequest[]    @relation("ReviewRequestBy")
+  slotsCreated       InterviewSlot[]    @relation("SlotCreator")
+  interviewNotes     InterviewNote[]    @relation("InterviewNoteAuthor")
+  interviewChecks    InterviewCheck[]   @relation("InterviewCheckAuthor")
+  suggestions        Suggestion[]       @relation("SuggestionAuthor")
+  suggestionsHandled Suggestion[]       @relation("SuggestionHandler")
+  deadlineReminders  DeadlineReminder[]
 }
 
 /// Allgemeine Angaben eines Bewerbers (einmal ausgefüllt, für weitere Bewerbungen wiederverwendet).
@@ -256,8 +257,9 @@ model Position {
   createdAt            DateTime        @default(now())
   updatedAt            DateTime        @updatedAt
 
-  sections     FormSection[]
-  applications Application[]
+  sections          FormSection[]
+  applications      Application[]
+  deadlineReminders DeadlineReminder[]
 
   @@index([typeId, status])
 }
@@ -781,4 +783,18 @@ model ReviewRequest {
 
   @@index([applicationId])
   @@index([userId, doneAt])
+}
+
+/// „Erinnere mich“: DM einen Tag vor Ende der Bewerbungsfrist einer Stelle
+model DeadlineReminder {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  positionId String
+  position   Position  @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+  sentAt     DateTime?
+
+  @@unique([userId, positionId])
+  @@index([positionId, sentAt])
 }

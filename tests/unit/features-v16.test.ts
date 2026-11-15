@@ -73,3 +73,25 @@ describe("@Erwähnungen (#97)", async () => {
     expect(mentionQueryAt("a@b", 3)).toBeNull();
   });
 });
+
+describe("Frist-Countdown (#101)", async () => {
+  const { daysUntil, deadlineLabel, reminderDue } = await import("@/lib/positions/deadline");
+  const now = new Date("2026-11-15T21:30:00Z"); // 22:30 in Deutschland
+  it("zählt Kalendertage in deutscher Zeit", () => {
+    expect(daysUntil(new Date("2026-11-15T23:30:00Z"), now)).toBe(1); // 00:30 am 16.11. (DE)
+    expect(daysUntil(new Date("2026-11-20T08:00:00Z"), now)).toBe(5);
+  });
+  it("Text nur in den letzten 14 Tagen", () => {
+    expect(deadlineLabel(new Date("2026-11-15T22:59:00Z"), now)).toBe("endet heute"); // 23:59 in DE
+    expect(deadlineLabel(new Date("2026-11-15T23:30:00Z"), now)).toBe("endet morgen");
+    expect(deadlineLabel(new Date("2026-11-15T12:00:00Z"), now)).toBe("endet heute");
+    expect(deadlineLabel(new Date("2026-11-18T12:00:00Z"), now)).toBe("endet in 3 Tagen");
+    expect(deadlineLabel(new Date("2026-12-31T12:00:00Z"), now)).toBeNull();
+    expect(deadlineLabel(new Date("2026-11-10T12:00:00Z"), now)).toBeNull();
+    expect(deadlineLabel(null, now)).toBeNull();
+  });
+  it("Erinnerung am Vortag oder Fristtag", () => {
+    expect(reminderDue(new Date("2026-11-16T12:00:00Z"), now)).toBe(true);
+    expect(reminderDue(new Date("2026-11-17T12:00:00Z"), now)).toBe(false);
+  });
+});

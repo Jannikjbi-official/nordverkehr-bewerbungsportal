@@ -91,6 +91,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     items: [
       { kind: "neu", text: "**KI-Zustimmung per Knopf** – schickt das Team den Baustein „KI-Einschätzung – Zustimmung“, bekommt der Bewerber im Portal ein Fenster mit „Erlauben“ und „Ablehnen“. Das Team sieht die Antwort bei der KI-Einschätzung und im Bot-Log. Ablehnen gilt immer, vorhandene KI-Punkte werden dann gelöscht." },
       { kind: "neu", text: "**Globale Bausteine** – zehn neue Texte für alle Bewerbungsarten, z. B. „Discord-DMs öffnen“, „Bitte dem Discord beitreten“, „Letzte Erinnerung“, „Absage – kopierte Antworten“ und „Zurückziehen bestätigt“." },
+      { kind: "neu", text: "**Frist-Countdown** – Stellen mit Enddatum zeigen auf der Startseite und der Stellenseite „endet in 3 Tagen“. Mit „Erinnere mich vor Fristende“ kommt einen Tag vorher eine DM (nur wenn du dich noch nicht beworben hast)." },
       { kind: "neu", text: "**Zweitmeinung** – im Bewertungsbogen eine bestimmte oder zufällige Person um eine Bewertung bitten (DM). Sie sieht Team-Schnitt, KI und andere Bewertungen erst nach der eigenen." },
       { kind: "neu", text: "**@Erwähnungen** – in internen Kommentaren `@name` tippen (mit Vorschlägen). Die erwähnte Person bekommt eine DM mit Link zur Bewerbung." },
       { kind: "neu", text: "**Stelle duplizieren** – in jeder Stelle unten „Duplizieren“: Texte, Einstellungen, Fragen und Quiz werden kopiert, die Kopie startet geschlossen." },

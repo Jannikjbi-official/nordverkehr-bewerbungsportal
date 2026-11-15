@@ -527,3 +527,24 @@ export async function answerAiConsentAction(applicationId: string, allow: boolea
   revalidatePath(`/team/bewerbungen/${app.id}`);
   return { ok: true };
 }
+
+/** „Erinnere mich“ an das Ende der Bewerbungsfrist einer Stelle (DM einen Tag vorher) – an/aus. */
+export async function toggleDeadlineReminderAction(positionId: string, on: boolean): Promise<ActionResult> {
+  const user = await requireUser();
+  if (!idSchema.safeParse(positionId).success) return { ok: false, error: "Ungültig." };
+  const rl = await rateLimit(`deadline-reminder:${user.id}`, 30, 3600);
+  if (!rl.ok) return { ok: false, error: "Zu viele Versuche." };
+  if (on) {
+    const pos = await db.position.findUnique({ where: { id: positionId }, select: { status: true, closesAt: true, slug: true } });
+    if (!pos || pos.status !== "OPEN" || !pos.closesAt) return { ok: false, error: "Für diese Stelle gibt es keine Frist." };
+    await db.deadlineReminder.upsert({
+      where: { userId_positionId: { userId: user.id, positionId } },
+      create: { userId: user.id, positionId },
+      update: { sentAt: null },
+    });
+    revalidatePath(`/positionen/${pos.slug}`);
+  } else {
+    await db.deadlineReminder.deleteMany({ where: { userId: user.id, positionId } });
+  }
+  return { ok: true };
+}
