@@ -108,6 +108,7 @@ export function KanbanBoard({ items: initial }: { items: BoardItem[] }) {
         )}
       </div>
       <DndContext
+        id="dnd-kanban"
         sensors={sensors}
         onDragStart={(e) => setDragging(items.find((i) => i.id === e.active.id) ?? null)}
         onDragCancel={() => setDragging(null)}

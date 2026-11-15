@@ -71,7 +71,7 @@ export function FormBuilder({
 
   return (
     <div className="space-y-4">
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+      <DndContext id="dnd-sections" sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
           {sections.map((s, i) => (
             <SortableSection key={s.id} section={s} index={i} ctx={{ keyPrefix, existingQuestions }} />
@@ -169,7 +169,7 @@ function SortableSection({ section, index, ctx }: { section: FormSectionDef; ind
       </header>
 
       <div className="p-4 space-y-2">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <DndContext id={`dnd-questions-${section.id}`} sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={questions.map((q) => q.id)} strategy={verticalListSortingStrategy}>
             <ul className="space-y-2">
               {questions.map((q) => (

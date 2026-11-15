@@ -512,6 +512,15 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
                         {!fromApplicant && (
                           <div className="mt-1 flex items-center gap-1 flex-wrap">
                             <DeliveryBadge status={m.deliveryStatus} />
+                            {m.readAt ? (
+                              <span className="nv-pill nv-tone-success !text-[0.65rem] !py-0 !px-1.5" title={`Im Portal geöffnet: ${formatDayTime(m.readAt)}`} data-testid="msg-read">
+                                ✓ gelesen
+                              </span>
+                            ) : (
+                              <span className="nv-pill nv-tone-muted !text-[0.65rem] !py-0 !px-1.5" title="Der Bewerber hat die Nachricht im Portal noch nicht geöffnet (in Discord vielleicht schon)." data-testid="msg-unread">
+                                noch nicht im Portal gelesen
+                              </span>
+                            )}
                             {(m.deliveryStatus === "FAILED" || m.deliveryStatus === "PENDING" || m.deliveryStatus === "DM_CLOSED") && (
                               <RetryDeliveryButton messageId={m.id} />
                             )}

@@ -135,6 +135,15 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
           {num("applications.minDiscordAccountDays", "Hinweis bei jungen Discord-Accounts (Tage)", "Nur Hinweis für das Team, keine Sperre.")}
         </div>
         <div className="mt-4 space-y-3">
+          {toggle("maintenance.enabled", "Wartungsmodus", "Absenden ist gesperrt, Bewerber sehen im Formular den Hinweistext unten. Entwürfe werden weiter gespeichert, der Team-Bereich läuft normal.")}
+          {s["maintenance.enabled"] && (
+            <div>
+              <label htmlFor="mm" className="nv-field-label">
+                Hinweis im Wartungsmodus
+              </label>
+              <textarea id="mm" className="nv-input !min-h-20" maxLength={500} value={s["maintenance.message"]} onChange={(e) => set("maintenance.message", e.target.value)} />
+            </div>
+          )}
           {toggle("applications.claimNotice", "Bewerber erfahren, wer sie betreut", "Übernimmt ein Teammitglied eine Bewerbung (auch per Discord-Knopf oder automatischer Zuteilung), bekommt der Bewerber eine kurze Nachricht im Portal und per DM mit dem Namen.")}
           {toggle("applications.amendEnabled", "Bewerber dürfen Antworten nachreichen", "Textantworten ergänzen oder korrigieren, solange noch niemand aus dem Team die Bewerbung übernommen hat. Das Team sieht „nachgereicht“, KI-Einordnung und Hinweise werden neu berechnet.")}
           {toggle("applications.queueInfo", "Warteschlange & Bearbeitungszeit für Bewerber", "Im Dashboard: „Du bist Nr. 4 von 9 – erste Sichtung dauert gerade etwa 2 Tage“ (echte Werte der letzten 90 Tage).")}

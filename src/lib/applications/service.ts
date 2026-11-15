@@ -88,6 +88,7 @@ export async function submitApplication(
   input: SubmitInput,
 ) {
   const settings = await getSettings();
+  if (settings["maintenance.enabled"]) throw new UserFacingError(settings["maintenance.message"]);
   const draft = await db.application.findFirst({
     where: { id: input.draftId, userId: user.id, status: "DRAFT" },
     include: { position: { include: { type: { select: { key: true } } } } },

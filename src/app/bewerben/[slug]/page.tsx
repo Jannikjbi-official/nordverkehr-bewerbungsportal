@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import {
   ArrowCounterClockwise,
   ClockCountdown,
+  Wrench,
   Info,
   Prohibit,
 } from "@phosphor-icons/react/ssr";
@@ -154,6 +155,13 @@ async function Apply({
 
   return (
     <>
+      {settings["maintenance.enabled"] && (
+        <div className="mx-auto max-w-3xl mb-6" data-testid="maintenance-notice">
+          <Notice tone="warn" icon={Wrench} title="Wartung – Absenden gerade nicht möglich">
+            {settings["maintenance.message"]}
+          </Notice>
+        </div>
+      )}
       {previous && (
         <div className="mx-auto max-w-3xl mb-6">
           <Notice

@@ -42,3 +42,12 @@ describe("Globale Bausteine", () => {
     }
   });
 });
+
+describe("Wartungsmodus (#107)", () => {
+  it("ist standardmäßig aus und hat einen Hinweistext", async () => {
+    const { settingsSchema } = await import("@/lib/settings");
+    const s = settingsSchema.parse({});
+    expect(s["maintenance.enabled"]).toBe(false);
+    expect(s["maintenance.message"].length).toBeGreaterThan(10);
+  });
+});

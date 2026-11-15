@@ -5,8 +5,8 @@ import { confirmDialog } from "@/components/ConfirmDialog";
 import { Select } from "@/components/Select";
 import { POSITION_STATUS_OPTIONS } from "@/lib/positions-status";
 import { useState, useTransition } from "react";
-import { FloppyDisk, Trash } from "@phosphor-icons/react/ssr";
-import { deletePositionAction, savePositionAction } from "@/app/actions/admin";
+import { Copy, FloppyDisk, Trash } from "@phosphor-icons/react/ssr";
+import { deletePositionAction, duplicatePositionAction, savePositionAction } from "@/app/actions/admin";
 import { POSITION_ICON_KEYS_CLIENT, PositionIconClient } from "@/components/team/position-icons";
 
 interface PositionData {
@@ -308,6 +308,7 @@ export function PositionForm({ position, applicationCount = 0 }: { position: Pos
       {error && <p className="nv-error">{error}</p>}
       <div className="flex flex-wrap items-center justify-between gap-3">
         {p.id ? (
+          <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             className="nv-btn nv-btn-danger nv-btn-sm"
@@ -322,6 +323,30 @@ export function PositionForm({ position, applicationCount = 0 }: { position: Pos
           >
             <Trash size={14} aria-hidden /> Löschen
           </button>
+          <button
+            type="button"
+            className="nv-btn nv-btn-ghost nv-btn-sm"
+            disabled={pending}
+            data-testid="position-duplicate"
+            onClick={async () => {
+              if (
+                !(await confirmDialog({
+                  title: "Stelle duplizieren?",
+                  body: "Texte, Einstellungen, Fragen und Quiz werden kopiert. Die Kopie startet geschlossen – ungespeicherte Änderungen hier werden nicht mitkopiert.",
+                  confirmLabel: "Duplizieren",
+                }))
+              )
+                return;
+              start(async () => {
+                const res = await duplicatePositionAction(p.id!);
+                if (!res.ok) setError(res.error);
+                else router.push(`/team/positionen/${res.data.id}`);
+              });
+            }}
+          >
+            <Copy size={14} aria-hidden /> Duplizieren
+          </button>
+          </div>
         ) : (
           <span />
         )}

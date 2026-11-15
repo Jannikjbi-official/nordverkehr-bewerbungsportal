@@ -60,6 +60,9 @@ export const DEFAULT_INTERVIEW_PREP = `**Vorher**
 
 /** Alle einstellbaren Werte mit Typ, Grenzen und Standard. */
 export const settingsSchema = z.object({
+  /** Wartungsmodus: Absenden gesperrt (Entwürfe speichern geht weiter), Hinweis im Formular */
+  "maintenance.enabled": bool(false),
+  "maintenance.message": z.string().trim().min(5).max(500).default("Wir arbeiten gerade am Bewerbungsportal. Dein Entwurf wird weiter gespeichert – absenden kannst du in Kürze wieder."),
   "applications.minAge": z.coerce.number().int().min(12).max(99).default(18),
   "applications.cooldownDays": z.coerce.number().int().min(0).max(365).default(30),
   "applications.processingTime": z.string().min(2).max(80).default("in der Regel 3–7 Tage"),

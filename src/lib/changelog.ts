@@ -91,7 +91,11 @@ export const CHANGELOG: ChangelogEntry[] = [
     items: [
       { kind: "neu", text: "**KI-Zustimmung per Knopf** – schickt das Team den Baustein „KI-Einschätzung – Zustimmung“, bekommt der Bewerber im Portal ein Fenster mit „Erlauben“ und „Ablehnen“. Das Team sieht die Antwort bei der KI-Einschätzung und im Bot-Log. Ablehnen gilt immer, vorhandene KI-Punkte werden dann gelöscht." },
       { kind: "neu", text: "**Globale Bausteine** – zehn neue Texte für alle Bewerbungsarten, z. B. „Discord-DMs öffnen“, „Bitte dem Discord beitreten“, „Letzte Erinnerung“, „Absage – kopierte Antworten“ und „Zurückziehen bestätigt“." },
+      { kind: "neu", text: "**Stelle duplizieren** – in jeder Stelle unten „Duplizieren“: Texte, Einstellungen, Fragen und Quiz werden kopiert, die Kopie startet geschlossen." },
+      { kind: "neu", text: "**Wartungsmodus** – unter Admin → Bewerbungen & Ablauf: Absenden kurz sperren, mit eigenem Hinweis im Formular. Entwürfe werden weiter gespeichert." },
+      { kind: "neu", text: "**Gelesen** – unter jeder Team-Nachricht steht, ob der Bewerber sie im Portal schon geöffnet hat." },
       { kind: "besser", text: "**Bausteine nach Art filtern** – unter „Nachrichtenbausteine“ oben Alle, Global, Team, Whitelist oder Beta wählen. Bei einer Art siehst du genau das, was im Nachrichteneditor zur Auswahl steht. Neue Bausteine gehören automatisch zur gewählten Art, globale tragen das Abzeichen „Global“." },
+      { kind: "fix", text: "**Drag-and-Drop** – Formular-Builder, Bausteine und Board laden ohne Fehlermeldung im Browser." },
     ],
   },
   {

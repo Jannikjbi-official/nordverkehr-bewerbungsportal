@@ -136,6 +136,62 @@ export async function deletePositionAction(positionId: string): Promise<ActionRe
   return { ok: true };
 }
 
+/**
+ * Stelle duplizieren: Texte, Einstellungen, eigene Abschnitte und Fragen (inkl. Quiz)
+ * werden kopiert. Die Kopie startet geschlossen, ohne Zeitplan und ohne Bewerbungen.
+ */
+export async function duplicatePositionAction(positionId: string): Promise<ActionResult<{ id: string }>> {
+  const { user } = await requireAdmin();
+  if (typeof positionId !== "string" || positionId.length > 40) return { ok: false, error: "Ungültig." };
+  const src = await db.position.findUnique({
+    where: { id: positionId },
+    include: { sections: { where: { archived: false }, orderBy: { sortOrder: "asc" }, include: { questions: { where: { archived: false }, orderBy: { sortOrder: "asc" } } } } },
+  });
+  if (!src) return { ok: false, error: "Stelle nicht gefunden." };
+  const base = `${src.slug.slice(0, 50)}-kopie`;
+  let slug = base;
+  for (let i = 2; await db.position.findUnique({ where: { slug }, select: { id: true } }); i++) slug = `${base}-${i}`;
+  const last = await db.position.aggregate({ _max: { sortOrder: true } });
+  const { id: _id, slug: _slug, sections, createdAt: _c, updatedAt: _u, opensAt: _o, closesAt: _cl, ...data } = src;
+  const copy = await db.$transaction(async (tx) => {
+    const p = await tx.position.create({
+      data: { ...data, slug, title: `${src.title} (Kopie)`.slice(0, 120), status: "CLOSED", sortOrder: (last._max.sortOrder ?? 0) + 1 },
+    });
+    for (const s of sections) {
+      await tx.formSection.create({
+        data: {
+          typeId: s.typeId,
+          positionId: p.id,
+          title: s.title,
+          description: s.description,
+          sortOrder: s.sortOrder,
+          // Schlüssel sind eindeutig – die Kopie bekommt keine
+          questions: {
+            create: s.questions.map((q) => ({
+              label: q.label,
+              helpText: q.helpText,
+              placeholder: q.placeholder,
+              type: q.type,
+              required: q.required,
+              minLength: q.minLength,
+              maxLength: q.maxLength,
+              minValue: q.minValue,
+              maxValue: q.maxValue,
+              options: q.options,
+              correctOption: q.correctOption,
+              sortOrder: q.sortOrder,
+            })),
+          },
+        },
+      });
+    }
+    return p;
+  });
+  await audit("position.create", { actorId: user.id, targetType: "position", targetId: copy.id, meta: { duplicatedFrom: src.slug } });
+  revalidatePath("/team/positionen");
+  return { ok: true, data: { id: copy.id } };
+}
+
 export async function reorderPositionsAction(ids: string[]): Promise<ActionResult> {
   await requireAdmin();
   const p = z.array(id).max(100).safeParse(ids);

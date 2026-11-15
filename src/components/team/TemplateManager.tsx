@@ -146,7 +146,7 @@ export function TemplateManager({ templates: initial }: { templates: Template[] 
           ))}
         </div>
 
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <DndContext id="dnd-templates" sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={list.map((t) => t.id)} strategy={verticalListSortingStrategy}>
             <ul className="space-y-2">
               {list.map((t) => (
