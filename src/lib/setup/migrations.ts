@@ -456,6 +456,15 @@ const MIGRATIONS: { id: string; run: (db: PrismaClient, opts: Options) => Promis
       return tagged + (await (await import("@/lib/setup/base-seed")).ensureKindTemplates(db));
     },
   },
+  // KI-Zustimmung per Pop-up: Baustein-Text anpassen (nur, wenn er nicht geändert wurde)
+  {
+    id: "2026-11-ki-zustimmung-popup",
+    run: async (db, o) => {
+      if (o.dryRun) return 0;
+      const { KI_CONSENT_TEMPLATE_BODY, KI_CONSENT_TEMPLATE_BODY_V1, KI_CONSENT_TEMPLATE_TITLE } = await import("@/lib/setup/seed-data");
+      return (await db.messageTemplate.updateMany({ where: { title: KI_CONSENT_TEMPLATE_TITLE, body: KI_CONSENT_TEMPLATE_BODY_V1 }, data: { body: KI_CONSENT_TEMPLATE_BODY } })).count;
+    },
+  },
   // Globale Bausteine für alle Bewerbungsarten (nur fehlende, nach Titel)
   {
     id: "2026-11-bausteine-global",

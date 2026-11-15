@@ -170,7 +170,16 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
   const aiView: AiRatingView = !aiEnabled
     ? { kind: "off" }
     : !aiScoreAllowed(app)
-      ? { kind: "notAllowed" }
+      ? {
+          kind: "notAllowed",
+          consent: app.aiConsentRequestedAt
+            ? {
+                requestedAt: app.aiConsentRequestedAt.toISOString(),
+                answer: app.aiConsentAnswer === "granted" || app.aiConsentAnswer === "denied" ? app.aiConsentAnswer : null,
+                answeredAt: app.aiConsentAnsweredAt?.toISOString() ?? null,
+              }
+            : null,
+        }
       : !storedAi
         ? scoreBlocked
           ? { kind: "unavailable", reason: scoreBlocked }
@@ -638,6 +647,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
               ai={aiView}
               bot={bot}
               isAdmin={access.isAdmin}
+              consentGrantedAt={app.aiConsentAnswer === "granted" ? (app.aiConsentAnsweredAt?.toISOString() ?? null) : null}
               raters={app.ratings
                 .filter((r) => r.userId !== me.id || Object.keys(cleanScores(r.scores, criteria)).length)
                 .map((r) => ({ name: r.user.globalName || r.user.username, avg: summarizeRatings([r], withLegacy(criteria)).overall }))}

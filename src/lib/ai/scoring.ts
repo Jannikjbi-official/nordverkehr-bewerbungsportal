@@ -27,7 +27,7 @@ export async function scoreApplication(applicationId: string, opts: { actorId?: 
   const settings = await getSettings();
   if (!settings["ai.enabled"] || !isAiConfigured()) return null;
   if (!opts.force && !settings["ai.autoScoreEnabled"]) return null;
-  const app = await db.application.findUnique({ where: { id: applicationId }, select: { consentVersion: true, status: true, aiConsentOverrideAt: true } });
+  const app = await db.application.findUnique({ where: { id: applicationId }, select: { consentVersion: true, status: true, aiConsentOverrideAt: true, aiConsentAnswer: true } });
   if (!app || app.status === "DRAFT" || !aiScoreAllowed(app)) return null;
   if (!(await budgetLeft(settings))) return null;
 
@@ -59,7 +59,7 @@ export function isScoringPending(app: { aiRating: unknown; aiRatedAt: Date | nul
 
 /** Bewerbung zum Bewerten reservieren. Gibt den Reservierungszeitpunkt zurück (= diese Instanz darf bewerten), sonst null. */
 export async function claimForScoring(applicationId: string, now = new Date()): Promise<Date | null> {
-  const app = await db.application.findUnique({ where: { id: applicationId }, select: { aiRating: true, consentVersion: true, aiConsentOverrideAt: true } });
+  const app = await db.application.findUnique({ where: { id: applicationId }, select: { aiRating: true, consentVersion: true, aiConsentOverrideAt: true, aiConsentAnswer: true } });
   if (!app || readAiRating(app.aiRating) || !aiScoreAllowed(app)) return null;
   const res = await db.application.updateMany({
     where: { id: applicationId, OR: [{ aiRatedAt: null }, { aiRatedAt: { lt: new Date(now.getTime() - LOCK_MS) } }] },
@@ -111,7 +111,7 @@ export async function scoreMissing(limit = 2, deadline?: number) {
   const { ACTIVE_STATUSES } = await import("@/lib/applications/status");
   const candidates = await db.application.findMany({
     where: { status: { in: ACTIVE_STATUSES } },
-    select: { id: true, aiRating: true, consentVersion: true, aiConsentOverrideAt: true },
+    select: { id: true, aiRating: true, consentVersion: true, aiConsentOverrideAt: true, aiConsentAnswer: true },
     orderBy: { submittedAt: "asc" },
     take: 200,
   });

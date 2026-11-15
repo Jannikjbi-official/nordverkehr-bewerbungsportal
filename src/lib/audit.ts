@@ -15,6 +15,8 @@ export type AuditAction =
   | "application.vote"
   | "application.rating"
   | "application.ai_override"
+  | "application.ai_consent_granted"
+  | "application.ai_consent_denied"
   | "application.print"
   | "application.slot_booked"
   | "application.interview_cancelled"
@@ -98,6 +100,8 @@ export const AUDIT_LABELS: Record<string, string> = {
   "application.vote": "Abgestimmt",
   "application.rating": "Bewertet",
   "application.ai_override": "KI-Punkte für alte Bewerbung freigegeben",
+  "application.ai_consent_granted": "Bewerber hat KI-Einschätzung erlaubt",
+  "application.ai_consent_denied": "Bewerber hat KI-Einschätzung abgelehnt",
   "application.print": "Bewerbung gedruckt",
   "application.slot_booked": "Termin gebucht",
   "application.interview_cancelled": "Gespräch abgesagt (Bewerber)",

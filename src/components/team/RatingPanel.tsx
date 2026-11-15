@@ -14,7 +14,7 @@ export type AiRatingView =
   /** KI bewertet gerade (automatisch beim Öffnen) */
   | { kind: "pending" }
   /** Bewerbung vor Einführung der KI-Punkte eingereicht (Einwilligung deckt es nicht) */
-  | { kind: "notAllowed" }
+  | { kind: "notAllowed"; consent?: { requestedAt: string; answer: "granted" | "denied" | null; answeredAt: string | null } | null }
   /** Automatik gerade nicht möglich (z. B. Budget aufgebraucht) */
   | { kind: "unavailable"; reason: string }
   | { kind: "off" };
@@ -30,6 +30,7 @@ export function RatingPanel({
   bot,
   isAdmin = false,
   criteria = STANDARD_CRITERIA,
+  consentGrantedAt = null,
 }: {
   applicationId: string;
   /** Kriterien der Stelle (eigener Bogen oder Standard) */
@@ -41,6 +42,8 @@ export function RatingPanel({
   ai?: AiRatingView;
   bot?: { name: string; avatarUrl: string };
   isAdmin?: boolean;
+  /** Bewerber hat die KI-Einschätzung im Portal-Pop-up erlaubt (ISO) */
+  consentGrantedAt?: string | null;
 }) {
   const aiScores = ai.kind === "scores" ? ai.scores : null;
   // KI bewertet nur die Standard-Kriterien – bei eigenem Bogen ohne KI-Spalte
@@ -111,7 +114,7 @@ export function RatingPanel({
           );
         })}
       </ul>
-      <AiBlock applicationId={applicationId} ai={ai} overall={aiOverall} bot={bot} isAdmin={isAdmin} />
+      <AiBlock applicationId={applicationId} ai={ai} overall={aiOverall} bot={bot} isAdmin={isAdmin} consentGrantedAt={consentGrantedAt} />
       <textarea
         className="nv-input text-sm !min-h-12"
         rows={2}
@@ -147,12 +150,14 @@ function AiBlock({
   overall,
   bot,
   isAdmin,
+  consentGrantedAt,
 }: {
   applicationId: string;
   ai: AiRatingView;
   overall: number | null;
   bot?: { name: string; avatarUrl: string };
   isAdmin: boolean;
+  consentGrantedAt?: string | null;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -184,8 +189,18 @@ function AiBlock({
         <p className="flex items-center gap-1.5 text-xs font-medium">
           <Robot size={14} aria-hidden /> KI-Einschätzung
         </p>
-        <p className="text-xs text-muted">Bewerbung von vor dem 12.11.2026 – automatisch bewertet die KI nur neuere (Datenschutz-Einwilligung).</p>
-        {isAdmin ? (
+        {ai.consent?.answer === "denied" ? (
+          <p className="text-xs text-muted" data-testid="ai-consent-denied">
+            Der Bewerber hat die KI-Einschätzung am {fmtDay(ai.consent.answeredAt)} <strong className="text-fg">abgelehnt</strong>. Bitte ohne KI bewerten.
+          </p>
+        ) : ai.consent ? (
+          <p className="text-xs text-muted" data-testid="ai-consent-pending">
+            Zustimmung am {fmtDay(ai.consent.requestedAt)} angefragt – der Bewerber hat im Portal noch nicht geantwortet.
+          </p>
+        ) : (
+          <p className="text-xs text-muted">Bewerbung von vor dem 12.11.2026 – automatisch bewertet die KI nur neuere (Datenschutz-Einwilligung). Frag mit dem Baustein „KI-Einschätzung – Zustimmung“ nach: Der Bewerber bekommt im Portal Knöpfe zum Erlauben oder Ablehnen.</p>
+        )}
+        {ai.consent?.answer === "denied" ? null : isAdmin ? (
           <button type="button" className="nv-btn nv-btn-ghost nv-btn-sm w-full" disabled={pending} onClick={override} data-testid="ai-override">
             <Robot size={14} aria-hidden /> {pending ? "KI bewertet … (bis zu 30 s)" : "KI-Punkte freigeben & berechnen"}
           </button>
@@ -205,6 +220,11 @@ function AiBlock({
     });
   return (
     <div className="rounded-xl border border-line bg-surface-2/40 p-3 space-y-2" data-testid="ai-rating">
+      {consentGrantedAt && (
+        <p className="text-[0.7rem] text-muted" data-testid="ai-consent-granted">
+          ✓ Vom Bewerber am {fmtDay(consentGrantedAt)} im Portal erlaubt
+        </p>
+      )}
       <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-1.5 text-xs font-medium">
           {bot ? (
@@ -255,3 +275,6 @@ function AiBlock({
     </div>
   );
 }
+
+const fmtDay = (iso: string | null | undefined) =>
+  iso ? new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", day: "numeric", month: "long" }).format(new Date(iso)) : "–";

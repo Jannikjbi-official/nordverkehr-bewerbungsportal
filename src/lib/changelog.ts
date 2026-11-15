@@ -89,6 +89,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: "1.4",
     date: "2026-11-15",
     items: [
+      { kind: "neu", text: "**KI-Zustimmung per Knopf** – schickt das Team den Baustein „KI-Einschätzung – Zustimmung“, bekommt der Bewerber im Portal ein Fenster mit „Erlauben“ und „Ablehnen“. Das Team sieht die Antwort bei der KI-Einschätzung und im Bot-Log. Ablehnen gilt immer, vorhandene KI-Punkte werden dann gelöscht." },
       { kind: "neu", text: "**Globale Bausteine** – zehn neue Texte für alle Bewerbungsarten, z. B. „Discord-DMs öffnen“, „Bitte dem Discord beitreten“, „Letzte Erinnerung“, „Absage – kopierte Antworten“ und „Zurückziehen bestätigt“." },
       { kind: "besser", text: "**Bausteine nach Art filtern** – unter „Nachrichtenbausteine“ oben Alle, Global, Team, Whitelist oder Beta wählen. Bei einer Art siehst du genau das, was im Nachrichteneditor zur Auswahl steht. Neue Bausteine gehören automatisch zur gewählten Art, globale tragen das Abzeichen „Global“." },
     ],

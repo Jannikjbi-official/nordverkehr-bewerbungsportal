@@ -209,7 +209,9 @@ export const CONSENT_VERSION = "2026-11-v3";
 export const AI_SCORE_CONSENT = "2026-11-v2";
 export const allowsAiScore = (consentVersion: string | null | undefined) => !!consentVersion && consentVersion >= AI_SCORE_CONSENT;
 /** KI-Punkte erlaubt: passende Einwilligung oder Admin-Freigabe (Zustimmung des Bewerbers) */
-export const aiScoreAllowed = (app: { consentVersion: string | null; aiConsentOverrideAt?: Date | null }) => allowsAiScore(app.consentVersion) || !!app.aiConsentOverrideAt;
+export const aiScoreAllowed = (app: { consentVersion: string | null; aiConsentOverrideAt?: Date | null; aiConsentAnswer?: string | null }) =>
+  // Hat der Bewerber im Pop-up abgelehnt, gilt das immer – auch gegen Einwilligung beim Absenden oder Admin-Freigabe
+  app.aiConsentAnswer === "denied" ? false : app.aiConsentAnswer === "granted" || allowsAiScore(app.consentVersion) || !!app.aiConsentOverrideAt;
 
 
 export function formatAnswerForDisplay(type: QuestionType, value: AnswerValue): string {

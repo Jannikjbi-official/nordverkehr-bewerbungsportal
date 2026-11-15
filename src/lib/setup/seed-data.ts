@@ -164,8 +164,12 @@ export const POSITIONS: SeedPosition[] = [
 
 /** Zustimmung zu KI-Punkten bei älteren Bewerbungen (siehe Admin-Freigabe im Bewertungsbogen) */
 export const KI_CONSENT_TEMPLATE_TITLE = "KI-Einschätzung – Zustimmung";
-export const KI_CONSENT_TEMPLATE_BODY =
+/** Alter Text (bis 15.11.2026) – nur für die Migration */
+export const KI_CONSENT_TEMPLATE_BODY_V1 =
   "Moin {name},\n\nkurze Frage zu deiner Bewerbung {bewerbungs_id} als **{position}**:\n\nWir nutzen im Bewerbungsportal seit Kurzem eine KI, die Bewerbungen nach festen Kriterien einschätzt (z. B. Kommunikation, Erfahrung, Umgang mit Szenarien) und das kurz begründet. Deine Bewerbung kam kurz vor dieser Neuerung bei uns an – deshalb fragen wir dich vorher.\n\n**Was dabei passiert:**\n- Nur deine Antworten und die Stelle gehen an die KI (Claude von Anthropic) – nicht dein Name, deine Discord-ID oder Bilder.\n- Die Punkte sind nur eine Orientierung fürs Team. Entscheiden tun immer wir Menschen, im Gespräch und in der Abstimmung.\n- Die Daten werden nicht zum Training der KI genutzt.\n\n**Sagst du Nein, hat das keinerlei Nachteile** – dann bewerten wir deine Bewerbung ganz normal ohne KI.\n\nWenn du einverstanden bist, antworte einfach direkt im Portal unter „Meine Bewerbungen“ mit **„Ja“**. Mehr dazu steht in der Datenschutzerklärung im Portal.";
+/** Neuer Text: Antwort per Knopf im Portal (Pop-up) statt „Ja“ schreiben */
+export const KI_CONSENT_TEMPLATE_BODY =
+  "Moin {name},\n\nkurze Frage zu deiner Bewerbung {bewerbungs_id} als **{position}**:\n\nWir nutzen im Bewerbungsportal seit Kurzem eine KI, die Bewerbungen nach festen Kriterien einschätzt (z. B. Kommunikation, Erfahrung, Umgang mit Szenarien) und das kurz begründet. Deine Bewerbung kam kurz vor dieser Neuerung bei uns an – deshalb fragen wir dich vorher.\n\n**Was dabei passiert:**\n- Nur deine Antworten und die Stelle gehen an die KI (Claude von Anthropic) – nicht dein Name, deine Discord-ID oder Bilder.\n- Die Punkte sind nur eine Orientierung fürs Team. Entscheiden tun immer wir Menschen, im Gespräch und in der Abstimmung.\n- Die Daten werden nicht zum Training der KI genutzt.\n\n**Sagst du Nein, hat das keinerlei Nachteile** – dann bewerten wir deine Bewerbung ganz normal ohne KI.\n\nIm Portal unter „Meine Bewerbungen“ ({dashboard_link}) erscheint dazu ein Fenster – tippe dort einfach auf **Erlauben** oder **Ablehnen**. Mehr dazu steht in der Datenschutzerklärung im Portal.";
 
 /**
  * Mitgelieferte Team-Bausteine (Wortwahl „Bewerbung als {position}“, Gespräch,

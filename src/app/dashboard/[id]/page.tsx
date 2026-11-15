@@ -21,6 +21,7 @@ import { SlotPicker } from "@/components/dashboard/SlotPicker";
 import { CancelInterviewButton } from "@/components/dashboard/CancelInterviewButton";
 import { nowMs } from "@/lib/time";
 import { FeedbackForm } from "@/components/dashboard/FeedbackForm";
+import { AiConsentPrompt } from "@/components/dashboard/AiConsentPrompt";
 import { canRebook, listFreeSlots } from "@/lib/team/slots";
 import { db } from "@/lib/db";
 import { getBotProfile } from "@/lib/discord/bot-profile";
@@ -161,6 +162,9 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
             ) : (
               <FeedbackForm applicationId={app.id} />
             ))}
+          {app.aiConsentRequestedAt && app.status !== "WITHDRAWN" && (
+            <AiConsentPrompt applicationId={app.id} answer={app.aiConsentAnswer === "granted" || app.aiConsentAnswer === "denied" ? app.aiConsentAnswer : null} />
+          )}
           {queue && (
             <p className="nv-card p-4 text-sm text-fg-2" data-testid="queue-info">
               ⏳ {queueText(queue, app.status as "SUBMITTED" | "IN_REVIEW", app.position.title)}

@@ -488,3 +488,42 @@ export async function setApplicantAwayAction(applicationId: string, untilDate: s
   revalidatePath(`/dashboard/${app.id}`);
   return { ok: true };
 }
+
+/**
+ * Antwort auf die Frage „Darf die KI deine Bewerbung einschätzen?“ (Pop-up im Portal).
+ * Erlaubt → KI-Punkte dürfen berechnet werden. Abgelehnt → keine KI-Punkte, vorhandene werden gelöscht.
+ * Die Entscheidung lässt sich später ändern.
+ */
+export async function answerAiConsentAction(applicationId: string, allow: boolean): Promise<ActionResult> {
+  const user = await requireUser();
+  if (!idSchema.safeParse(applicationId).success || typeof allow !== "boolean") return { ok: false, error: "Ungültig." };
+  const rl = await rateLimit(`ai-consent:${user.id}`, 20, 3600);
+  if (!rl.ok) return { ok: false, error: "Zu viele Versuche. Probier es später nochmal." };
+  const app = await db.application.findFirst({
+    where: { id: applicationId, userId: user.id, aiConsentRequestedAt: { not: null } },
+    select: { id: true, publicId: true, aiConsentAnswer: true, position: { select: { title: true } } },
+  });
+  if (!app) return { ok: false, error: "Für diese Bewerbung gibt es keine offene Frage." };
+  const answer = allow ? "granted" : "denied";
+  if (app.aiConsentAnswer === answer) return { ok: true };
+  await db.application.update({
+    where: { id: app.id },
+    data: {
+      aiConsentAnswer: answer,
+      aiConsentAnsweredAt: new Date(),
+      // Abgelehnt: bereits berechnete KI-Punkte verwerfen
+      ...(allow ? {} : { aiRating: Prisma.DbNull, aiRatedAt: null }),
+    },
+  });
+  await audit(allow ? "application.ai_consent_granted" : "application.ai_consent_denied", { actorId: user.id, targetType: "application", targetId: app.id, meta: { publicId: app.publicId } });
+  const job = await botLog(
+    allow
+      ? `🤖 **${app.publicId}** (${app.position.title}): Bewerber hat die **KI-Einschätzung erlaubt**`
+      : `🤖 **${app.publicId}** (${app.position.title}): Bewerber hat die **KI-Einschätzung abgelehnt**`,
+    { applicationId: app.id, url: `${publicEnv.appUrl}/team/bewerbungen/${app.id}` },
+  );
+  if (job) await deliverNow([job]);
+  revalidatePath(`/dashboard/${app.id}`);
+  revalidatePath(`/team/bewerbungen/${app.id}`);
+  return { ok: true };
+}

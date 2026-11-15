@@ -349,6 +349,18 @@ export async function sendMessageAction(input: z.input<typeof messageSchema>): P
     });
     jobIds.push(...res.jobIds);
     await kick(jobIds);
+    // Baustein „KI-Einschätzung – Zustimmung“ dabei? → Bewerber bekommt im Portal ein Pop-up (Erlauben/Ablehnen)
+    if (p.data.templateIds.length) {
+      const { KI_CONSENT_TEMPLATE_TITLE } = await import("@/lib/setup/seed-data");
+      const asks = await db.messageTemplate.count({ where: { id: { in: p.data.templateIds }, title: KI_CONSENT_TEMPLATE_TITLE } });
+      if (asks) {
+        await db.application.update({
+          where: { id: p.data.applicationId },
+          data: { aiConsentRequestedAt: new Date(), aiConsentAnswer: null, aiConsentAnsweredAt: null },
+        });
+        revalidatePath(`/dashboard/${p.data.applicationId}`);
+      }
+    }
     revalidatePath(`/team/bewerbungen/${p.data.applicationId}`);
     return { ok: true, data: { missing: res.missing } };
   } catch (err) {
