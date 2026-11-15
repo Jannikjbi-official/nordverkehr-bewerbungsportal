@@ -5,7 +5,8 @@
   ],
   "git": {
     "deploymentEnabled": {
-      "claude/*": false
+      "claude/*": false,
+      "main-votzdg": false
     }
   }
 }

@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import traceExcludes from "./trace-excludes.json";
 
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -22,31 +23,9 @@ const nextConfig: NextConfig = {
   // Prisma läuft mit engineType "client" (runtime/client.js + .prisma/client/
   // query_compiler_bg.wasm, ~2 MB) über den Treiber `pg` – Engines für andere
   // Datenbanken und die alte native Engine werden nicht gebraucht.
-  outputFileTracingExcludes: {
-    "*": [
-      "node_modules/@prisma/client/runtime/query_engine_bg.*",
-      "node_modules/@prisma/client/runtime/query_compiler_bg.*",
-      "node_modules/@prisma/client/runtime/wasm-*",
-      "node_modules/@prisma/client/runtime/binary.*",
-      "node_modules/@prisma/client/runtime/library.*",
-      "node_modules/.prisma/client/*.so.node",
-      "node_modules/.prisma/client/libquery_engine-*",
-      "node_modules/@prisma/client/runtime/react-native.*",
-      "node_modules/@prisma/client/runtime/edge*",
-      "node_modules/@prisma/client/runtime/*.map",
-      "node_modules/.prisma/client/edge.js",
-      "node_modules/.prisma/client/wasm*",
-      "node_modules/.prisma/client/index.d.ts",
-      // sharp: Vercel läuft auf Linux x64 mit glibc – WebAssembly- und musl-Varianten werden nie geladen
-      "node_modules/@img/sharp-wasm32/**",
-      "node_modules/@img/sharp-linuxmusl-*/**",
-      "node_modules/@img/sharp-libvips-linuxmusl-*/**",
-      // Nur zum Bauen/Testen nötig
-      "node_modules/prisma/**",
-      "node_modules/@prisma/engines/**",
-      "node_modules/typescript/**",
-    ],
-  },
+  // Liste in trace-excludes.json – scripts/trim-traces.mjs wendet sie nach dem Build auch auf
+  // Middleware/Instrumentation an (die Next nicht filtert, Vercel aber in jede Funktion packt).
+  outputFileTracingExcludes: { "*": traceExcludes },
   turbopack: {
     rules: {
       "*.css": {
