@@ -10,6 +10,7 @@ import { DiscordMarkdown } from "@/components/DiscordMarkdown";
 import { ChatAvatar, ChatRoleBadge, personName } from "@/components/ChatParticipant";
 import {
   CommentBox,
+  ImprovementTip,
   SecondOpinion,
   DeleteCommentButton,
   InterviewForm,
@@ -583,6 +584,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
               </p>
             )}
             <HelpLink id="status" label="Was bedeuten die Status?" />
+            {app.status === "REJECTED" && <ImprovementTip applicationId={app.id} tip={app.improvementTip} />}
             {["SUBMITTED", "IN_REVIEW", "INTERVIEW"].includes(app.status) && <MuteControl applicationId={app.id} until={app.mutedUntil?.toISOString() ?? null} nowMs={nowMs()} />}
             <div className="nv-divider" />
             {kind.interview && <InterviewForm applicationId={app.id} at={app.interviewAt?.toISOString() ?? null} note={app.interviewNote} />}

@@ -10,6 +10,7 @@ import {
   CheckCircle,
   Confetti,
   DiscordLogo,
+  Lightbulb,
   WarningCircle,
 } from "@phosphor-icons/react/ssr";
 import { Container, DeliveryBadge, IconTile, Notice, StatusBadge, cn, formatDay, formatDayTime } from "@/components/ui";
@@ -156,6 +157,13 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[1fr_340px]">
         <div className="space-y-6 min-w-0">
+          {app.status === "REJECTED" && app.improvementTip && (
+            <Notice tone="info" icon={Lightbulb} title="Tipp vom Team fürs nächste Mal">
+              <span className="whitespace-pre-wrap" data-testid="improvement-tip-applicant">
+                {app.improvementTip}
+              </span>
+            </Notice>
+          )}
           {["ACCEPTED", "REJECTED"].includes(app.status) &&
             (app.feedback ? (
               <p className="nv-card p-4 text-sm text-muted">Danke für dein Feedback – das hilft uns wirklich weiter.</p>

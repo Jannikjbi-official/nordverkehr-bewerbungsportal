@@ -62,6 +62,8 @@ export async function GET() {
       entschieden: a.decidedAt,
       gespraech: a.interviewAt,
       einwilligung: { version: a.consentVersion, am: a.consentAt },
+      kiEinschaetzung: a.aiConsentAnswer ? { antwort: a.aiConsentAnswer === "granted" ? "erlaubt" : "abgelehnt", am: a.aiConsentAnsweredAt } : undefined,
+      tippVomTeam: a.improvementTip ?? undefined,
       bestaetigungen: a.confirmations,
       entwurf: a.status === "DRAFT" ? a.draftData : undefined,
       antworten: a.answers,

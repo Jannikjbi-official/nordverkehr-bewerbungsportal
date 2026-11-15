@@ -406,6 +406,8 @@ model Application {
   rejectionReason         String?
   /// Feste Kategorie des Absagegrunds (lib/applications/rejection.ts) – für die Statistik
   rejectionCategory       String?
+  /// Persönlicher Tipp fürs nächste Mal – sieht der Bewerber (Dashboard, Wiederbewerbung)
+  improvementTip          String?
   /// Regel-Quiz: richtige Antworten / Anzahl Quizfragen (beim Absenden ausgewertet)
   quizCorrect             Int?
   quizTotal               Int?

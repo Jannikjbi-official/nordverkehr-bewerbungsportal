@@ -11,6 +11,7 @@ import {
   changeStatusAction,
   deleteCommentAction,
   requestSecondOpinionAction,
+  setImprovementTipAction,
   retryDeliveryAction,
   setInterviewAction,
   voteAction,
@@ -362,6 +363,45 @@ export function SecondOpinion({
         </button>
       </div>
       {done && <p className="text-xs text-[var(--tone-success)]">{done} wurde per DM gefragt.</p>}
+      {error && <p className="nv-error text-xs">{error}</p>}
+    </div>
+  );
+}
+
+/** Tipp fürs nächste Mal (nur bei Absage) – sieht der Bewerber. */
+export function ImprovementTip({ applicationId, tip }: { applicationId: string; tip: string | null }) {
+  const { pending, error, run } = useAction();
+  const [value, setValue] = useState(tip ?? "");
+  const [saved, setSaved] = useState(false);
+  return (
+    <div className="space-y-2" data-testid="improvement-tip">
+      <label htmlFor="tip" className="nv-field-label">
+        Tipp fürs nächste Mal <span className="font-normal text-muted">(sieht der Bewerber)</span>
+      </label>
+      <textarea
+        id="tip"
+        className="nv-input text-sm !min-h-20"
+        rows={3}
+        maxLength={600}
+        placeholder="z. B. „Erzähl bei den Szenarien mehr von deinem eigenen Vorgehen.“"
+        value={value}
+        onChange={(e) => {
+          setValue(e.target.value);
+          setSaved(false);
+        }}
+      />
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs text-muted">Erscheint im Dashboard und bei einer Wiederbewerbung.</p>
+        <button
+          type="button"
+          className="nv-btn nv-btn-ghost nv-btn-sm shrink-0"
+          disabled={pending || value.trim() === (tip ?? "")}
+          onClick={() => run(() => setImprovementTipAction(applicationId, value), () => setSaved(true))}
+        >
+          {pending ? "Speichert …" : "Speichern"}
+        </button>
+      </div>
+      {saved && <p className="text-xs text-[var(--tone-success)]">Gespeichert.</p>}
       {error && <p className="nv-error text-xs">{error}</p>}
     </div>
   );

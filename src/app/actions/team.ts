@@ -337,6 +337,27 @@ export async function requestSecondOpinionAction(applicationId: string, targetUs
   return { ok: true, data: { name: target.globalName || target.username } };
 }
 
+/** Persönlicher Tipp fürs nächste Mal (nur bei Absagen) – sieht der Bewerber im Dashboard und bei der Wiederbewerbung. */
+export async function setImprovementTipAction(applicationId: string, tip: string): Promise<ActionResult> {
+  const { user, access } = await requireTeam();
+  {
+    const j = await juniorDenied(user, access);
+    if (j) return j;
+  }
+  {
+    const denied = await guardApp(user, access, applicationId);
+    if (denied) return denied;
+  }
+  const text = typeof tip === "string" ? tip.trim().slice(0, 600) : "";
+  const app = await db.application.findUnique({ where: { id: applicationId }, select: { status: true } });
+  if (!app || app.status !== "REJECTED") return { ok: false, error: "Tipps gibt es nur bei abgelehnten Bewerbungen." };
+  await db.application.update({ where: { id: applicationId }, data: { improvementTip: text || null } });
+  await audit("application.tip", { actorId: user.id, targetType: "application", targetId: applicationId });
+  revalidatePath(`/team/bewerbungen/${applicationId}`);
+  revalidatePath(`/dashboard/${applicationId}`);
+  return { ok: true };
+}
+
 const commentSchema = z.object({ applicationId: id, body: z.string().trim().min(1).max(3000) });
 
 export async function addCommentAction(input: z.input<typeof commentSchema>): Promise<ActionResult> {

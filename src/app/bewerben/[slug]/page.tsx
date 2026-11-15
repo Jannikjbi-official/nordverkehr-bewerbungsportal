@@ -120,7 +120,7 @@ async function Apply({
       },
       orderBy: { decidedAt: "desc" },
       // Bewusst ohne rejectionReason – das ist ein interner Grund fürs Team
-      select: { id: true, publicId: true, decidedAt: true },
+      select: { id: true, publicId: true, decidedAt: true, improvementTip: true },
     }),
   ]);
 
@@ -179,6 +179,11 @@ async function Apply({
               Bewerbung – nimm dir die Punkte diesmal besonders vor.
               Ausführliche, ehrliche Antworten helfen am meisten.
             </p>
+            {previous.improvementTip && (
+              <p className="mt-2 rounded-lg bg-surface-2 p-3 whitespace-pre-wrap" data-testid="previous-tip">
+                <strong>💡 Tipp vom Team:</strong> {previous.improvementTip}
+              </p>
+            )}
             <p className="mt-2">
               <Link className="nv-link" href={`/dashboard/${previous.id}`}>
                 Alte Bewerbung und Nachrichten ansehen
