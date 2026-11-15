@@ -76,6 +76,8 @@ export async function deliveryState(
     : (await db.outboxJob.findMany({ where: { type: "CHANNEL_MESSAGE", payload: { path: ["kind"], equals: "changelog" } }, select: { id: true, status: true, payload: true, result: true }, orderBy: { createdAt: "desc" }, take: 200 })).filter(
         (j) => (j.payload as { channelId?: string }).channelId === channelId && postIsVersion(j.payload, version),
       );
+  // Kanal gewechselt (z. B. neue Kanal-ID in Vercel)? Dann zählt der alte Post nicht – im neuen Kanal posten
+  if (ids && jobs.some((j) => (j.payload as { channelId?: string }).channelId !== channelId)) return { state: "missing", pendingIds: [] };
   const ok = (j: (typeof jobs)[number]) => j.status === "DONE" && !(j.result as { deleted?: boolean } | null)?.deleted;
   const pendingIds = jobs.filter((j) => j.status === "PENDING" || j.status === "PROCESSING").map((j) => j.id);
   // Mit bekannten Zustellungen müssen alle Teile angekommen sein, bei alten reicht einer
