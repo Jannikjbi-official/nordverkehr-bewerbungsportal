@@ -100,6 +100,8 @@ export interface DiscordApi {
   removeRole(guildId: string, userId: string, roleId: string, reason?: string): Promise<void>;
   /** Server-Namen setzen (null = zurücksetzen). Geht nicht beim Server-Besitzer/höheren Rollen. */
   setNick(guildId: string, userId: string, nick: string | null, reason?: string): Promise<void>;
+  /** Gibt es die Nachricht noch? false = gelöscht/nicht gefunden. Wirft bei anderen Fehlern. */
+  messageExists?(channelId: string, messageId: string): Promise<boolean>;
   /** Alle Mitglieder (seitenweise, je 1000). Braucht den „Server Members Intent“ des Bots. */
   listMembers?(guildId: string, after?: string): Promise<{ userId: string; roles: string[] }[]>;
   /** Bann auf dem Server (null = nicht gebannt). Wirft, wenn der Bot keine Bans lesen darf. */
@@ -151,6 +153,16 @@ export function createDiscordApi(token: string, opts: { timeoutMs?: number } = {
       } catch (err) {
         const e = classifyDiscordError(err);
         if (e.kind === "not_found") return null;
+        throw e;
+      }
+    },
+    async messageExists(channelId, messageId) {
+      try {
+        await rest.get(Routes.channelMessage(channelId, messageId));
+        return true;
+      } catch (err) {
+        const e = classifyDiscordError(err);
+        if (e.kind === "not_found") return false;
         throw e;
       }
     },

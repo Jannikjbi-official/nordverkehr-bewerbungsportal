@@ -62,7 +62,14 @@ const jobIdsOf = (m: ChangelogMarker | null) => m?.jobIds ?? (m?.jobId ? [m.jobI
  * Ist die Version wirklich in Discord angekommen? Neue Markierungen kennen ihre Zustellungen,
  * ältere werden über die gespeicherten Posts im Kanal geprüft. Gelöschte Posts zählen als fehlend.
  */
-export async function deliveryState(db: PrismaClient, version: string, marker: ChangelogMarker | null, channelId: string): Promise<{ state: DeliveryState; pendingIds: string[] }> {
+export async function deliveryState(
+  db: PrismaClient,
+  version: string,
+  marker: ChangelogMarker | null,
+  channelId: string,
+  /** Admin-Knopf: bei Discord nachfragen, ob die Posts wirklich noch da sind (z. B. von Hand gelöscht) */
+  verify = false,
+): Promise<{ state: DeliveryState; pendingIds: string[] }> {
   const ids = jobIdsOf(marker);
   const jobs = ids
     ? await db.outboxJob.findMany({ where: { id: { in: ids } }, select: { id: true, status: true, payload: true, result: true } })
@@ -72,7 +79,25 @@ export async function deliveryState(db: PrismaClient, version: string, marker: C
   const ok = (j: (typeof jobs)[number]) => j.status === "DONE" && !(j.result as { deleted?: boolean } | null)?.deleted;
   const pendingIds = jobs.filter((j) => j.status === "PENDING" || j.status === "PROCESSING").map((j) => j.id);
   // Mit bekannten Zustellungen müssen alle Teile angekommen sein, bei alten reicht einer
-  if (ids ? jobs.length === ids.length && jobs.every(ok) : jobs.some(ok)) return { state: "delivered", pendingIds: [] };
+  if (ids ? jobs.length === ids.length && jobs.every(ok) : jobs.some(ok)) {
+    if (!verify) return { state: "delivered", pendingIds: [] };
+    const check = ids ? jobs : jobs.filter(ok);
+    const { getDiscordApi } = await import("@/lib/discord/client");
+    const api = getDiscordApi();
+    let gone = false;
+    for (const j of check) {
+      const messageId = (j.result as { messageId?: string } | null)?.messageId;
+      if (!messageId || !api.messageExists) continue;
+      const exists = await api.messageExists(channelId, messageId).catch(() => true); // unklar → lieber nicht doppelt posten
+      if (!exists) {
+        gone = true;
+        await db.outboxJob.update({ where: { id: j.id }, data: { result: { ...(j.result as object), deleted: true } } });
+      }
+    }
+    if (!gone) return { state: "delivered", pendingIds: [] };
+    console.warn(`[changelog] Post von Version ${version} ist in Discord nicht mehr da`);
+    return { state: "missing", pendingIds: [] };
+  }
   if (pendingIds.length) return { state: "pending", pendingIds };
   return { state: "missing", pendingIds: [] };
 }
@@ -111,7 +136,7 @@ export async function postNewChangelogEntries(db: PrismaClient, now = new Date()
       const marker = row.value as ChangelogMarker | null;
       // Gerade erst angelegt: der Versand läuft vermutlich noch (nicht doppelt posten)
       if (!opts.force && marker?.at && now.getTime() - new Date(marker.at).getTime() < 15 * 60_000) continue;
-      const d = await deliveryState(db, entry.version, marker, channelId);
+      const d = await deliveryState(db, entry.version, marker, channelId, !!opts.force);
       if (d.state === "delivered") {
         // Punkte dazugekommen? Dann den Post bearbeiten (nur mit bekanntem Inhalt und bekannter Zustellung)
         const ids = jobIdsOf(marker);
