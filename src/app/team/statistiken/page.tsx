@@ -299,7 +299,7 @@ async function Stats({ searchParams }: Pick<PageProps<"/team/statistiken">, "sea
         {feedback.length === 0 ? (
           <p className="mt-2 text-sm text-muted">Im gewählten Zeitraum hat noch niemand Feedback gegeben.</p>
         ) : (
-          <div className="mt-3 grid gap-6 md:grid-cols-[220px_1fr]">
+          <div className="mt-3 grid grid-cols-[minmax(0,1fr)] gap-6 md:grid-cols-[220px_1fr]">
             <div>
               <p className="text-4xl font-display tabular-nums">
                 {fbAvg?.toLocaleString("de-DE")}
@@ -347,7 +347,7 @@ async function Stats({ searchParams }: Pick<PageProps<"/team/statistiken">, "sea
           {activity.length === 0 ? (
             <p className="mt-3 text-sm text-muted">Im Zeitraum keine Aktivität.</p>
           ) : (
-            <div className="mt-3 overflow-x-auto">
+            <div className="mt-3 relative overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-muted border-b border-line">
@@ -386,7 +386,7 @@ async function Stats({ searchParams }: Pick<PageProps<"/team/statistiken">, "sea
 
       <section className="nv-card p-5">
         <h2 className="font-semibold">KI-Nutzung (dieser Monat)</h2>
-        <dl className="mt-3 grid gap-4 sm:grid-cols-3 text-sm">
+        <dl className="mt-3 grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-3 text-sm">
           <div>
             <dt className="text-muted">Anfragen</dt>
             <dd className="text-2xl font-display">{aiMonth._count}</dd>

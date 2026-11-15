@@ -64,7 +64,7 @@ async function PositionDetail({ params }: Pick<PageProps<"/positionen/[slug]">, 
             <p className="text-lg text-fg-2 max-w-2xl nv-anim" style={{ "--i": 1 } as React.CSSProperties}>
               {position.description}
             </p>
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2">
               <ListCard icon={<ListChecks size={20} aria-hidden />} title={isTeam ? "Deine Aufgaben" : "So läuft's"} items={position.tasks} />
               <ListCard icon={<Target size={20} aria-hidden />} title="Was du mitbringst" items={position.requirements} />
             </div>
@@ -239,7 +239,7 @@ function PositionSkeleton() {
     <Container className="pt-40 space-y-6">
       <div className="nv-skeleton h-16 w-2/3" />
       <div className="nv-skeleton h-6 w-1/2" />
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2">
         <div className="nv-skeleton h-56" />
         <div className="nv-skeleton h-56" />
       </div>

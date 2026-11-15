@@ -50,7 +50,7 @@ async function UserDetail({ params }: Pick<PageProps<"/team/nutzer/[id]">, "para
         </div>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
         <section className="nv-card p-5 space-y-4">
           <h2 className="font-semibold">Bewerbungen</h2>
           {u.applications.length === 0 && <p className="text-sm text-muted">Keine eingereichten Bewerbungen.</p>}

@@ -142,7 +142,7 @@ export function QuestionField({ q, value, error, onChange, uploads, onUploaded }
         <fieldset aria-describedby={describedBy}>
           <legend className="nv-field-label">{label}</legend>
           {help}
-          <div className="mt-1 grid gap-2 sm:grid-cols-2" role="radiogroup">
+          <div className="mt-1 grid grid-cols-[minmax(0,1fr)] gap-2 sm:grid-cols-2" role="radiogroup">
             {opts.map((o) => {
               const checked = value === o;
               return (

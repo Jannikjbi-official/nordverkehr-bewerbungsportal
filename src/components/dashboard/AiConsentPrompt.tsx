@@ -97,7 +97,7 @@ export function AiConsentPrompt({ applicationId, answer }: { applicationId: stri
               {error}
             </p>
           )}
-          <div className="mt-6 grid gap-2 sm:grid-cols-2">
+          <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-2 sm:grid-cols-2">
             <button type="button" className="nv-btn nv-btn-ghost w-full" disabled={pending} onClick={() => decide(false)} data-testid="ai-consent-deny">
               <XCircle size={16} aria-hidden /> Ablehnen
             </button>

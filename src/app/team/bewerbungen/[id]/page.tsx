@@ -404,7 +404,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
                 content: (
           <section aria-label="Antworten">
             <div className="divide-y divide-[var(--nv-border)]">
-              <dl className="px-5 py-4 grid gap-1 sm:grid-cols-[220px_1fr] sm:gap-4">
+              <dl className="px-5 py-4 grid grid-cols-[minmax(0,1fr)] gap-1 sm:grid-cols-[220px_1fr] sm:gap-4">
                 <dt className="text-xs text-muted">Alter</dt>
                 <dd className="text-sm">{app.age ?? "–"}</dd>
                 {app.quizTotal ? (

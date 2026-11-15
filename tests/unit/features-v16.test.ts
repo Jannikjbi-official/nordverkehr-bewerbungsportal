@@ -148,3 +148,19 @@ describe("Quiz: Fragenpool & Reihenfolge (#96)", async () => {
     expect(ids(personalizeQuiz(sections, "x", 50))).toHaveLength(7);
   });
 });
+
+describe("Gespeicherte Ansichten (#93)", async () => {
+  const { readViews, upsertView, MAX_VIEWS } = await import("@/lib/team/saved-views");
+  it("liest nur gültige Einträge", () => {
+    expect(readViews([{ name: "A", query: "x=1" }, { name: "", query: "" }, 5, null])).toEqual([{ name: "A", query: "x=1" }]);
+    expect(readViews("kaputt")).toEqual([]);
+  });
+  it("gleicher Name ersetzt, höchstens MAX_VIEWS", () => {
+    const v = upsertView([{ name: "Offen", query: "a" }], { name: "offen", query: "b" });
+    expect(v).toEqual([{ name: "offen", query: "b" }]);
+    let many = [] as { name: string; query: string }[];
+    for (let i = 0; i < MAX_VIEWS + 3; i++) many = upsertView(many, { name: `v${i}`, query: "" });
+    expect(many).toHaveLength(MAX_VIEWS);
+    expect(many.at(-1)?.name).toBe(`v${MAX_VIEWS + 2}`);
+  });
+});

@@ -6,6 +6,8 @@ import { Suspense } from "react";
 import { ChatCircleDots, DownloadSimple, Kanban, Table, WarningCircle } from "@phosphor-icons/react/ssr";
 import { Avatar, EmptyState, StatusBadge, cn, formatDay, formatRelative } from "@/components/ui";
 import { ApplicationFiltersBar } from "@/components/team/ApplicationFiltersBar";
+import { SavedViews } from "@/components/team/SavedViews";
+import { readViews } from "@/lib/team/saved-views";
 import { KanbanBoard } from "@/components/team/KanbanBoard";
 import { TagPills } from "@/components/team/TagPills";
 import { QuizPill } from "@/components/team/QuizPill";
@@ -31,9 +33,10 @@ async function Content({ searchParams }: Pick<PageProps<"/team/bewerbungen">, "s
   const { user, access } = await requireTeam();
   const viewer = viewerOf(user, access);
   const f = parseFilters(await searchParams);
-  const [positions, { rows, total, hits }] = await Promise.all([
+  const [positions, { rows, total, hits }, me] = await Promise.all([
     db.position.findMany({ orderBy: { sortOrder: "asc" }, select: { slug: true, title: true } }),
     listApplications(f, { all: f.view === "board", viewer }),
+    db.user.findUnique({ where: { id: user.id }, select: { savedViews: true } }),
   ]);
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -73,6 +76,7 @@ async function Content({ searchParams }: Pick<PageProps<"/team/bewerbungen">, "s
         </div>
       </header>
 
+      <SavedViews views={readViews(me?.savedViews)} currentQuery={filtersToQuery(f, { page: 1 })} />
       <ApplicationFiltersBar positions={positions} current={f} />
 
       {rows.length === 0 ? (

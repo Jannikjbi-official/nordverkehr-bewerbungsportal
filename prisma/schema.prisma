@@ -114,6 +114,8 @@ model User {
   isTeam        Boolean   @default(false)
   /// Abwesend (Urlaub o. Ä.) bis: keine automatische Zuteilung, keine Claim-Erinnerung/Morgen-DM
   awayUntil     DateTime?
+  /// Gespeicherte Ansichten der Bewerbungsliste: [{ name, query }]
+  savedViews    Json      @default("[]")
   isAdmin       Boolean   @default(false)
   guildJoinedAt DateTime?
   roleCheckedAt DateTime?

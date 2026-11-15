@@ -80,7 +80,7 @@ async function Compare({ searchParams }: Pick<PageProps<"/team/bewerbungen/vergl
   return (
     <div className="space-y-4">
       {!samePosition && <Notice tone="warn" title="Unterschiedliche Stellen">Die Bewerbungen sind für verschiedene Stellen – Fragen können sich unterscheiden.</Notice>}
-      <div className="nv-card overflow-x-auto">
+      <div className="nv-card relative overflow-x-auto">
         <div className="grid min-w-max" style={{ gridTemplateColumns: cols }}>
           {/* Kopf */}
           <div className="sticky left-0 z-10 bg-card p-4 border-b border-line" />

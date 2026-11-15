@@ -40,7 +40,7 @@ export function SlotCreator() {
       }}
     >
       <h2 className="font-semibold">Freie Termine anlegen</h2>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <label htmlFor="s-start" className="nv-field-label">
             Erster Termin

@@ -124,7 +124,7 @@ export function HelpBrowser({ sections }: { sections: HelpSection[] }) {
                         {t.list && (
                           <dl className="mt-3 divide-y divide-[var(--nv-border)] rounded-xl border border-line text-sm">
                             {t.list.map((l) => (
-                              <div key={l.label} className="grid gap-0.5 px-3 py-2 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] sm:gap-4">
+                              <div key={l.label} className="grid grid-cols-[minmax(0,1fr)] gap-0.5 px-3 py-2 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] sm:gap-4">
                                 <dt className="font-medium break-words">{l.label}</dt>
                                 <dd className="text-fg-2">{l.text}</dd>
                               </div>

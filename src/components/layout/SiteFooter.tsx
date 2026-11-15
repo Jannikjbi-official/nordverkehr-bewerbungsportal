@@ -7,7 +7,7 @@ import { SOURCE_URL } from "@/lib/legal";
 export function SiteFooter() {
   return (
     <footer className="border-t border-line mt-24">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12 grid gap-10 md:grid-cols-[1fr_1.6fr]">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12 grid grid-cols-[minmax(0,1fr)] gap-10 md:grid-cols-[1fr_1.6fr]">
         <div className="space-y-4">
           <Image src="/Nord-Verkehr-Wordmark.png" alt="Nordverkehr" width={753} height={148} className="h-6 w-auto" />
           <p className="text-sm text-muted max-w-sm">

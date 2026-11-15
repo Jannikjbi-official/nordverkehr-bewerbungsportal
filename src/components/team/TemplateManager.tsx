@@ -115,7 +115,7 @@ export function TemplateManager({ templates: initial }: { templates: Template[] 
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[1fr_1fr]">
       <div className="space-y-4 min-w-0">
         <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Bewerbungsart">
           <span className="text-xs text-muted mr-1">Art:</span>
@@ -181,7 +181,7 @@ export function TemplateManager({ templates: initial }: { templates: Template[] 
         {editing ? (
           <div className="nv-card p-5 space-y-4 xl:sticky xl:top-28">
             <p className="nv-mono">{editing.id ? "Baustein bearbeiten" : "Neuer Baustein"}</p>
-            <div className="grid gap-3 sm:grid-cols-[1fr_200px]">
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-[1fr_200px]">
               <div>
                 <label htmlFor="tpl-title" className="nv-field-label">
                   Titel

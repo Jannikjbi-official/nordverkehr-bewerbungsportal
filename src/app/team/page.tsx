@@ -158,7 +158,7 @@ async function Overview({ searchParams }: Pick<PageProps<"/team">, "searchParams
         </section>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
         <Panel title="Wartet auf deine Stimme" icon={<HandPointing size={18} aria-hidden />} href="/team/bewerbungen?status=SUBMITTED&status=IN_REVIEW">
           {needsMyVote.length === 0 ? (
             <p className="text-sm text-muted">Alles abgestimmt. Stark.</p>

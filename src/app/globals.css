@@ -239,6 +239,8 @@
     user-select: none;
     white-space: nowrap;
   }
+  /* Volle Breite: lange Texte umbrechen statt am Handy über den Rand zu laufen */
+  .nv-btn.w-full { white-space: normal; text-align: center; }
   .nv-btn:disabled,
   .nv-btn[aria-disabled="true"] {
     opacity: 0.5;
@@ -501,7 +503,8 @@
     transition: width 0.3s ease;
   }
   .nv-underline:hover::after { width: 100%; }
-  .nv-scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  /* relative: absolut positionierte Kinder (z. B. sr-only in Tabellenzellen) bleiben im Rahmen und ziehen die Seite am Handy nicht breiter */
+  .nv-scroll-x { position: relative; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
 
 @media (prefers-reduced-motion: reduce) {

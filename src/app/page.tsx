@@ -61,7 +61,7 @@ export default function HomePage() {
       </PageHero>
 
       <Container>
-        <ol className="grid gap-px overflow-hidden rounded-2xl border border-line bg-[var(--nv-border)] sm:grid-cols-2 lg:grid-cols-4">
+        <ol className="grid grid-cols-[minmax(0,1fr)] gap-px overflow-hidden rounded-2xl border border-line bg-[var(--nv-border)] sm:grid-cols-2 lg:grid-cols-4">
           {STEPS.map((s, i) => (
             <li key={s.title} className="bg-bg p-6 nv-anim" style={{ "--i": i } as React.CSSProperties}>
               <div className="flex items-center gap-3">
@@ -80,7 +80,7 @@ export default function HomePage() {
           <SectionTitle label="Bewerben" title="Wo willst du" emphasis="mitmachen?">
             Drei Wege zu Nordverkehr – jeder mit eigenem Formular. Du kannst dich für mehrere gleichzeitig bewerben.
           </SectionTitle>
-          <Suspense fallback={<div className="grid gap-4 md:grid-cols-3">{[0, 1, 2].map((i) => <div key={i} className="nv-skeleton h-56" />)}</div>}>
+          <Suspense fallback={<div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-3">{[0, 1, 2].map((i) => <div key={i} className="nv-skeleton h-56" />)}</div>}>
             <KindCards />
           </Suspense>
         </Container>
@@ -104,7 +104,7 @@ export default function HomePage() {
       <section className="pt-24">
         <Container>
           <SectionTitle label="Was zählt" title="Ehrlich" emphasis="statt perfekt." />
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-3">
             {[
               {
                 icon: Handshake,
@@ -207,7 +207,7 @@ async function PositionList() {
     return <p className="text-muted">Aktuell sind keine Stellen offen. Schau bald wieder vorbei.</p>;
   }
   return (
-    <ul className="grid gap-4 md:grid-cols-2">
+    <ul className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2">
       {positions.map((p, i) => {
         const open = p.status === "OPEN";
         return (
@@ -248,7 +248,7 @@ async function PositionList() {
 
 function PositionsSkeleton() {
   return (
-    <div className="grid gap-4 md:grid-cols-2" aria-busy="true" aria-label="Positionen werden geladen">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2" aria-busy="true" aria-label="Positionen werden geladen">
       {Array.from({ length: 4 }).map((_, i) => (
         <div key={i} className="nv-skeleton h-44" />
       ))}

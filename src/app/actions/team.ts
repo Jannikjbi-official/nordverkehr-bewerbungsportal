@@ -358,6 +358,36 @@ export async function setImprovementTipAction(applicationId: string, tip: string
   return { ok: true };
 }
 
+/** Gespeicherte Ansicht der Bewerbungsliste anlegen/ersetzen (Query wird normalisiert). */
+export async function saveViewAction(name: string, query: string): Promise<ActionResult> {
+  const { user } = await requireTeam();
+  const { savedViewSchema, readViews, upsertView } = await import("@/lib/team/saved-views");
+  const p = savedViewSchema.safeParse({ name, query });
+  if (!p.success) return { ok: false, error: "Name fehlt oder ist zu lang (max. 40 Zeichen)." };
+  const { parseFilters, filtersToQuery } = await import("@/lib/team/queries");
+  const usp = new URLSearchParams(p.data.query);
+  const sp: Record<string, string | string[]> = {};
+  for (const k of new Set(usp.keys())) {
+    const all = usp.getAll(k);
+    sp[k] = all.length > 1 ? all : all[0];
+  }
+  const clean = filtersToQuery(parseFilters(sp), { page: 1 });
+  const me = await db.user.findUnique({ where: { id: user.id }, select: { savedViews: true } });
+  const views = upsertView(readViews(me?.savedViews), { name: p.data.name, query: clean });
+  await db.user.update({ where: { id: user.id }, data: { savedViews: views } });
+  revalidatePath("/team/bewerbungen");
+  return { ok: true };
+}
+
+export async function deleteViewAction(name: string): Promise<ActionResult> {
+  const { user } = await requireTeam();
+  const { readViews } = await import("@/lib/team/saved-views");
+  const me = await db.user.findUnique({ where: { id: user.id }, select: { savedViews: true } });
+  await db.user.update({ where: { id: user.id }, data: { savedViews: readViews(me?.savedViews).filter((v) => v.name !== name) } });
+  revalidatePath("/team/bewerbungen");
+  return { ok: true };
+}
+
 const commentSchema = z.object({ applicationId: id, body: z.string().trim().min(1).max(3000) });
 
 export async function addCommentAction(input: z.input<typeof commentSchema>): Promise<ActionResult> {

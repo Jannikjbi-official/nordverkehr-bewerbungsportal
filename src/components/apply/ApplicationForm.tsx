@@ -413,7 +413,7 @@ export function ApplicationForm({ position, sections, minAge, displayName, initi
                     </p>
                   </div>
                 )}
-                <ul className="grid gap-2 sm:grid-cols-2 text-sm text-fg-2">
+                <ul className="grid grid-cols-[minmax(0,1fr)] gap-2 sm:grid-cols-2 text-sm text-fg-2">
                   <li className="flex gap-2">
                     <CheckCircle size={18} className="text-red-text shrink-0" aria-hidden /> ca. 15–25 Minuten
                   </li>
@@ -654,7 +654,7 @@ function ReviewBlock({ title, onEdit, editLabel = "Bearbeiten", children }: { ti
 
 function ReviewRow({ label, value, missing }: { label: string; value: string; missing?: boolean }) {
   return (
-    <div className="px-4 py-3 grid gap-1 sm:grid-cols-[1fr_1.4fr] sm:gap-4">
+    <div className="px-4 py-3 grid grid-cols-[minmax(0,1fr)] gap-1 sm:grid-cols-[1fr_1.4fr] sm:gap-4">
       <dt className="text-xs text-muted">{label}</dt>
       <dd className={`text-sm whitespace-pre-wrap break-words ${missing ? "text-[var(--tone-danger)]" : ""}`}>
         {missing ? "Fehlt noch" : value || "–"}

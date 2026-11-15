@@ -91,6 +91,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     items: [
       { kind: "neu", text: "**KI-Zustimmung per Knopf** – schickt das Team den Baustein „KI-Einschätzung – Zustimmung“, bekommt der Bewerber im Portal ein Fenster mit „Erlauben“ und „Ablehnen“. Das Team sieht die Antwort bei der KI-Einschätzung und im Bot-Log. Ablehnen gilt immer, vorhandene KI-Punkte werden dann gelöscht." },
       { kind: "neu", text: "**Globale Bausteine** – zehn neue Texte für alle Bewerbungsarten, z. B. „Discord-DMs öffnen“, „Bitte dem Discord beitreten“, „Letzte Erinnerung“, „Absage – kopierte Antworten“ und „Zurückziehen bestätigt“." },
+      { kind: "neu", text: "**Gespeicherte Ansichten** – in der Bewerbungsliste Filter setzen und mit „Aktuelle Filter speichern“ als eigene Ansicht ablegen (z. B. „Offene Supporter“). Sie stehen dann oben zum Anklicken." },
       { kind: "neu", text: "**Tipp fürs nächste Mal** – bei Absagen kann das Team einen persönlichen Tipp hinterlegen. Der Bewerber sieht ihn im Dashboard und wieder, wenn er sich erneut bewirbt." },
       { kind: "neu", text: "**Quiz gemischt & Fragenpool** – jede Person bekommt die Quizfragen und Antworten in eigener Reihenfolge, so lassen sich Lösungen nicht einfach weitergeben. Pro Stelle einstellbar: „Fragen pro Person“ zieht nur eine zufällige Auswahl (neuer Versuch = neue Fragen)." },
       { kind: "neu", text: "**Team-Jubiläen** – am Jahrestag der Annahme postet der Bot einen Gruß im Teamchat („seit einem Jahr im Team“). Text und An/Aus unter Admin → Discord." },
@@ -101,6 +102,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       { kind: "neu", text: "**Wartungsmodus** – unter Admin → Bewerbungen & Ablauf: Absenden kurz sperren, mit eigenem Hinweis im Formular. Entwürfe werden weiter gespeichert." },
       { kind: "neu", text: "**Gelesen** – unter jeder Team-Nachricht steht, ob der Bewerber sie im Portal schon geöffnet hat." },
       { kind: "besser", text: "**Bausteine nach Art filtern** – unter „Nachrichtenbausteine“ oben Alle, Global, Team, Whitelist oder Beta wählen. Bei einer Art siehst du genau das, was im Nachrichteneditor zur Auswahl steht. Neue Bausteine gehören automatisch zur gewählten Art, globale tragen das Abzeichen „Global“." },
+      { kind: "fix", text: "**Handy-Ansicht** – Bewerbungsliste, Team-Übersicht und Konto ließen sich am Handy seitlich verschieben, Profil und Menü oben rechts waren abgeschnitten. Jetzt passt jede Seite auf den Bildschirm." },
       { kind: "fix", text: "**Abstimmung am Handy** – „Enthaltung“ wird nicht mehr abgeschnitten." },
       { kind: "fix", text: "**Drag-and-Drop** – Formular-Builder, Bausteine und Board laden ohne Fehlermeldung im Browser." },
     ],

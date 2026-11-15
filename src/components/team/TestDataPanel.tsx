@@ -60,7 +60,7 @@ export function TestDataPanel({ positions, scenarios, existing }: { positions: {
 
       <fieldset>
         <legend className="nv-field-label">Szenarien</legend>
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-2 sm:grid-cols-2">
           {scenarios.map((s) => (
             <label key={s.key} className="flex items-start gap-2 rounded-lg border border-line px-2.5 py-2 text-sm cursor-pointer">
               <input type="checkbox" className="nv-check !mt-0.5" checked={sc.includes(s.key)} onChange={() => toggle(sc, setSc, s.key)} />

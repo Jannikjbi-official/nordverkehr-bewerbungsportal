@@ -66,7 +66,7 @@ export function ApplicationFiltersBar({ positions, current }: { positions: { slu
 
   return (
     <div className={`nv-card p-4 space-y-3 transition-opacity ${pending ? "opacity-70" : ""}`}>
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-3 md:grid-cols-2">
         <label className="relative">
           <span className="sr-only">Suche</span>
           <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" aria-hidden />

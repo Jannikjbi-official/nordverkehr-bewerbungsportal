@@ -287,12 +287,12 @@ async function Detail({ params, searchParams }: PageProps<"/dashboard/[id]">) {
               <span className="text-xs text-muted group-open:hidden">anzeigen</span>
             </summary>
             <dl className="border-t border-line divide-y divide-[var(--nv-border)]">
-              <div className="px-5 py-3 grid gap-1 sm:grid-cols-[1fr_1.5fr] sm:gap-4">
+              <div className="px-5 py-3 grid grid-cols-[minmax(0,1fr)] gap-1 sm:grid-cols-[1fr_1.5fr] sm:gap-4">
                 <dt className="text-xs text-muted">Alter</dt>
                 <dd className="text-sm">{app.age ?? "–"}</dd>
               </div>
               {app.answers.map((a) => (
-                <div key={a.id} className="px-5 py-3 grid gap-1 sm:grid-cols-[1fr_1.5fr] sm:gap-4">
+                <div key={a.id} className="px-5 py-3 grid grid-cols-[minmax(0,1fr)] gap-1 sm:grid-cols-[1fr_1.5fr] sm:gap-4">
                   <dt className="text-xs text-muted">{a.label}</dt>
                   <dd className="text-sm whitespace-pre-wrap break-words">
                     {a.type === "FILE" && Array.isArray(a.value) ? (

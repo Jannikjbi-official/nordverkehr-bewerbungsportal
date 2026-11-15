@@ -40,7 +40,7 @@ async function Account() {
     getSettings(),
   ]);
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-2">
       <section className="nv-card p-6 space-y-4">
         <div className="flex items-center gap-4">
           <Avatar discordId={user.discordId} avatar={user.avatar} size={56} />

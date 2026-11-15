@@ -296,7 +296,7 @@ function QuestionEditor({
 
   return (
     <div className="rounded-xl border border-red-line p-4 space-y-4">
-      <div className="grid gap-3 sm:grid-cols-[1fr_200px]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-[1fr_200px]">
         <div>
           <label htmlFor="q-label" className="nv-field-label">
             Frage

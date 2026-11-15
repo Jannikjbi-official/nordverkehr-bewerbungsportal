@@ -22,7 +22,7 @@ export function SuggestionAdminItem({ id, status: initialStatus, adminNote, hasA
 
   return (
     <div className="mt-4 space-y-3 border-t border-line pt-4">
-      <div className="grid gap-3 sm:grid-cols-[12rem_minmax(0,1fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-[12rem_minmax(0,1fr)]">
         <div>
           <label htmlFor={`st-${id}`} className="nv-field-label">
             Status

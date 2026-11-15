@@ -97,7 +97,7 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
     <div className={`space-y-6 ${section === "uebersicht" ? "" : "pb-24"}`}>
       {show("uebersicht") && (
       <Card title="Systemstatus" desc="Wird über die .env konfiguriert (nicht hier änderbar).">
-        <ul className="grid gap-2 sm:grid-cols-2 text-sm">
+        <ul className="grid grid-cols-[minmax(0,1fr)] gap-2 sm:grid-cols-2 text-sm">
           {[
             ["bot", "Discord-Bot-Token"],
             ["guild", "DISCORD_GUILD_ID"],
@@ -121,7 +121,7 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
 
       {show("bewerbungen") && (
       <Card title="Bewerbungen" desc="Regeln für alle Stellen. Mindestalter und Sperrfrist lassen sich pro Stelle überschreiben (Positionen & Fragen).">
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
           {num("applications.minAge", "Mindestalter", "Pro Position überschreibbar.")}
           {num("applications.cooldownDays", "Sperrfrist nach Ablehnung (Tage)", "0 = keine Sperrfrist. Pro Position überschreibbar.")}
           <div>
@@ -154,7 +154,7 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
       {show("discord") && (
       <Card title="Discord" desc="Kanäle und Funktionen des Bots. Kanal leer lassen = diese Posts aus.">
         <div className="space-y-3">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {channelField("discord.jobsChannelId", "Kanal: Stellenaufruf")}
             {channelField("discord.spotlightChannelId", "Kanal: Einzelaufrufe")}
             {channelField("discord.applicationsChannelId", "Kanal: neue Bewerbungen")}
@@ -168,7 +168,7 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
           {toggle("discord.botLogEnabled", "Bot-Logs posten", "Statuswechsel, Claims, Team-Nachrichten, Antworten von Bewerbern und Zustellfehler.")}
           {toggle("discord.jobsAutoUpdate", "Stellenaufruf automatisch aktualisieren", "Ändert sich eine Position (Status, Texte), bearbeitet der Bot seine Posts (Gesamt- und Einzelaufrufe) – kein neuer Post.")}
           {toggle("discord.changelogEnabled", "Neue Changelog-Einträge posten", "Jeder Eintrag wird genau einmal gepostet, sobald er veröffentlicht ist.")}
-          <div id="changelog" className="grid gap-4 sm:grid-cols-[180px_1fr] items-start">
+          <div id="changelog" className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-[180px_1fr] items-start">
             <div>
               <label htmlFor="cl-time" className="nv-field-label">
                 Changelog veröffentlichen um
@@ -198,7 +198,7 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
           {s["discord.threadPerApplication"] && toggle("discord.threadMirrorComments", "Interne Kommentare in den Thread spiegeln", "Kommentare aus dem Portal erscheinen zusätzlich im Thread (nur Portal → Discord).")}
           {toggle("discord.autoRoleOnAccept", "Bei Annahme automatisch die Rolle der Position vergeben", "Rolle pro Position unter „Positionen & Fragen“ eintragen. Der Bot braucht „Rollen verwalten“ und muss über der Rolle stehen.")}
           {s["discord.autoRoleOnAccept"] && (
-            <div className="grid gap-4 sm:grid-cols-2 pl-1">
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 pl-1">
               <div>
                 <label htmlFor="extra-roles" className="nv-field-label">
                   Zusätzliche Rollen bei Annahme
@@ -216,7 +216,7 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
               {toggle("discord.revertOnUnaccept", "Annahme zurückgenommen → Rollen & Präfix entfernen", "Wenn eine angenommene Bewerbung wieder auf „In Prüfung“ oder „Gespräch“ geht.")}
             </div>
           )}
-          <div className="grid gap-4 sm:grid-cols-[1fr_2fr]">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-[1fr_2fr]">
             {channelField("discord.welcomeChannelId", "Kanal: Willkommensgruß bei Annahme")}
             <div>
               <label htmlFor="welcome" className="nv-field-label">
@@ -256,7 +256,7 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
             "Persönliche Morgen-DM an Betreuer",
             "Wer Bewerbungen geclaimt hat, bekommt morgens eine kurze DM mit seinen offenen Punkten (nur wenn etwas ansteht). Jeder kann sie unter „Konto“ abschalten.",
           )}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {num("team.staleDays", "„Liegengeblieben“ ab (Tagen)", "So lange ohne Statuswechsel, Nachricht oder Kommentar vom Team.")}
             {num("team.escalateDays", "Leitung informieren ab (Tagen)", "Dann kommt zusätzlich ein Hinweis in den Leitungs-Chat (leere Kanal-ID = aus).")}
             <div>
@@ -284,7 +284,7 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
       <Card title="Störungs-Alarm & Wochenbericht" desc="Meldungen an die Leitung (Leitungs-Chat, sonst Bot-Log bzw. Teamchat).">
         <div className="space-y-3">
           {toggle("alerts.enabled", "Störungs-Alarm", "Warnt mit den Tagesaufgaben, wenn in den letzten 24 Stunden viele Zustellungen fehlgeschlagen sind. Höchstens einmal pro Tag.")}
-          <div className="grid gap-4 sm:grid-cols-2">{num("alerts.failedThreshold", "Alarm ab fehlgeschlagenen Zustellungen (24 h)")}</div>
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">{num("alerts.failedThreshold", "Alarm ab fehlgeschlagenen Zustellungen (24 h)")}</div>
           {toggle("report.weeklyEnabled", "Wochenbericht montags", "Eingänge, Annahmequote, Bearbeitungszeit, häufigste Absagegründe und Feedback der letzten 7 Tage. Testen: Admin-Bereich → Discord → „Wochenbericht jetzt senden“.")}
         </div>
       </Card>
@@ -379,7 +379,7 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
 
       {show("bewerbungen") && (
       <Card title="Einarbeitung" desc="Checkliste und Probezeit für angenommene Bewerbungen.">
-        <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[1fr_220px]">
           <div>
             <label htmlFor="onb-items" className="nv-field-label">
               Checkliste (ein Punkt pro Zeile)
@@ -406,7 +406,7 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
             "Gespräch als Discord-Server-Event anlegen",
             "Der Bot legt zu jedem Termin ein Event an („Bewerbungsgespräch · Support“, ohne Bewerbernamen), verschiebt es bei Änderungen und löscht es bei Absage/Abschluss. Braucht die Berechtigung „Events verwalten“. Achtung: Events sieht der ganze Server.",
           )}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
             {channelField("interview.voiceChannelId", "Sprachkanal fürs Gespräch")}
             {channelField("interview.waitingRoomChannelId", "Warteraum-Sprachkanal")}
             {num("interview.teamReminderMinutes", "Erinnerung an den Betreuer (Minuten vorher)", "DM an den Betreuer vor dem Gespräch. 0 = aus. Pünktlich nur mit laufendem Worker, sonst mit den Tagesaufgaben.")}
@@ -439,7 +439,7 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
 
       {show("bewerbungen") && (
       <Card title="Automatische Bestätigung" desc="Wird direkt nach dem Absenden per DM und im Portal angezeigt.">
-        <div className="grid gap-4 xl:grid-cols-2">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-2">
           <div>
             <label htmlFor="ct" className="nv-field-label">
               Text
@@ -468,7 +468,7 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
 
       {show("daten") && (
       <Card title="Datenschutz & Löschfristen" desc="Der Worker löscht täglich automatisch. Entwürfe ab letzter Änderung, sonst ab Entscheidung.">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {num("retention.draftDays", "Entwürfe (Tage)")}
           {num("retention.withdrawnDays", "Zurückgezogene (Tage)")}
           {num("retention.rejectedDays", "Abgelehnte (Tage)")}
@@ -482,7 +482,7 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
       <Card title="KI-Unterstützung (Claude)" desc="Optional. Die KI schreibt nur Entwürfe und Hinweise – sie entscheidet und sendet nie selbst.">
         <div className="space-y-4">
           {toggle("ai.enabled", "KI-Funktionen aktivieren", env.anthropic ? undefined : "Achtung: Es ist kein ANTHROPIC_API_KEY gesetzt.")}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">
             <div>
               <label htmlFor="m1" className="nv-field-label">
                 Modell (Zusammenfassung, Entwürfe)
@@ -533,7 +533,7 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
       >
         <div className="space-y-4">
           {toggle("ai.autoReplyEnabled", "Auto-Antwort aktivieren", s["ai.enabled"] ? undefined : "Wirkt nur, wenn die KI-Funktionen oben aktiviert sind – sonst kommt eine feste Standardantwort.")}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {num("ai.autoReplyOfflineMinutes", "Team gilt als offline nach (Minuten)", "Ohne Aktivität im Team-Bereich.")}
             {num("ai.autoReplyMaxInputChars", "Max. Zeichen pro Bewerber-Nachricht", "Längere Nachrichten bekommen die feste Antwort.")}
             {num("ai.autoReplyMaxOutputTokens", "Max. Antwort-Tokens")}

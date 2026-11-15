@@ -35,7 +35,7 @@ async function Rounds() {
     <div className="space-y-4">
       {access.isAdmin && <RoundForm positions={positions} />}
       {rounds.length === 0 && <p className="text-sm text-muted">Noch keine Runde angelegt.</p>}
-      <ul className="grid gap-4 md:grid-cols-2">
+      <ul className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2">
         {rounds.map((r) => {
           const phase = roundPhase(r, now);
           const s = r.stats;

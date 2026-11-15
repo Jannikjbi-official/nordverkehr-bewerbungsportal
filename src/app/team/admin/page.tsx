@@ -45,7 +45,7 @@ async function Overview() {
   const clStatus = !todayEntry ? "none" : isPublished(todayEntry, now, rule) ? "published" : "pending";
   return (
     <div className="space-y-6">
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="nv-card p-4">
           <p className="nv-mono">Nachtruhe</p>
           <p className="mt-1 flex items-center gap-2 font-semibold">
@@ -90,7 +90,7 @@ async function Overview() {
 
       <ChangelogPublishCard status={clStatus} version={todayEntries.length ? [...todayEntries].reverse().map((e) => e.version).join(" & ") : null} timeLabel={publishTimeLabel(rule)} />
 
-      <section className="grid gap-4 md:grid-cols-2" aria-label="Bereiche">
+      <section className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-2" aria-label="Bereiche">
         {ADMIN_SECTIONS.map((sec) => (
           <Link key={sec.key} href={`/team/admin/${sec.key}`} className="nv-card p-5 group hover:border-red-line transition-colors">
             <p className="font-semibold flex items-center justify-between">
