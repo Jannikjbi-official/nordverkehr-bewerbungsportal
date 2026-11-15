@@ -240,3 +240,65 @@ export function buildChangelogMessage(
   children.push(linkButtons([{ label: "Alle Änderungen ansehen", url }]));
   return v2Message(BRAND_COLOR, children);
 }
+
+/**
+ * Changelog für Discord – eine oder mehrere Versionen (z. B. nachgeholte) in möglichst wenigen
+ * Nachrichten: Kopf mit Version(sbereich), darunter alle Änderungen nach Art gruppiert.
+ * Passt nicht alles in eine Nachricht, geht es in einer zweiten weiter („Fortsetzung 2/2“) –
+ * es wird nichts gekürzt. Punkte bleiben ganz.
+ */
+export function buildChangelogMessages(
+  entries: { version: string; title?: string; date: string; items: { kind: ChangeKind; text: string }[] }[],
+  url?: string | null,
+  limit = BODY_LIMIT,
+): RESTPostAPIChannelMessageJSONBody[] {
+  const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+  const head =
+    sorted.length === 1
+      ? `## Version ${first.version}${first.title ? `\n**${truncate(first.title, 150)}**` : ""}\n-# ${formatDateDe(first.date)}`
+      : `## Versionen ${first.version} – ${last.version}\n-# ${formatDateDe(first.date)} bis ${formatDateDe(last.date)} · ${sorted.length} Updates zusammengefasst`;
+
+  // Teile füllen: je Teil Abschnitte (Art + Punkte), bis das Zeichenbudget erreicht ist.
+  // Ein Punkt wird nie geteilt; läuft eine Art in den nächsten Teil weiter, steht dort „(Fortsetzung)“.
+  type Section = { heading: string; lines: string[] };
+  const parts: Section[][] = [[]];
+  let used = head.length + 80;
+  for (const g of groupItems(sorted.flatMap((e) => e.items))) {
+    let section: Section | null = null;
+    g.items.forEach((item, idx) => {
+      const line = `- ${truncate(item.text, 900)}`;
+      const headingCost = section ? 0 : g.label.length + 30;
+      if (used + headingCost + line.length + 1 > limit && parts[parts.length - 1].length > 0) {
+        parts.push([]);
+        used = 80;
+        section = null;
+      }
+      if (!section) {
+        section = { heading: `### ${g.emoji} ${g.label}${idx > 0 ? " (Fortsetzung)" : ""}`, lines: [] };
+        parts[parts.length - 1].push(section);
+        used += section.heading.length + 1;
+      }
+      section.lines.push(line);
+      used += line.length + 1;
+    });
+  }
+
+  return parts.map((sections, n) => {
+    const children: (APIComponentInContainer | null | false)[] = [
+      text(n === 0 ? `-# 📋 CHANGELOG · NORDVERKEHR BEWERBUNGSPORTAL\n${head}` : `-# 📋 CHANGELOG · FORTSETZUNG ${n + 1}/${parts.length}`),
+    ];
+    for (const sec of sections) {
+      children.push(separator(true, 1));
+      children.push(text(`${sec.heading}\n${sec.lines.join("\n")}`));
+    }
+    if (n === parts.length - 1) {
+      children.push(separator(false, 1));
+      children.push(linkButtons([{ label: "Alle Änderungen ansehen", url }]));
+    } else {
+      children.push(text(`-# Teil ${n + 1}/${parts.length} – weiter in der nächsten Nachricht`));
+    }
+    return v2Message(BRAND_COLOR, children);
+  });
+}

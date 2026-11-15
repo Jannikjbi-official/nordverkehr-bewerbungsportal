@@ -409,12 +409,8 @@ export async function deleteChangelogPostsAction(): Promise<ActionResult<{ messa
 export async function postChangelogNowAction(): Promise<ActionResult<{ message: string }>> {
   await requireAdmin();
   const { postNewChangelogEntries } = await import("@/lib/discord/changelog-post");
-  const ids = await postNewChangelogEntries(db, new Date(), { force: true });
-  if (!ids.length) return { ok: true, data: { message: "Nichts zu posten – alle veröffentlichten Versionen sind schon gepostet. Den laufenden Tag veröffentlichst du mit „Jetzt veröffentlichen“." } };
-  const jobs = await db.outboxJob.findMany({ where: { id: { in: ids } }, select: { status: true, lastError: true } });
-  const errors = jobs.map((j) => j.lastError).filter(Boolean);
-  if (errors.length) return { ok: false, error: `Fehler: ${errors.join(" · ")}` };
-  return { ok: true, data: { message: `${ids.length} Version(en) gepostet.` } };
+  const run = await postNewChangelogEntries(db, new Date(), { force: true });
+  return changelogRunResult(run, "Nichts zu posten – alle veröffentlichten Versionen sind in Discord. Den laufenden Tag veröffentlichst du mit „Jetzt veröffentlichen“.");
 }
 
 /** Team-Übersicht sofort posten (auch wenn heute schon gepostet wurde oder nichts ansteht). */
@@ -739,16 +735,12 @@ export async function postWeeklyNowAction(): Promise<ActionResult<{ message: str
 export async function publishChangelogNowAction(): Promise<ActionResult<{ message: string }>> {
   const { user } = await requireAdmin();
   const { publishChangelogNow } = await import("@/lib/discord/changelog-post");
-  const ids = await publishChangelogNow(db, user.id);
-  await audit("settings.update", { actorId: user.id, meta: { changelog: "published_now", posts: ids.length } });
+  const run = await publishChangelogNow(db, user.id);
+  await audit("settings.update", { actorId: user.id, meta: { changelog: "published_now", posts: run.posted.length, edited: run.edited } });
   revalidatePath("/team/changelog");
   revalidatePath("/team/admin", "layout");
   revalidatePath("/team");
-  if (!ids.length) return { ok: true, data: { message: "Veröffentlicht. In Discord gab es nichts Neues zu posten (schon gepostet oder Changelog-Posts aus)." } };
-  const jobs = await db.outboxJob.findMany({ where: { id: { in: ids } }, select: { status: true, lastError: true } });
-  const errors = jobs.map((j) => j.lastError).filter(Boolean);
-  if (errors.length) return { ok: false, error: `Veröffentlicht, aber Discord meldet: ${errors.join(" · ")}` };
-  return { ok: true, data: { message: `Veröffentlicht und ${ids.length} Version(en) in Discord gepostet.` } };
+  return changelogRunResult(run, "Veröffentlicht. Alle Versionen sind schon in Discord (oder Changelog-Posts sind aus).", "Veröffentlicht. ");
 }
 
 // ─── Bewerbungsrunden ─────────────────────────────────────────
@@ -820,4 +812,19 @@ export async function fixRoleAction(input: z.input<typeof roleFixSchema>): Promi
   await runOutbox({ ids: [job.id] }).catch(() => {});
   await audit("discord.role_fix", { actorId: user.id, targetType: "user", meta: { discordId: p.data.discordId, roleId: p.data.roleId, mode: p.data.mode } });
   return { ok: true };
+}
+
+/** Rückmeldung zu einem Changelog-Lauf (gepostet, nachgeholt, bearbeitet, wartet noch, Fehler). */
+async function changelogRunResult(run: import("@/lib/discord/changelog-post").ChangelogRun, nothing: string, prefix = ""): Promise<ActionResult<{ message: string }>> {
+  if (!run.posted.length && !run.edited) return { ok: true, data: { message: nothing } };
+  const jobs = run.posted.length ? await db.outboxJob.findMany({ where: { id: { in: run.posted } }, select: { status: true, lastError: true } }) : [];
+  const errors = [...new Set(jobs.map((j) => j.lastError).filter(Boolean))];
+  if (errors.length) return { ok: false, error: `${prefix}Discord meldet: ${errors.join(" · ")}` };
+  const parts: string[] = [];
+  if (run.versions) parts.push(`${run.versions} Version(en) in ${run.posted.length} Nachricht(en) gepostet`);
+  else if (run.posted.length) parts.push(`${run.posted.length} wartende Nachricht(en) erneut angestoßen`);
+  if (run.edited) parts.push(`${run.edited} Post(s) mit neuen Punkten aktualisiert`);
+  const waiting = jobs.filter((j) => j.status !== "DONE").length;
+  if (waiting) parts.push(`${waiting} noch in Zustellung – in einer Minute nochmal drücken prüft es`);
+  return { ok: true, data: { message: `${prefix}${parts.join(", ")}.` } };
 }

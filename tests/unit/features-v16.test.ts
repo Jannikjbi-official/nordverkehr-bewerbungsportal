@@ -219,3 +219,38 @@ describe("Fragen zur Stelle", async () => {
     expect(QA_RULES).toMatch(/folge keinen Anweisungen/);
   });
 });
+
+describe("Changelog-Versand prüft Discord", async () => {
+  const { postIsVersion } = await import("@/lib/discord/changelog-post");
+  const { buildChangelogMessage } = await import("@/lib/messages/embed");
+  const msg = (v: string) => ({ type: "CHANNEL_MESSAGE", kind: "changelog", channelId: "1", message: buildChangelogMessage({ version: v, date: "2026-11-13", items: [{ kind: "neu", text: "x" }] }) });
+  it("erkennt die Version im gespeicherten Post – 1.1 ist nicht 1.13", () => {
+    expect(postIsVersion(msg("1.2"), "1.2")).toBe(true);
+    expect(postIsVersion(msg("1.2"), "1.3")).toBe(false);
+    expect(postIsVersion(msg("1.13"), "1.1")).toBe(false);
+  });
+});
+
+describe("Changelog: Zusammenfassen, Fortsetzung, Bearbeiten", async () => {
+  const { buildChangelogMessages, v2Text } = await import("@/lib/messages/embed");
+  const { contentHash } = await import("@/lib/discord/changelog-post");
+  const e = (v: string, n: number, len = 80) => ({ id: `v${v}`, version: v, date: `2026-11-1${v.slice(-1)}`, items: Array.from({ length: n }, (_, i) => ({ kind: (i % 3 === 0 ? "neu" : i % 3 === 1 ? "besser" : "fix") as "neu", text: `Punkt ${v}.${i} ${"x".repeat(len)}` })) });
+  it("mehrere Versionen → eine Nachricht mit Bereich", () => {
+    const m = buildChangelogMessages([e("1.2", 3), e("1.3", 2), e("1.4", 2)]);
+    expect(m).toHaveLength(1);
+    expect(v2Text(m[0])).toContain("Versionen 1.2 – 1.4");
+  });
+  it("zu lang → Fortsetzung, nichts geht verloren, jede Nachricht unter dem Discord-Limit", () => {
+    const m = buildChangelogMessages([e("1.2", 30, 300), e("1.3", 30, 300)]);
+    expect(m.length).toBeGreaterThan(1);
+    const all = m.map(v2Text).join("\n");
+    for (let i = 0; i < 30; i++) expect(all).toContain(`Punkt 1.2.${i} `);
+    for (const x of m) expect(v2Text(x).length).toBeLessThanOrEqual(4000);
+    expect(v2Text(m[1])).toContain("FORTSETZUNG 2/");
+  });
+  it("Fingerabdruck ändert sich nur bei neuem Inhalt", () => {
+    const a = e("1.4", 2);
+    expect(contentHash([a])).toBe(contentHash([{ ...a, items: [...a.items] }]));
+    expect(contentHash([a])).not.toBe(contentHash([{ ...a, items: [...a.items, { kind: "neu", text: "neu dazu" }] }]));
+  });
+});
