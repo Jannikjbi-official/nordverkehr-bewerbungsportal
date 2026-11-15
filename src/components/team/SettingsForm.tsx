@@ -6,6 +6,7 @@ import { saveSettingsAction } from "@/app/actions/admin";
 import { DiscordPreview } from "@/components/team/DiscordPreview";
 import { PLACEHOLDERS, renderTemplate } from "@/lib/messages/placeholders";
 import type { Settings } from "@/lib/settings";
+import type { ChannelKey, ChannelSource } from "@/lib/discord/channel-env";
 import { DELIVERY_KINDS } from "@/lib/night";
 
 export type SettingsSection = "uebersicht" | "discord" | "bewerbungen" | "zustellung" | "ki" | "daten";
@@ -15,6 +16,7 @@ interface Props {
   section?: SettingsSection;
   settings: Settings;
   env: Record<"bot" | "guild" | "teamRole" | "adminRole" | "logChannel" | "anthropic", boolean>;
+  channels: Record<ChannelKey, ChannelSource>;
   spend: string;
   spendMicro: number;
 }
@@ -28,7 +30,7 @@ const SAMPLE = {
   dashboard_link: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://bewerbung.nordverkehr.xyz"}/dashboard`,
 };
 
-export function SettingsForm({ section, settings, env, spend, spendMicro }: Props) {
+export function SettingsForm({ section, settings, env, channels, spend, spendMicro }: Props) {
   const show = (sec: SettingsSection) => !section || section === sec;
   const [s, setS] = useState<Settings>(settings);
   const [pending, start] = useTransition();
@@ -62,22 +64,40 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
       {help && <p className="nv-help mt-1">{help}</p>}
     </div>
   );
-  const channelField = (k: keyof Settings, label: string) => (
-    <div>
-      <label htmlFor={k} className="nv-field-label">
-        {label}
-      </label>
-      <input
-        id={k}
-        className="nv-input font-mono text-sm"
-        inputMode="numeric"
-        maxLength={25}
-        placeholder="Kanal-ID (leer = aus)"
-        value={String(s[k])}
-        onChange={(e) => set(k, e.target.value.replace(/\D/g, "") as never)}
-      />
-    </div>
-  );
+  // Kanäle kommen aus Vercel – nur anzeigen, woher, bzw. was in Vercel einzutragen ist
+  const channelField = (k: ChannelKey, label: string) => {
+    const c = channels[k];
+    return (
+      <div data-testid={`channel-${k}`}>
+        <p className="nv-field-label">{label}</p>
+        <div
+          className={`rounded-xl border px-3 py-2.5 text-sm ${c.source === "env" ? "border-line" : c.source === "legacy" ? "border-[color-mix(in_srgb,var(--tone-warn)_40%,transparent)]" : "border-dashed border-line"}`}
+        >
+          {c.source === "env" ? (
+            <>
+              <span className="font-mono">{c.value}</span>
+              <span className="block text-xs text-[var(--tone-success)]">✓ aus Vercel ({c.env})</span>
+            </>
+          ) : c.source === "invalid" ? (
+            <span className="text-xs text-[var(--tone-danger)]">
+              In Vercel steht bei <code className="font-mono">{c.env}</code> keine gültige Kanal-ID (nur Ziffern). Bitte korrigieren und neu deployen.
+            </span>
+          ) : c.source === "legacy" ? (
+            <>
+              <span className="font-mono">{c.value}</span>
+              <span className="block text-xs text-[var(--tone-warn)]">
+                Alter Eintrag – bitte in Vercel als <code className="font-mono">{c.env}</code> eintragen.
+              </span>
+            </>
+          ) : (
+            <span className="text-xs text-muted">
+              Aus. Zum Einschalten in Vercel <code className="font-mono text-fg-2">{c.env}</code> = Kanal-ID eintragen und neu deployen.
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  };
   const toggle = (k: keyof Settings, label: string, help?: string) => (
     <label className="flex items-start gap-3 cursor-pointer">
       <input type="checkbox" className="nv-check" checked={!!s[k]} onChange={(e) => set(k, e.target.checked as never)} />
@@ -100,7 +120,7 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
             ["guild", "DISCORD_GUILD_ID"],
             ["teamRole", "TEAM_ROLE_ID"],
             ["adminRole", "ADMIN_ROLE_ID"],
-            ["logChannel", "Fallback Bot-Log (DISCORD_LOG_CHANNEL_ID, optional)"],
+            ["logChannel", "Bot-Log-Kanal (DISCORD_LOG_CHANNEL_ID, optional)"],
             ["anthropic", "ANTHROPIC_API_KEY"],
           ].map(([k, l]) => (
             <li key={k} className="flex items-center gap-2">
@@ -150,7 +170,7 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
       )}
 
       {show("discord") && (
-      <Card title="Discord" desc="Kanäle und Funktionen des Bots. Kanal leer lassen = diese Posts aus.">
+      <Card title="Discord" desc="Kanäle und Funktionen des Bots. Die Kanal-IDs trägst du in Vercel ein (Settings → Environment Variables) – danach unter Deployments „Redeploy“, erst dann gelten sie. Nicht gesetzt = diese Posts sind aus.">
         <div className="space-y-3">
           <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {channelField("discord.jobsChannelId", "Kanal: Stellenaufruf")}

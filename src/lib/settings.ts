@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { DEFAULT_NIGHT_HELD, DELIVERY_KIND_KEYS } from "@/lib/night";
+import { CHANNEL_KEYS, envChannel } from "@/lib/discord/channel-env";
 
 export const DEFAULT_SYSTEM_PROMPT = `Du unterstützt das Team von Nordverkehr, einem Hamburg-Roleplay-Server (Start auf GTA 5, danach GTA 6), bei der Bearbeitung von Team-Bewerbungen.
 
@@ -251,9 +252,19 @@ export function parseSettings(rows: { key: string; value: unknown }[]): Settings
 const CACHE_MS = 10_000;
 let cached: { at: number; value: Promise<Settings> } | null = null;
 
+/** Discord-Kanäle: Wert aus Vercel (Umgebungsvariable) gilt vor dem alten Eintrag im Portal. */
+export function withChannelEnv(s: Settings, env: Record<string, string | undefined> = process.env): Settings {
+  const out = { ...s } as Record<string, unknown>;
+  for (const key of CHANNEL_KEYS) {
+    const v = envChannel(key, env);
+    if (v) out[key] = v;
+  }
+  return out as Settings;
+}
+
 export async function getSettings(): Promise<Settings> {
   if (cached && Date.now() - cached.at < CACHE_MS) return cached.value;
-  const value = db.setting.findMany({ where: { key: { in: SETTING_KEYS } } }).then(parseSettings);
+  const value = db.setting.findMany({ where: { key: { in: SETTING_KEYS } } }).then((rows) => withChannelEnv(parseSettings(rows)));
   cached = { at: Date.now(), value };
   value.catch(() => {
     cached = null;

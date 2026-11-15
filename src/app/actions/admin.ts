@@ -33,7 +33,9 @@ export async function saveSettingsAction(patch: Record<string, unknown>): Promis
     return { ok: false, error: `Ungültiger Wert bei „${String(first.path[0])}“: ${first.message}` };
   }
   // Nur explizit übergebene Schlüssel speichern (partial() füllt keine Defaults ein)
-  const data = Object.fromEntries(Object.entries(parsed.data).filter(([k]) => k in patch)) as Partial<Settings>;
+  // Discord-Kanäle kommen aus Vercel (Umgebungsvariablen) – hier nie speichern
+  const { CHANNEL_KEYS } = await import("@/lib/discord/channel-env");
+  const data = Object.fromEntries(Object.entries(parsed.data).filter(([k]) => k in patch && !(CHANNEL_KEYS as string[]).includes(k))) as Partial<Settings>;
   await saveSettings(data, user.id);
   await audit("settings.update", { actorId: user.id, meta: { keys: Object.keys(data) } });
   refresh();

@@ -254,3 +254,22 @@ describe("Changelog: Zusammenfassen, Fortsetzung, Bearbeiten", async () => {
     expect(contentHash([a])).not.toBe(contentHash([{ ...a, items: [...a.items, { kind: "neu", text: "neu dazu" }] }]));
   });
 });
+
+describe("Kanäle aus Vercel", async () => {
+  const { envChannel, channelSources } = await import("@/lib/discord/channel-env");
+  const { withChannelEnv, settingsSchema } = await import("@/lib/settings");
+  const env = { DISCORD_CHANGELOG_CHANNEL_ID: " 123456789012345678 ", DISCORD_LOG_CHANNEL_ID: "kaputt" };
+  it("Vercel-Wert gilt, ungültige Werte nicht", () => {
+    expect(envChannel("discord.changelogChannelId", env)).toBe("123456789012345678");
+    expect(envChannel("discord.botLogChannelId", env)).toBeNull();
+    const s = withChannelEnv({ ...settingsSchema.parse({}), "discord.changelogChannelId": "999999999999999999" }, env);
+    expect(s["discord.changelogChannelId"]).toBe("123456789012345678");
+  });
+  it("zeigt Herkunft: Vercel, ungültig, alter Eintrag, aus", () => {
+    const c = channelSources({ "discord.leadChannelId": "111111111111111111" }, env);
+    expect(c["discord.changelogChannelId"].source).toBe("env");
+    expect(c["discord.botLogChannelId"].source).toBe("invalid");
+    expect(c["discord.leadChannelId"]).toMatchObject({ source: "legacy", env: "DISCORD_LEAD_CHANNEL_ID" });
+    expect(c["discord.jobsChannelId"].source).toBe("none");
+  });
+});
