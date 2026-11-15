@@ -11,6 +11,8 @@ import {
   changeStatusAction,
   deleteCommentAction,
   requestSecondOpinionAction,
+  setFollowUpAction,
+  clearFollowUpAction,
   setImprovementTipAction,
   retryDeliveryAction,
   setInterviewAction,
@@ -404,5 +406,50 @@ export function ImprovementTip({ applicationId, tip }: { applicationId: string; 
       {saved && <p className="text-xs text-[var(--tone-success)]">Gespeichert.</p>}
       {error && <p className="nv-error text-xs">{error}</p>}
     </div>
+  );
+}
+
+/** Wiedervorlage: an einem Tag per DM und in der Team-Übersicht an diese Bewerbung erinnern. */
+export function FollowUp({ applicationId, current, minDay }: { applicationId: string; current: { id: string; day: string; note: string | null } | null; minDay: string }) {
+  const { pending, error, run } = useAction();
+  const [day, setDay] = useState(current?.day ?? "");
+  const [note, setNote] = useState(current?.note ?? "");
+  return (
+    <div className="space-y-2" data-testid="follow-up">
+      <p className="nv-mono">Wiedervorlage</p>
+      {current && (
+        <p className="text-xs text-muted">
+          Erinnerung am <strong className="text-fg">{new Date(`${current.day}T12:00:00`).toLocaleDateString("de-DE", { day: "numeric", month: "long" })}</strong>
+          {current.note ? ` – „${current.note}“` : ""}{" "}
+          <button type="button" className="nv-link" disabled={pending} onClick={() => run(() => clearFollowUpAction(current.id))}>
+            entfernen
+          </button>
+        </p>
+      )}
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <label className="sr-only" htmlFor="fu-day">
+          Tag
+        </label>
+        <input id="fu-day" type="date" min={minDay} className="nv-input sm:!w-44" value={day} onChange={(e) => setDay(e.target.value)} />
+        <label className="sr-only" htmlFor="fu-note">
+          Notiz
+        </label>
+        <input id="fu-note" className="nv-input min-w-0 flex-1" maxLength={300} placeholder="Notiz (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
+      </div>
+      <button type="button" className="nv-btn nv-btn-ghost nv-btn-sm w-full" disabled={pending || !day} onClick={() => run(() => setFollowUpAction(applicationId, day, note))}>
+        {pending ? "Speichert …" : current ? "Wiedervorlage ändern" : "Erinnere mich"}
+      </button>
+      {error && <p className="nv-error text-xs">{error}</p>}
+    </div>
+  );
+}
+
+/** Wiedervorlage in der Team-Übersicht als erledigt markieren. */
+export function FollowUpDone({ id }: { id: string }) {
+  const { pending, run } = useAction();
+  return (
+    <button type="button" className="nv-btn nv-btn-ghost nv-btn-sm shrink-0" disabled={pending} onClick={() => run(() => clearFollowUpAction(id))}>
+      Erledigt
+    </button>
   );
 }

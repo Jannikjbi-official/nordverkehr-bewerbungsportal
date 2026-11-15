@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import { Suspense } from "react";
-import { ArrowRight, ArrowUUpLeft, CalendarCheck, Megaphone, ChatCircleDots, DiscordLogo, HandPointing, ShieldWarning, UsersThree } from "@phosphor-icons/react/ssr";
+import { ArrowRight, ArrowUUpLeft, Bell, CalendarCheck, Megaphone, ChatCircleDots, DiscordLogo, HandPointing, ShieldWarning, UsersThree } from "@phosphor-icons/react/ssr";
 import { Avatar, Notice, Stat, StatusBadge, formatDay, formatDayTime, formatRelative } from "@/components/ui";
 import { publishedEntries, versionLabel } from "@/lib/changelog";
 import { DiscordMarkdown } from "@/components/DiscordMarkdown";
@@ -13,6 +13,7 @@ import { teamWorkload } from "@/lib/team/assign";
 import { db } from "@/lib/db";
 import { ACTIVE_STATUSES, FOLLOW_UP_DAYS } from "@/lib/applications/status";
 import { daysAgo } from "@/lib/time";
+import { FollowUpDone } from "@/components/team/DetailControls";
 
 export default function TeamHome({ searchParams }: PageProps<"/team">) {
   return (
@@ -29,6 +30,17 @@ async function Overview({ searchParams }: Pick<PageProps<"/team">, "searchParams
   // Zuständigkeit pro Stelle: nur eigene Stellen zählen/zeigen
   const vis = await visiblePositionFilter(viewerOf(user, access));
 
+  const followUps = await db.followUpReminder.findMany({
+    where: { userId: user.id, dueAt: { lte: new Date() } },
+    orderBy: { dueAt: "asc" },
+    take: 20,
+    select: {
+      id: true,
+      dueAt: true,
+      note: true,
+      application: { select: { id: true, publicId: true, status: true, user: { select: { discordId: true, avatar: true, globalName: true, username: true } }, position: { select: { title: true } } } },
+    },
+  });
   const [open, newWeek, interviews, unreadReplies, dmFailed, needsMyVote, recent, withdrawn] = await Promise.all([
     db.application.count({ where: { ...vis, status: { in: ACTIVE_STATUSES } } }),
     db.application.count({ where: { ...vis, submittedAt: { gte: weekAgo } } }),
@@ -152,6 +164,34 @@ async function Overview({ searchParams }: Pick<PageProps<"/team">, "searchParams
                   <span className="text-xs text-muted whitespace-nowrap">{a.decidedAt ? formatRelative(a.decidedAt) : ""}</span>
                 </Link>
                 <AckWithdrawalButton applicationId={a.id} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {followUps.length > 0 && (
+        <section className="nv-card p-5" data-testid="follow-ups-due">
+          <h2 className="flex items-center gap-2 font-semibold mb-3">
+            <span className="text-red-text">
+              <Bell size={18} aria-hidden />
+            </span>{" "}
+            Deine Wiedervorlagen
+          </h2>
+          <ul className="space-y-1">
+            {followUps.map((f) => (
+              <li key={f.id} className="flex items-center gap-3">
+                <Link href={`/team/bewerbungen/${f.application.id}`} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-2 -mx-2 hover:bg-card-hover">
+                  <Avatar discordId={f.application.user.discordId} avatar={f.application.user.avatar} size={30} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium truncate">{f.application.user.globalName || f.application.user.username}</span>
+                    <span className="block text-xs text-muted truncate">
+                      {f.application.position.title} · {f.application.publicId} · fällig {formatDay(f.dueAt)}
+                    </span>
+                    {f.note && <span className="block text-xs text-fg-2 line-clamp-2">„{f.note}“</span>}
+                  </span>
+                </Link>
+                <FollowUpDone id={f.id} />
               </li>
             ))}
           </ul>

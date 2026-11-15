@@ -162,6 +162,7 @@ model User {
   suggestions        Suggestion[]       @relation("SuggestionAuthor")
   suggestionsHandled Suggestion[]       @relation("SuggestionHandler")
   deadlineReminders  DeadlineReminder[]
+  followUps          FollowUpReminder[]
 }
 
 /// Allgemeine Angaben eines Bewerbers (einmal ausgefüllt, für weitere Bewerbungen wiederverwendet).
@@ -447,6 +448,7 @@ model Application {
   messages        Message[]
   ratings         Rating[]
   reviewRequests  ReviewRequest[]
+  followUps       FollowUpReminder[]
   slot            InterviewSlot?
   feedback        Feedback?
   interviewNotes  InterviewNote[]
@@ -803,4 +805,21 @@ model DeadlineReminder {
 
   @@unique([userId, positionId])
   @@index([positionId, sentAt])
+}
+
+/// Wiedervorlage: Teammitglied lässt sich an einem Tag an eine Bewerbung erinnern (DM + Team-Übersicht)
+model FollowUpReminder {
+  id            String      @id @default(cuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Tag der Wiedervorlage (00:00 deutscher Zeit, als UTC gespeichert)
+  dueAt         DateTime
+  note          String?
+  createdAt     DateTime    @default(now())
+  sentAt        DateTime?
+
+  @@index([userId, sentAt])
+  @@index([dueAt, sentAt])
 }

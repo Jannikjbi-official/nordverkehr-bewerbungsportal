@@ -388,6 +388,36 @@ export async function deleteViewAction(name: string): Promise<ActionResult> {
   return { ok: true };
 }
 
+/** Wiedervorlage setzen (ein Tag, optional Notiz) – ersetzt eine offene eigene für diese Bewerbung. */
+export async function setFollowUpAction(applicationId: string, day: string, note?: string): Promise<ActionResult> {
+  const { user, access } = await requireTeam();
+  {
+    const denied = await guardApp(user, access, applicationId);
+    if (denied) return denied;
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return { ok: false, error: "Bitte ein Datum wählen." };
+  const { berlinDayBounds } = await import("@/lib/team/rounds");
+  const { todayBerlin } = await import("@/lib/changelog");
+  if (day <= todayBerlin()) return { ok: false, error: "Bitte einen Tag ab morgen wählen." };
+  const dueAt = berlinDayBounds(day).start;
+  const text = (note ?? "").trim().slice(0, 300) || null;
+  await db.$transaction([
+    db.followUpReminder.deleteMany({ where: { applicationId, userId: user.id, sentAt: null } }),
+    db.followUpReminder.create({ data: { applicationId, userId: user.id, dueAt, note: text } }),
+  ]);
+  revalidatePath(`/team/bewerbungen/${applicationId}`);
+  return { ok: true };
+}
+
+/** Wiedervorlage löschen bzw. als erledigt markieren (nur eigene). */
+export async function clearFollowUpAction(id: string): Promise<ActionResult> {
+  const { user } = await requireTeam();
+  if (typeof id !== "string" || id.length > 40) return { ok: false, error: "Ungültig." };
+  await db.followUpReminder.deleteMany({ where: { id, userId: user.id } });
+  revalidatePath("/team");
+  return { ok: true };
+}
+
 const commentSchema = z.object({ applicationId: id, body: z.string().trim().min(1).max(3000) });
 
 export async function addCommentAction(input: z.input<typeof commentSchema>): Promise<ActionResult> {

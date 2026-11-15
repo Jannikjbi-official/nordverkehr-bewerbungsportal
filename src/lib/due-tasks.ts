@@ -83,6 +83,7 @@ export async function runDailyTasks(opts: { now?: Date; budgetMs?: number } = {}
   await step("Persönliche Morgen-DMs", () => sendPersonalDigests(db, { summary, deadline: deadline - 15_000 }));
   await step("Team-Jubiläen", async () => (await import("@/lib/team/anniversary")).postAnniversaries(db, now));
   await step("Probezeit-Erinnerungen", async () => (await import("@/lib/team/probation")).sendProbationReminders(db));
+  await step("Wiedervorlagen", async () => (await import("@/lib/team/follow-ups")).sendFollowUpDms(db, now));
   await step("Liegengebliebene Claims", async () => (await import("@/lib/team/claim-nudge")).nudgeIdleClaims(db));
   await step("Rückfragen-Fristen", async () => (await import("@/lib/applications/followup")).sendFollowUpReminders(db));
   await step("Frist-Erinnerungen", async () => (await import("@/lib/positions/deadline-reminders")).sendDeadlineReminders(db, now));

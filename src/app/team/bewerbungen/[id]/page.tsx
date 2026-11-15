@@ -10,6 +10,7 @@ import { DiscordMarkdown } from "@/components/DiscordMarkdown";
 import { ChatAvatar, ChatRoleBadge, personName } from "@/components/ChatParticipant";
 import {
   CommentBox,
+  FollowUp,
   ImprovementTip,
   SecondOpinion,
   DeleteCommentButton,
@@ -60,6 +61,7 @@ import { nameFlag, type ApplicationFlag } from "@/lib/applications/flags";
 import type { ApplicationStatus } from "@prisma/client";
 import { isAiConfigured } from "@/lib/ai/config";
 import { nowMs } from "@/lib/time";
+import { todayBerlin } from "@/lib/changelog";
 
 export const metadata: Metadata = { title: "Bewerbung" };
 
@@ -217,7 +219,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
   const wantsFollowUps = showProtocol && app.status === "INTERVIEW";
   const qIds = app.answers.map((a) => a.questionId).filter((x): x is string => !!x);
   const uploadIds = app.answers.flatMap((a) => (a.type === "FILE" && Array.isArray(a.value) ? (a.value as string[]) : []));
-  const [peers, minRows, mentionable, existingUploadRows] = await Promise.all([
+  const [peers, minRows, mentionable, existingUploadRows, myFollowUp] = await Promise.all([
     db.application.findMany({
       where: { positionId: app.positionId, id: { not: app.id }, status: { in: ["SUBMITTED", "IN_REVIEW", "INTERVIEW"] } },
       orderBy: { submittedAt: "asc" },
@@ -230,6 +232,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
       .findMany({ where: { isTeam: true, id: { not: me.id } }, select: { id: true, username: true, globalName: true }, orderBy: { username: "asc" }, take: 200 })
       .then((rows) => rows.map((u) => ({ id: u.id, username: u.username, name: u.globalName || u.username }))),
     uploadIds.length ? db.upload.findMany({ where: { id: { in: uploadIds } }, select: { id: true } }) : Promise.resolve([]),
+    db.followUpReminder.findFirst({ where: { applicationId: app.id, userId: me.id, sentAt: null }, select: { id: true, dueAt: true, note: true } }),
   ]);
   const existingUploads = new Set(existingUploadRows.map((u) => u.id));
   const mins = new Map(minRows.map((q) => [q.id, q.minLength]));
@@ -615,6 +618,16 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
             {app.status === "REJECTED" && <ImprovementTip applicationId={app.id} tip={app.improvementTip} />}
             {["SUBMITTED", "IN_REVIEW", "INTERVIEW"].includes(app.status) && <MuteControl applicationId={app.id} until={app.mutedUntil?.toISOString() ?? null} nowMs={nowMs()} />}
             <div className="nv-divider" />
+            {["SUBMITTED", "IN_REVIEW", "INTERVIEW"].includes(app.status) && (
+              <>
+                <FollowUp
+                  applicationId={app.id}
+                  current={myFollowUp ? { id: myFollowUp.id, day: todayBerlin(myFollowUp.dueAt), note: myFollowUp.note } : null}
+                  minDay={todayBerlin(new Date(nowMs() + 86_400_000))}
+                />
+                <div className="nv-divider" />
+              </>
+            )}
             {kind.interview && <InterviewForm applicationId={app.id} at={app.interviewAt?.toISOString() ?? null} note={app.interviewNote} />}
             {app.status === "INTERVIEW" && voiceInfo && <p className="text-xs text-muted">🎙️ Im Gesprächskanal: {voiceInfo}</p>}
             {app.status === "INTERVIEW" && suspectNoShow && (
