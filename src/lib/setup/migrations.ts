@@ -465,6 +465,11 @@ const MIGRATIONS: { id: string; run: (db: PrismaClient, opts: Options) => Promis
       return (await db.messageTemplate.updateMany({ where: { title: KI_CONSENT_TEMPLATE_TITLE, body: KI_CONSENT_TEMPLATE_BODY_V1 }, data: { body: KI_CONSENT_TEMPLATE_BODY } })).count;
     },
   },
+  // Team-Bausteine: fehlende mitgelieferte nachtragen und neue ergänzen (nur fehlende, nach Titel)
+  {
+    id: "2026-11-team-bausteine",
+    run: async (db, o) => (o.dryRun ? 0 : (await import("@/lib/setup/base-seed")).ensureTeamTemplates(db)),
+  },
   // Globale Bausteine für alle Bewerbungsarten (nur fehlende, nach Titel)
   {
     id: "2026-11-bausteine-global",

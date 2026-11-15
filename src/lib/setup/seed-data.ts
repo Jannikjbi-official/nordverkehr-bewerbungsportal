@@ -194,6 +194,63 @@ export const TEAM_ONLY_TEMPLATE_TITLES = [
 ];
 
 /**
+ * Weitere Team-Bausteine (kinds = team), damit jede Kategorie gut gefüllt ist.
+ * Werden per Migration ergänzt, falls sie (nach Titel) fehlen.
+ */
+export const TEAM_EXTRA_TEMPLATES: { category: TemplateCategory; title: string; body: string }[] = [
+  {
+    category: "EINGANG",
+    title: "Bewerbung wird geprüft",
+    body: "Moin {name},\n\nkurzes Update: Deine Bewerbung als **{position}** ({bewerbungs_id}) liegt jetzt bei {teammitglied} auf dem Tisch. Wir schauen sie uns in Ruhe an und melden uns – {bearbeitungszeit}.",
+  },
+  {
+    category: "RUECKFRAGE",
+    title: "Rückfrage zur Verfügbarkeit",
+    body: "Moin {name},\n\neine Frage zu deiner Bewerbung als {position}: Wie viele Stunden pro Woche kannst du ungefähr einplanen, und an welchen Tagen bzw. Uhrzeiten bist du meistens online?\n\nAntworte einfach direkt im Portal unter „Meine Bewerbungen“.",
+  },
+  {
+    category: "RUECKFRAGE",
+    title: "Rückfrage zu einem Szenario",
+    body: "Moin {name},\n\nbei einem Szenario aus deiner Bewerbung würden wir gern noch genauer verstehen, wie du vorgehen würdest:\n\n{grund}\n\nBeschreib uns bitte Schritt für Schritt, was du machen würdest – einfach im Portal antworten.",
+  },
+  {
+    category: "EINLADUNG",
+    title: "Termin bitte selbst buchen",
+    body: "Moin {name},\n\ndeine Bewerbung als **{position}** hat uns überzeugt – wir möchten dich gern kennenlernen.\n\nSuch dir im Portal unter „Meine Bewerbungen“ einen freien Termin fürs Gespräch aus: {dashboard_link}\n\nDas Gespräch läuft auf unserem Discord im Sprachkanal, plan etwa 20–30 Minuten ein.",
+  },
+  {
+    category: "EINLADUNG",
+    title: "Gespräch verschoben",
+    body: "Moin {name},\n\nbei uns ist leider etwas dazwischengekommen – wir müssen euer Gespräch verschieben. Neuer Termin: **{termin}**.\n\nPasst das nicht, sag kurz im Portal Bescheid, dann finden wir einen anderen.",
+  },
+  {
+    category: "ANNAHME",
+    title: "Probezeit bestanden",
+    body: "Moin {name},\n\ngute Nachrichten: Deine Probezeit als **{position}** ist vorbei – und du bleibst fest im Team. Danke für deinen Einsatz in den letzten Wochen, schön, dass du dabei bist!",
+  },
+  {
+    category: "ABLEHNUNG",
+    title: "Absage nach dem Gespräch",
+    body: "Moin {name},\n\ndanke für das Gespräch und deine Zeit. Wir haben uns intensiv beraten und uns diesmal für andere Bewerber entschieden.\n\n{grund}\n\nDu kannst dich für {position} ab dem **{sperrfrist}** wieder bewerben – wir freuen uns, wenn du es nochmal versuchst.",
+  },
+  {
+    category: "ABLEHNUNG",
+    title: "Absage – Stelle besetzt",
+    body: "Moin {name},\n\ndanke für deine Bewerbung als {position}. Wir haben die freien Plätze inzwischen besetzt und können deshalb gerade niemanden mehr aufnehmen – an dir lag es nicht.\n\nWenn die Stelle wieder öffnet, steht das im Portal. Du kannst dich dort auch per DM benachrichtigen lassen.",
+  },
+  {
+    category: "ERINNERUNG",
+    title: "Erinnerung: Termin buchen",
+    body: "Moin {name},\n\nkurze Erinnerung: Für deine Bewerbung als {position} fehlt noch ein Gesprächstermin. Such dir bitte in den nächsten Tagen einen freien Termin im Portal aus: {dashboard_link}",
+  },
+  {
+    category: "SONSTIGES",
+    title: "Danke fürs Gespräch",
+    body: "Moin {name},\n\ndanke für das angenehme Gespräch! Wir besprechen uns jetzt im Team und melden uns {bearbeitungszeit} mit einer Entscheidung.",
+  },
+];
+
+/**
  * Globale Bausteine – erscheinen bei jeder Bewerbungsart (kinds leer).
  * Neutral formuliert („deine Bewerbung“), ohne Gespräch, Probezeit o. Ä.
  */

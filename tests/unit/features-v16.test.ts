@@ -273,3 +273,21 @@ describe("Kanäle aus Vercel", async () => {
     expect(c["discord.jobsChannelId"].source).toBe("none");
   });
 });
+
+describe("Team-Bausteine", async () => {
+  const { TEAM_EXTRA_TEMPLATES, TEMPLATES, GLOBAL_TEMPLATES } = await import("@/lib/setup/seed-data");
+  const { KIND_SEEDS } = await import("@/lib/setup/kinds-seed");
+  const { PLACEHOLDERS } = await import("@/lib/messages/placeholders");
+  it("eindeutige Titel und nur bekannte Platzhalter", () => {
+    const titles = [...TEMPLATES, ...GLOBAL_TEMPLATES, ...TEAM_EXTRA_TEMPLATES, ...KIND_SEEDS.flatMap((k) => k.templates)].map((t) => t.title);
+    expect(new Set(titles).size).toBe(titles.length);
+    const known = new Set<string>(PLACEHOLDERS.map((p) => p.key));
+    for (const t of TEAM_EXTRA_TEMPLATES) for (const m of t.body.matchAll(/\{([a-z_]+)\}/g)) expect(known.has(m[1]), `${t.title}: {${m[1]}}`).toBe(true);
+  });
+  it("jede Kategorie hat mindestens zwei Team-Texte", () => {
+    const { TEAM_ONLY_TEMPLATE_TITLES } = TEMPLATES_MOD;
+    const all = [...TEMPLATES.filter((t) => TEAM_ONLY_TEMPLATE_TITLES.includes(t.title)), ...TEAM_EXTRA_TEMPLATES];
+    for (const c of ["EINGANG", "RUECKFRAGE", "EINLADUNG", "ANNAHME", "ABLEHNUNG", "ERINNERUNG", "SONSTIGES"]) expect(all.filter((t) => t.category === c).length, c).toBeGreaterThanOrEqual(2);
+  });
+});
+const TEMPLATES_MOD = await import("@/lib/setup/seed-data");
