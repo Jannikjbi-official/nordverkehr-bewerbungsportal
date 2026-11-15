@@ -22,3 +22,10 @@ export async function register() {
     console.error("[setup] Migration beim Start fehlgeschlagen", e);
   }
 }
+
+/** Serverfehler zählen und ab einer Schwelle die Leitung per Discord warnen (lib/team/error-alert.ts). */
+export async function onRequestError(err: unknown, request: { path: string }) {
+  if (process.env.NEXT_RUNTIME !== "nodejs") return;
+  const { recordServerError } = await import("@/lib/team/error-alert");
+  await recordServerError(err, request.path);
+}

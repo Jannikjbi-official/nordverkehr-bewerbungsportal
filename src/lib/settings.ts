@@ -138,6 +138,8 @@ export const settingsSchema = z.object({
   /** Störungs-Alarm in den Leitungs-Chat (fehlgeschlagene Zustellungen, ausgefallene Läufe) */
   "alerts.enabled": bool(true),
   "alerts.failedThreshold": z.coerce.number().int().min(1).max(100).default(3),
+  /** Fehler-Alarm: ab so vielen Serverfehlern pro Tag eine Warnung (einmal am Tag) */
+  "alerts.errorThreshold": z.coerce.number().int().min(1).max(1000).default(5),
   /** Wochenbericht montags an die Leitung */
   "report.weeklyEnabled": bool(true),
   /** Persönliche Morgen-DM an Betreuer mit ihren offenen Punkten (pro Person abschaltbar) */

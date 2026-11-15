@@ -164,3 +164,16 @@ describe("Gespeicherte Ansichten (#93)", async () => {
     expect(many.at(-1)?.name).toBe(`v${MAX_VIEWS + 2}`);
   });
 });
+
+describe("Fehler-Alarm", async () => {
+  const { isControlFlowError, cleanPath } = await import("@/lib/team/error-alert");
+  it("Weiterleitung/404 zählen nicht", () => {
+    expect(isControlFlowError(Object.assign(new Error("NEXT_REDIRECT"), { digest: "NEXT_REDIRECT;replace;/login;307;" }))).toBe(true);
+    expect(isControlFlowError(Object.assign(new Error("x"), { digest: "NEXT_HTTP_ERROR_FALLBACK;404" }))).toBe(true);
+    expect(isControlFlowError(new Error("Cannot read properties of undefined"))).toBe(false);
+  });
+  it("Pfad ohne Query und ohne IDs", () => {
+    expect(cleanPath("/team/bewerbungen/cmwh7dlai005bsc7d5stb03my?name=1")).toBe("/team/bewerbungen/…");
+    expect(cleanPath("/dashboard#x")).toBe("/dashboard");
+  });
+});

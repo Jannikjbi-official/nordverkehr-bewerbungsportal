@@ -285,7 +285,8 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
       <Card title="Störungs-Alarm & Wochenbericht" desc="Meldungen an die Leitung (Leitungs-Chat, sonst Bot-Log bzw. Teamchat).">
         <div className="space-y-3">
           {toggle("alerts.enabled", "Störungs-Alarm", "Warnt mit den Tagesaufgaben, wenn in den letzten 24 Stunden viele Zustellungen fehlgeschlagen sind. Höchstens einmal pro Tag.")}
-          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">{num("alerts.failedThreshold", "Alarm ab fehlgeschlagenen Zustellungen (24 h)")}</div>
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2">{num("alerts.failedThreshold", "Alarm ab fehlgeschlagenen Zustellungen (24 h)")}
+            {num("alerts.errorThreshold", "Alarm ab Serverfehlern pro Tag", "Seiten, die mit einem Fehler abbrechen. Der Bot nennt die betroffenen Seiten (ohne persönliche Daten).")}</div>
           {toggle("report.weeklyEnabled", "Wochenbericht montags", "Eingänge, Annahmequote, Bearbeitungszeit, häufigste Absagegründe und Feedback der letzten 7 Tage. Testen: Admin-Bereich → Discord → „Wochenbericht jetzt senden“.")}
         </div>
       </Card>
