@@ -1,0 +1,93 @@
+# Prüft jeden Push auf main und jeden Pull Request:
+#  - Build (inkl. Datenbank-Migrationen), Typen, Lint, Tests
+#  - Größe des Server-Teils (wegen Vercel-Speicher) – Warnung ab 60 MB, Fehler ab 90 MB
+#  - Handy-Check: alle wichtigen Seiten im iPhone-Format, kein seitliches Überlaufen, keine Konsolenfehler
+# Läuft mit einer eigenen Test-Datenbank und Dev-Login – keine echten Daten, keine Secrets nötig.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: nordverkehr
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nordverkehr
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_PUBLIC_MAIN_SITE_URL: https://example.org
+      NEXT_PUBLIC_DISCORD_INVITE: https://discord.gg/example
+      AUTH_SECRET: ci-only-secret-ci-only-secret-ci-only-secret
+      AUTH_DISCORD_ID: ci
+      AUTH_DISCORD_SECRET: ci
+      AUTH_TRUST_HOST: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build (mit Migrationen)
+        run: npm run build
+
+      - name: Build-Größe prüfen
+        run: node scripts/check-size.mjs
+
+      - name: Typen
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tests
+        run: npm test
+
+      - name: Testdaten anlegen
+        run: npm run db:seed
+
+      - name: Portal starten (Dev-Login)
+        env:
+          DEV_LOGIN: "true"
+        run: |
+          nohup npx next dev -p 3000 > dev.log 2>&1 &
+          for i in $(seq 1 90); do curl -sf -o /dev/null http://localhost:3000/login && break; sleep 2; done
+          curl -sf -o /dev/null http://localhost:3000/login || (tail -50 dev.log; exit 1)
+
+      # Playwright nur hier installieren – keine Abhängigkeit im Projekt, der Vercel-Build bleibt schlank
+      - name: Browser installieren
+        run: |
+          npm i --no-save --no-package-lock playwright@1.63.0
+          npx playwright install --with-deps chromium
+
+      - name: Handy-Check
+        run: node scripts/mobile-check.mjs
+
+      - name: Server-Log bei Fehler
+        if: failure()
+        run: tail -100 dev.log || true
