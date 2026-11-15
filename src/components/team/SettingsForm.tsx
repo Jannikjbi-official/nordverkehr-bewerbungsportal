@@ -146,6 +146,7 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
           )}
           {toggle("applications.claimNotice", "Bewerber erfahren, wer sie betreut", "Übernimmt ein Teammitglied eine Bewerbung (auch per Discord-Knopf oder automatischer Zuteilung), bekommt der Bewerber eine kurze Nachricht im Portal und per DM mit dem Namen.")}
           {toggle("applications.amendEnabled", "Bewerber dürfen Antworten nachreichen", "Textantworten ergänzen oder korrigieren, solange noch niemand aus dem Team die Bewerbung übernommen hat. Das Team sieht „nachgereicht“, KI-Einordnung und Hinweise werden neu berechnet.")}
+          {toggle("rating.anonymousFirst", "Anonyme Erstbewertung", "Name, Avatar und Discord-Daten eines Bewerbers sieht man erst, nachdem man selbst Sterne vergeben hat – für einen unvoreingenommenen ersten Blick. Mit „Trotzdem anzeigen“ lässt sich das pro Bewerbung aufheben.")}
           {toggle("applications.queueInfo", "Warteschlange & Bearbeitungszeit für Bewerber", "Im Dashboard: „Du bist Nr. 4 von 9 – erste Sichtung dauert gerade etwa 2 Tage“ (echte Werte der letzten 90 Tage).")}
         </div>
       </Card>

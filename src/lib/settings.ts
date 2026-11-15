@@ -75,6 +75,8 @@ export const settingsSchema = z.object({
   /** Bewerber sehen ihre Position in der Warteschlange und die aktuelle Bearbeitungszeit */
   "applications.queueInfo": bool(true),
   /** Phase 2 (Bewerbungsgespräch) erst ab diesem Team-Schnitt im Bewertungsbogen (0 = keine Hürde) */
+  /** Anonyme Erstbewertung: Name, Avatar und Discord-Daten erst nach der eigenen Bewertung zeigen */
+  "rating.anonymousFirst": bool(false),
   "interview.minStars": z.coerce.number().min(0).max(5).default(3),
   /** Rückfrage mit Frist: Erinnerung an den Bewerber nach X Tagen ohne Antwort (0 = aus) */
   "followup.reminderDays": z.coerce.number().int().min(0).max(30).default(3),

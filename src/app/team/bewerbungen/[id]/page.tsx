@@ -247,7 +247,10 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
     list.push(a);
     sections.set(a.sectionTitle, list);
   }
-  const name = app.user.globalName || app.user.username;
+  // Anonyme Erstbewertung: Identität erst nach eigenen Sternen (oder bewusst per „Trotzdem anzeigen“)
+  const anonymous =
+    settings["rating.anonymousFirst"] && sp.name !== "1" && !Object.keys(cleanScores(myRating?.scores, criteria)).length && ["SUBMITTED", "IN_REVIEW"].includes(app.status);
+  const name = anonymous ? "Anonym" : app.user.globalName || app.user.username;
 
   return (
     <div className="space-y-6">
@@ -267,7 +270,13 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
       </Link>
 
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <Avatar discordId={app.user.discordId} avatar={app.user.avatar} size={64} />
+        {anonymous ? (
+          <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-surface-2 text-2xl text-muted" aria-hidden>
+            ?
+          </span>
+        ) : (
+          <Avatar discordId={app.user.discordId} avatar={app.user.avatar} size={64} />
+        )}
         <div className="flex-1 min-w-0">
           <p className="nv-label">
             {app.position.title}
@@ -276,7 +285,17 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
           </p>
           <h1 className="nv-headline text-4xl mt-1.5 truncate">{name}</h1>
           <p className="text-sm text-muted">
-            @{app.user.username} · eingereicht {app.submittedAt ? formatRelative(app.submittedAt) : "–"}
+            {anonymous ? (
+              <>
+                Anonym bis zu deiner Bewertung ·{" "}
+                <Link href={`/team/bewerbungen/${app.id}?name=1`} className="nv-link" data-testid="reveal-name">
+                  Trotzdem anzeigen
+                </Link>
+              </>
+            ) : (
+              <>@{app.user.username}</>
+            )}{" "}
+            · eingereicht {app.submittedAt ? formatRelative(app.submittedAt) : "–"}
           </p>
           {(app.aiTags.length > 0 || aiEnabled) && (
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -742,6 +761,12 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
                 content: (
                   <div className="p-5">
 
+            {anonymous ? (
+              <p className="text-sm text-muted" data-testid="profile-anonymous">
+                Discord-Profil wird nach deiner Bewertung angezeigt (anonyme Erstbewertung).
+              </p>
+            ) : (
+            <>
             <dl className="space-y-2 text-sm">
               <Row label="Anzeigename" value={app.user.globalName ?? "–"} />
               <Row label="Benutzername" value={`@${app.user.username}`} />
@@ -759,6 +784,8 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
             <Link href={`/team/nutzer/${app.user.id}`} className="nv-btn nv-btn-ghost nv-btn-sm w-full mt-4">
               Notizen &amp; Sperren
             </Link>
+            </>
+            )}
           {otherApps.length > 0 && (
             <div className="mt-5 pt-4 border-t border-line">
               <p className="nv-mono mb-3">Weitere Bewerbungen</p>
