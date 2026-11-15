@@ -15,7 +15,7 @@ import {
 } from "@/lib/applications/form";
 import { computeFlags, type ApplicationFlag } from "@/lib/applications/flags";
 import { mergeProfile, type ProfileAnswers } from "@/lib/applications/profile";
-import { getFormDefinition } from "@/lib/data/positions";
+import { getPersonalFormDefinition } from "@/lib/data/positions";
 import { buildApplicantMessage, buildLogMessage } from "@/lib/messages/embed";
 import { buildTemplateVars, renderTemplate } from "@/lib/messages/placeholders";
 import { enqueue } from "@/lib/discord/outbox-db";
@@ -116,7 +116,7 @@ export async function submitApplication(
     });
   }
 
-  const sections = await getFormDefinition(draft.position);
+  const sections = await getPersonalFormDefinition(draft.position, user.id);
   const answers = normalizeAnswers(sections, input.data);
   const validation = validateAll(sections, answers);
   if (!validation.ok) throw new UserFacingError("Ein paar Angaben fehlen noch.", validation.errors);

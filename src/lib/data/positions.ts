@@ -32,6 +32,19 @@ export async function getPublicPosition(slug: string) {
 }
 
 /**
+ * Formular für eine Person: Quizfragen und Antworten gemischt, ggf. nur eine Auswahl
+ * (Fragenpool). Jeder neue Versuch (nach Absage/Zurückziehen) bekommt eine neue Ziehung.
+ */
+export async function getPersonalFormDefinition(position: { id: string; typeId: string; title: string; quizDrawCount?: number | null }, userId: string): Promise<FormSectionDef[]> {
+  const [sections, attempt] = await Promise.all([
+    getFormDefinition(position),
+    db.application.count({ where: { userId, positionId: position.id, status: { not: "DRAFT" } } }),
+  ]);
+  const { personalizeQuiz, quizSeed } = await import("@/lib/applications/quiz-pool");
+  return personalizeQuiz(sections, quizSeed(userId, position.id, attempt), position.quizDrawCount);
+}
+
+/**
  * Formular-Schritte: allgemeine Abschnitte (einmal zentral definiert) zuerst,
  * dann die Fachfragen der Position. Duplikate werden per Key/Text entfernt.
  */

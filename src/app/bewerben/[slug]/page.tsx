@@ -15,7 +15,7 @@ import { ApplicationForm } from "@/components/apply/ApplicationForm";
 import { requireUser } from "@/lib/auth/session";
 import { publicEnv } from "@/lib/env";
 import { db } from "@/lib/db";
-import { getFormDefinition, getPublicPosition } from "@/lib/data/positions";
+import { getPersonalFormDefinition, getPublicPosition } from "@/lib/data/positions";
 import { getEligibility } from "@/lib/applications/service";
 import { getSettings } from "@/lib/settings";
 import { effectiveMinAge } from "@/lib/applications/rules";
@@ -102,7 +102,7 @@ async function Apply({
     access.source === "unconfigured";
 
   const [sections, draft, profile, previous] = await Promise.all([
-    getFormDefinition(position),
+    getPersonalFormDefinition(position, user.id),
     eligibility.draftId
       ? db.application.findUnique({ where: { id: eligibility.draftId } })
       : null,

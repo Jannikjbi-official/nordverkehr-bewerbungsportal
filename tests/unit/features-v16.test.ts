@@ -114,3 +114,37 @@ describe("Team-Jubiläen (#104)", async () => {
     expect(anniversaryText("seit {jahre}", 3)).toBe("seit 3 Jahren");
   });
 });
+
+describe("Quiz: Fragenpool & Reihenfolge (#96)", async () => {
+  const { personalizeQuiz, quizSeed } = await import("@/lib/applications/quiz-pool");
+  type S = import("@/lib/applications/form").FormSectionDef;
+  const q = (id: string, type: "QUIZ" | "TEXT" = "QUIZ") => ({ id, key: null, label: id, helpText: null, placeholder: null, type, required: true, minLength: null, maxLength: null, minValue: null, maxValue: null, options: type === "QUIZ" ? ["a", "b", "c", "d"] : [] });
+  const sections = [
+    { id: "s1", key: null, general: false, title: "Quiz", description: null, questions: [q("intro", "TEXT"), ...["q1", "q2", "q3", "q4", "q5", "q6"].map((x) => q(x))] },
+  ] as unknown as S[];
+  const ids = (s: S[]) => s.flatMap((x) => x.questions.map((y) => y.id));
+
+  it("gleicher Schlüssel → gleiche Fragen, Reihenfolge und Antworten", () => {
+    const a = personalizeQuiz(sections, quizSeed("u1", "p1", 0), 3);
+    const b = personalizeQuiz(sections, quizSeed("u1", "p1", 0), 3);
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+  });
+  it("Pool: genau N Quizfragen, andere Fragen bleiben an ihrem Platz", () => {
+    const a = personalizeQuiz(sections, quizSeed("u1", "p1", 0), 3);
+    expect(ids(a)[0]).toBe("intro");
+    expect(ids(a).filter((x) => x !== "intro")).toHaveLength(3);
+  });
+  it("ohne Pool alle Fragen, Antworten bleiben vollständig", () => {
+    const a = personalizeQuiz(sections, quizSeed("u2", "p1", 0), null);
+    expect(new Set(ids(a))).toEqual(new Set(ids(sections)));
+    for (const x of a[0].questions.filter((y) => y.type === "QUIZ")) expect([...x.options].sort()).toEqual(["a", "b", "c", "d"]);
+  });
+  it("verschiedene Personen/Versuche → (fast immer) andere Reihenfolge", () => {
+    const orders = new Set(["u1", "u2", "u3", "u4", "u5"].map((u) => ids(personalizeQuiz(sections, quizSeed(u, "p1", 0), null)).join()));
+    expect(orders.size).toBeGreaterThan(1);
+    expect(ids(personalizeQuiz(sections, quizSeed("u1", "p1", 1), 3)).join()).not.toBe(ids(personalizeQuiz(sections, quizSeed("u1", "p1", 0), 3)).join());
+  });
+  it("Pool größer als Fragenzahl → alle", () => {
+    expect(ids(personalizeQuiz(sections, "x", 50))).toHaveLength(7);
+  });
+});

@@ -240,6 +240,8 @@ model Position {
   maxApplications      Int?
   /// Regel-Quiz: Mindestpunktzahl (nur Hinweis fürs Team, kein Ausschluss)
   quizMinScore         Int?
+  /// Fragenpool: so viele Quizfragen bekommt jede Person (zufällig gezogen, null = alle)
+  quizDrawCount        Int?
   /// Vorlage fürs Gesprächsprotokoll (leer = Standard aus den Einstellungen)
   interviewQuestions   String[]        @default([])
   /// Vier-Augen-Prinzip: Annahme erst ab so vielen Pro-Stimmen (null = aus)

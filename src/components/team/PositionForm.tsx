@@ -27,6 +27,7 @@ interface PositionData {
   closesAt: string | null;
   maxApplications: number | null;
   quizMinScore: number | null;
+  quizDrawCount: number | null;
   interviewQuestions: string[];
   minProVotes: number | null;
   requireAdminApproval: boolean;
@@ -61,6 +62,7 @@ const EMPTY: PositionData = {
   closesAt: null,
   maxApplications: null,
   quizMinScore: null,
+  quizDrawCount: null,
   interviewQuestions: [],
   minProVotes: null,
   requireAdminApproval: false,
@@ -246,6 +248,13 @@ export function PositionForm({ position, applicationCount = 0 }: { position: Pos
           </label>
           <input id="p-quiz" type="number" min={0} className="nv-input" placeholder="kein Minimum" value={p.quizMinScore ?? ""} onChange={(e) => set("quizMinScore", optNum(e.target.value))} />
           <p className="nv-help mt-1">Nur Hinweis fürs Team (rote Pille), kein automatischer Ausschluss. Quizfragen legst du unten als Fragetyp „Quiz“ an.</p>
+        </div>
+        <div>
+          <label htmlFor="p-quiz-draw" className="nv-field-label">
+            Regel-Quiz: Fragen pro Person
+          </label>
+          <input id="p-quiz-draw" type="number" min={1} className="nv-input" placeholder="alle" value={p.quizDrawCount ?? ""} onChange={(e) => set("quizDrawCount", optNum(e.target.value))} />
+          <p className="nv-help mt-1">Fragenpool: Jede Person bekommt so viele zufällige Quizfragen. Reihenfolge von Fragen und Antworten ist immer pro Person gemischt.</p>
         </div>
         <div>
           <label htmlFor="p-minpro" className="nv-field-label">

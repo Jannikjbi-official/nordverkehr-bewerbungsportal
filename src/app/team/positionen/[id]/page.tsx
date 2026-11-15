@@ -88,6 +88,7 @@ async function Editor({ params }: Pick<PageProps<"/team/positionen/[id]">, "para
             closesAt: position.closesAt?.toISOString() ?? null,
             maxApplications: position.maxApplications ?? null,
             quizMinScore: position.quizMinScore ?? null,
+            quizDrawCount: position.quizDrawCount ?? null,
             interviewQuestions: position.interviewQuestions ?? [],
             minProVotes: position.minProVotes ?? null,
             ratingCriteria: position.ratingCriteria ?? [],
