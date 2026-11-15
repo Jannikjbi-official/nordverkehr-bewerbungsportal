@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { Robot, Star } from "@phosphor-icons/react/ssr";
@@ -178,7 +179,25 @@ function AiBlock({
     const t = setTimeout(() => router.refresh(), 15_000);
     return () => clearTimeout(t);
   }, [ai.kind, router]);
-  if (ai.kind === "off") return null;
+  if (ai.kind === "off")
+    // Bewerber hat zugestimmt, aber die KI ist aus: sonst fragt man sich, wo die Punkte bleiben
+    return consentGrantedAt ? (
+      <div className="rounded-xl border border-line bg-surface-2/40 p-3 space-y-1" data-testid="ai-off-hint">
+        <p className="flex items-center gap-1.5 text-xs font-medium">
+          <Robot size={14} aria-hidden /> KI-Einschätzung
+        </p>
+        <p className="text-xs text-muted">
+          ✓ Vom Bewerber am {fmtDay(consentGrantedAt)} erlaubt – die KI ist aber ausgeschaltet.{" "}
+          {isAdmin ? (
+            <Link href="/team/admin/ki" className="nv-link">
+              Unter Admin → KI einschalten
+            </Link>
+          ) : (
+            "Ein Admin kann sie unter Admin → KI einschalten."
+          )}
+        </p>
+      </div>
+    ) : null;
   if (ai.kind === "notAllowed") {
     const override = async () => {
       const ok = await confirmDialog({
