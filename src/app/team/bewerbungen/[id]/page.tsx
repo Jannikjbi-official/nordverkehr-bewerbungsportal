@@ -216,7 +216,8 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
   // Vergleich (andere laufende Bewerbungen derselben Stelle) und Mindestlängen für Nachfragen – parallel
   const wantsFollowUps = showProtocol && app.status === "INTERVIEW";
   const qIds = app.answers.map((a) => a.questionId).filter((x): x is string => !!x);
-  const [peers, minRows, mentionable] = await Promise.all([
+  const uploadIds = app.answers.flatMap((a) => (a.type === "FILE" && Array.isArray(a.value) ? (a.value as string[]) : []));
+  const [peers, minRows, mentionable, existingUploadRows] = await Promise.all([
     db.application.findMany({
       where: { positionId: app.positionId, id: { not: app.id }, status: { in: ["SUBMITTED", "IN_REVIEW", "INTERVIEW"] } },
       orderBy: { submittedAt: "asc" },
@@ -228,7 +229,9 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
     db.user
       .findMany({ where: { isTeam: true, id: { not: me.id } }, select: { id: true, username: true, globalName: true }, orderBy: { username: "asc" }, take: 200 })
       .then((rows) => rows.map((u) => ({ id: u.id, username: u.username, name: u.globalName || u.username }))),
+    uploadIds.length ? db.upload.findMany({ where: { id: { in: uploadIds } }, select: { id: true } }) : Promise.resolve([]),
   ]);
+  const existingUploads = new Set(existingUploadRows.map((u) => u.id));
   const mins = new Map(minRows.map((q) => [q.id, q.minLength]));
   // Nachfragen aus der Bewerbung (knappe Antworten, Quizfehler) – nur solange das Gespräch noch ansteht
   const followUps = wantsFollowUps
@@ -432,12 +435,18 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
                         <dd className="mt-1 text-sm whitespace-pre-wrap break-words">
                           {a.type === "FILE" && Array.isArray(a.value) ? (
                             <span className="flex flex-wrap gap-2">
-                              {(a.value as string[]).map((uid) => (
+                              {(a.value as string[]).map((uid) =>
+                                !existingUploads.has(uid) ? (
+                                  <span key={uid} className="grid h-28 w-28 place-items-center rounded-lg border border-dashed border-line p-2 text-center text-xs text-muted" data-testid="upload-deleted">
+                                    Bild gelöscht (Löschfrist)
+                                  </span>
+                                ) : (
                                 <a key={uid} href={`/api/uploads/${uid}`} target="_blank" rel="noopener noreferrer">
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img src={`/api/uploads/${uid}`} alt="Hochgeladenes Bild" className="h-28 rounded-lg border border-line hover:border-red-line" />
                                 </a>
-                              ))}
+                                ),
+                              )}
                             </span>
                           ) : a.type === "URL" && typeof a.value === "string" ? (
                             <a href={a.value} target="_blank" rel="noopener noreferrer nofollow" className="nv-link inline-flex items-center gap-1 break-all">

@@ -14,6 +14,7 @@ export interface CleanupResult {
   rejected: number;
   accepted: number;
   orphanUploads: number;
+  decidedUploads: number;
   audit: number;
   rateLimits: number;
   outbox: number;
@@ -37,6 +38,15 @@ export async function runRetention(now = new Date()): Promise<CleanupResult> {
   // Hochgeladene, nie eingereichte Bilder nach 2 Tagen entfernen
   const orphans = await db.upload.deleteMany({ where: { applicationId: null, createdAt: { lt: before(2) } } });
 
+  // Bilder entschiedener Bewerbungen (spart Datenbank-Speicher) – die Bewerbung selbst bleibt
+  const decidedUploads = s["retention.uploadDays"]
+    ? (
+        await db.upload.deleteMany({
+          where: { application: { status: { in: ["ACCEPTED", "REJECTED", "WITHDRAWN"] }, decidedAt: { lt: before(s["retention.uploadDays"]) } } },
+        })
+      ).count
+    : 0;
+
   // Gespeicherte allgemeine Angaben: weg, sobald keine eingereichte Bewerbung mehr existiert
   const profiles = (
     await db.applicantProfile.deleteMany({
@@ -48,8 +58,8 @@ export async function runRetention(now = new Date()): Promise<CleanupResult> {
   const rateLimits = (await db.rateLimit.deleteMany({ where: { resetAt: { lt: now } } })).count;
   const outbox = (await db.outboxJob.deleteMany({ where: { status: { in: ["DONE", "FAILED"] }, updatedAt: { lt: before(30) } } })).count;
 
-  const result = { drafts, withdrawn, rejected, accepted, orphanUploads: orphans.count, audit, rateLimits, outbox, profiles };
-  if (drafts + withdrawn + rejected + accepted + orphans.count > 0) {
+  const result = { drafts, withdrawn, rejected, accepted, orphanUploads: orphans.count, decidedUploads, audit, rateLimits, outbox, profiles };
+  if (drafts + withdrawn + rejected + accepted + orphans.count + decidedUploads > 0) {
     await db.auditLog.create({ data: { action: "retention.cleanup", meta: { ...result } } });
   }
   return result;

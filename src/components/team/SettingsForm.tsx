@@ -474,6 +474,8 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
           {num("retention.rejectedDays", "Abgelehnte (Tage)")}
           {num("retention.acceptedDays", "Angenommene (Tage)")}
           {num("retention.auditDays", "Audit-Log (Tage)")}
+          {num("retention.uploadDays", "Bilder nach Entscheidung (Tage)", "Spart Datenbank-Speicher: Bilder werden gelöscht, die Bewerbung bleibt. 0 = aus.")}
+          {num("storage.limitMb", "Datenbank-Speicher (MB)", "Für die Speicher-Anzeige, z. B. 512 bei Neon Free.")}
         </div>
       </Card>
       )}

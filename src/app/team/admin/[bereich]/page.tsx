@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { requireAdmin } from "@/lib/auth/session";
 import { db } from "@/lib/db";
+import { getSettings } from "@/lib/settings";
 import { ADMIN_SECTIONS, adminSection } from "@/lib/admin/sections";
 import { loadSettingsProps } from "@/lib/admin/load";
 import { SettingsForm } from "@/components/team/SettingsForm";
@@ -107,6 +108,68 @@ async function DeliveryStatus() {
   );
 }
 
+const TABLE_LABEL: Record<string, string> = {
+  Upload: "Bilder",
+  Application: "Bewerbungen",
+  Answer: "Antworten",
+  Message: "Nachrichten",
+  AuditLog: "Audit-Log",
+  OutboxJob: "Zustellungen",
+  RateLimit: "Spam-Schutz",
+  Setting: "Einstellungen",
+  User: "Nutzer",
+  Comment: "Kommentare",
+  Question: "Fragen",
+  Position: "Stellen",
+  MessageTemplate: "Bausteine",
+  FormSection: "Formular-Abschnitte",
+  StatusChange: "Statusverlauf",
+  Rating: "Bewertungen",
+};
+
+async function StoragePanel() {
+  const { storageInfo, formatBytes } = await import("@/lib/admin/storage");
+  // Speicher-Abfrage darf die Admin-Seite nie lahmlegen
+  const [info, s] = await Promise.all([storageInfo().catch((e) => (console.error("[storage]", e), null)), getSettings()]);
+  if (!info) return <p className="nv-card p-5 text-sm text-muted">Speicher-Anzeige gerade nicht verfügbar.</p>;
+  const limit = s["storage.limitMb"] * 1024 * 1024;
+  const pct = Math.min(100, Math.round((info.totalBytes / limit) * 100));
+  const tone = pct >= 85 ? "var(--tone-danger)" : pct >= 65 ? "var(--tone-warn)" : "var(--tone-success)";
+  return (
+    <section className="nv-card p-5 space-y-4" data-testid="storage-panel">
+      <div>
+        <h2 className="font-semibold">Speicher</h2>
+        <p className="text-sm text-muted">Datenbank inklusive Bilder (die liegen direkt in der Datenbank).</p>
+      </div>
+      <div>
+        <div className="flex items-baseline justify-between gap-2 text-sm">
+          <span>
+            <strong className="font-display text-2xl tabular-nums">{formatBytes(info.totalBytes)}</strong> <span className="text-muted">von {formatBytes(limit)}</span>
+          </span>
+          <span className="tabular-nums text-muted">{pct} %</span>
+        </div>
+        <div className="mt-2 h-2 rounded-full bg-surface-2 overflow-hidden" role="meter" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Speicher belegt">
+          <div className="h-full rounded-full" style={{ width: `${pct}%`, background: tone }} />
+        </div>
+      </div>
+      <ul className="grid grid-cols-[minmax(0,1fr)] gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+        {info.tables.map((t) => (
+          <li key={t.name} className="flex justify-between gap-3">
+            <span className="text-fg-2 truncate">{TABLE_LABEL[t.name] ?? t.name}</span>
+            <span className="tabular-nums text-muted">{formatBytes(t.bytes)}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="text-xs text-muted">
+        {info.uploads.count === 1 ? "1 Bild" : `${info.uploads.count} Bilder`} ({formatBytes(info.uploads.bytes)}), davon {info.uploads.decided} aus entschiedenen Bewerbungen ({formatBytes(info.uploads.decidedBytes)}).{" "}
+        {s["retention.uploadDays"]
+          ? `Sie werden ${s["retention.uploadDays"]} Tage nach der Entscheidung automatisch gelöscht.`
+          : "Tipp: Unter „Löschfristen“ kannst du Bilder nach der Entscheidung automatisch löschen lassen – die Bewerbung bleibt erhalten."}
+      </p>
+    </section>
+  );
+}
+
 async function DataTools() {
   const [appCounts, positions, testCount] = await Promise.all([
     countApplications(db),
@@ -115,6 +178,7 @@ async function DataTools() {
   ]);
   return (
     <>
+      <StoragePanel />
       <ConfigBackupPanel />
       <TestDataPanel positions={positions} scenarios={TEST_SCENARIOS.map(({ key, label, description }) => ({ key, label, description }))} existing={testCount} />
       <DangerZone counts={appCounts} phrase={RESET_CONFIRM_PHRASE} />

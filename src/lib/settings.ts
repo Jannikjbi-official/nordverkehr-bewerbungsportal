@@ -190,6 +190,10 @@ export const settingsSchema = z.object({
   "retention.rejectedDays": z.coerce.number().int().min(1).max(730).default(180),
   "retention.acceptedDays": z.coerce.number().int().min(1).max(1825).default(365),
   "retention.auditDays": z.coerce.number().int().min(30).max(1825).default(365),
+  /** Bilder (liegen in der Datenbank) X Tage nach der Entscheidung löschen – die Bewerbung bleibt. 0 = aus */
+  "retention.uploadDays": z.coerce.number().int().min(0).max(1825).default(0),
+  /** Speicher-Anzeige: verfügbarer Datenbank-Speicher in MB (z. B. 512 bei Neon Free) */
+  "storage.limitMb": z.coerce.number().int().min(50).max(1_000_000).default(512),
 
   "ai.enabled": bool(false),
   "ai.model": z.string().min(3).max(80).default(process.env.AI_MODEL_DEFAULT ?? "claude-sonnet-5-5"),
