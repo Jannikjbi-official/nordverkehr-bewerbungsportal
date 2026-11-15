@@ -784,3 +784,40 @@ export async function deleteRoundAction(roundId: string): Promise<ActionResult> 
   revalidatePath("/team/runden");
   return { ok: true };
 }
+
+// ─── Rollen-Abgleich Portal ↔ Discord ─────────────────────────
+
+export type RoleAuditReport = Exclude<Awaited<ReturnType<typeof import("@/lib/team/role-audit").loadRoleAudit>>, { error: string }>;
+
+/** Abweichungen zwischen Annahmen im Portal und Rollen auf Discord ermitteln (nur lesen). */
+export async function roleAuditAction(): Promise<ActionResult<RoleAuditReport>> {
+  await requireAdmin();
+  const { loadRoleAudit } = await import("@/lib/team/role-audit");
+  const r = await loadRoleAudit();
+  if ("error" in r) return { ok: false, error: r.error ?? "Fehler" };
+  return { ok: true, data: r };
+}
+
+const roleFixSchema = z.object({ discordId: z.string().regex(/^\d{15,25}$/), roleId: z.string().regex(/^\d{15,25}$/), mode: z.enum(["add", "remove"]) });
+
+/** Eine Abweichung beheben: Rolle geben oder entfernen (über die Zustellung, mit Audit-Eintrag). */
+export async function fixRoleAction(input: z.input<typeof roleFixSchema>): Promise<ActionResult> {
+  const { user } = await requireAdmin();
+  const p = roleFixSchema.safeParse(input);
+  if (!p.success) return { ok: false, error: "Ungültig." };
+  const guildId = (await import("@/lib/env")).env().DISCORD_GUILD_ID;
+  if (!guildId) return { ok: false, error: "Server-ID fehlt." };
+  // Nur Rollen, die einer Stelle als Annahme-Rolle zugeordnet sind
+  if (!(await db.position.count({ where: { acceptRoleId: p.data.roleId } }))) return { ok: false, error: "Diese Rolle gehört zu keiner Stelle." };
+  const { enqueue, runOutbox } = await import("@/lib/discord/outbox-db");
+  const job = await enqueue({
+    type: p.data.mode === "add" ? "ADD_ROLE" : "REMOVE_ROLE",
+    guildId,
+    discordUserId: p.data.discordId,
+    roleId: p.data.roleId,
+    reason: `Rollen-Abgleich im Portal (${user.globalName || user.username})`,
+  });
+  await runOutbox({ ids: [job.id] }).catch(() => {});
+  await audit("discord.role_fix", { actorId: user.id, targetType: "user", meta: { discordId: p.data.discordId, roleId: p.data.roleId, mode: p.data.mode } });
+  return { ok: true };
+}

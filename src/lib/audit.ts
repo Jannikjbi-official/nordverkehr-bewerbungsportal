@@ -44,6 +44,7 @@ export type AuditAction =
   | "position.update"
   | "position.delete"
   | "position.status"
+  | "discord.role_fix"
   | "form.update"
   | "template.create"
   | "template.update"
@@ -118,6 +119,7 @@ export const AUDIT_LABELS: Record<string, string> = {
   "slot.delete": "Gesprächstermin gelöscht",
   "position.auto": "Position automatisch geöffnet/geschlossen",
   "user.notify": "Stellen-Benachrichtigung",
+  "discord.role_fix": "Rolle per Abgleich geändert",
   "user.digest": "Morgen-DM an/aus",
   "user.calendar": "Kalender-Link erzeugt",
   "application.comment": "Kommentar",

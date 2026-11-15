@@ -17,6 +17,7 @@ import { TEST_SCENARIOS } from "@/lib/setup/test-applications";
 import { RESET_CONFIRM_PHRASE, countApplications } from "@/lib/team/reset";
 import { formatDayTime } from "@/components/ui";
 import { isNight, nightEndsAt } from "@/lib/night";
+import { RoleAuditPanel } from "@/components/team/RoleAuditPanel";
 
 export function generateStaticParams() {
   return ADMIN_SECTIONS.map((s) => ({ bereich: s.key }));
@@ -55,6 +56,7 @@ async function Section({ params }: Pick<PageProps<"/team/admin/[bereich]">, "par
         )}
       </section>
       {sec.key === "discord" && <DiscordTools />}
+      {sec.key === "discord" && <RoleAuditPanel />}
       {sec.key === "zustellung" && <DeliveryStatus />}
       {/* Neu aufbauen, wenn ein Knopf oben eine Einstellung ändert – sonst würde „Speichern“ den alten Wert zurückschreiben */}
       <SettingsForm key={String(props.settings["discord.claimButton"])} section={sec.key} {...props} />

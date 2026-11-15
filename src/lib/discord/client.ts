@@ -100,6 +100,8 @@ export interface DiscordApi {
   removeRole(guildId: string, userId: string, roleId: string, reason?: string): Promise<void>;
   /** Server-Namen setzen (null = zurücksetzen). Geht nicht beim Server-Besitzer/höheren Rollen. */
   setNick(guildId: string, userId: string, nick: string | null, reason?: string): Promise<void>;
+  /** Alle Mitglieder (seitenweise, je 1000). Braucht den „Server Members Intent“ des Bots. */
+  listMembers?(guildId: string, after?: string): Promise<{ userId: string; roles: string[] }[]>;
   /** Bann auf dem Server (null = nicht gebannt). Wirft, wenn der Bot keine Bans lesen darf. */
   getBan?(guildId: string, userId: string): Promise<{ reason: string | null } | null>;
   /** Server-Event anlegen/ändern/löschen (Gesprächstermine) */
@@ -150,6 +152,15 @@ export function createDiscordApi(token: string, opts: { timeoutMs?: number } = {
         const e = classifyDiscordError(err);
         if (e.kind === "not_found") return null;
         throw e;
+      }
+    },
+    async listMembers(guildId, after) {
+      try {
+        const query = new URLSearchParams({ limit: "1000", ...(after ? { after } : {}) });
+        const list = (await rest.get(Routes.guildMembers(guildId), { query })) as APIGuildMember[];
+        return list.filter((m) => m.user).map((m) => ({ userId: m.user!.id, roles: m.roles }));
+      } catch (err) {
+        throw classifyDiscordError(err);
       }
     },
     async openDm(userId) {

@@ -186,3 +186,20 @@ describe("Prüfliste", async () => {
     expect(checklistFor({}, "")).toEqual([]);
   });
 });
+
+describe("Rollen-Abgleich", async () => {
+  const { diffRoles } = await import("@/lib/team/role-audit");
+  const roleNames = new Map([["111111111111111111", "Support"], ["222222222222222222", "Moderator"]]);
+  const exp = (id: string, role: string) => ({ discordId: id, name: id, applicationId: "a" + id, position: roleNames.get(role)!, roleId: role });
+  it("fehlende, überzählige und nicht mehr vorhandene", () => {
+    const members = new Map([
+      ["1", ["111111111111111111"]], // passt
+      ["2", []], // Rolle fehlt
+      ["4", ["222222222222222222", "999"]], // Moderator ohne Annahme, 999 ist keine Annahme-Rolle
+    ]);
+    const r = diffRoles([exp("1", "111111111111111111"), exp("2", "111111111111111111"), exp("3", "222222222222222222")], members, roleNames);
+    expect(r.missing.map((m) => m.discordId)).toEqual(["2"]);
+    expect(r.notInGuild.map((m) => m.discordId)).toEqual(["3"]);
+    expect(r.extra.map((m) => `${m.discordId}:${m.position}`)).toEqual(["4:Moderator"]);
+  });
+});
