@@ -456,6 +456,11 @@ const MIGRATIONS: { id: string; run: (db: PrismaClient, opts: Options) => Promis
       return tagged + (await (await import("@/lib/setup/base-seed")).ensureKindTemplates(db));
     },
   },
+  // Globale Bausteine für alle Bewerbungsarten (nur fehlende, nach Titel)
+  {
+    id: "2026-11-bausteine-global",
+    run: async (db, o) => (o.dryRun ? 0 : (await import("@/lib/setup/base-seed")).ensureGlobalTemplates(db)),
+  },
 ];
 
 /** „TeamSpeak-Channel …“ in Notizen → Discord-Sprachkanal (rein, für Tests) */

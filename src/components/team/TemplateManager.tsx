@@ -41,10 +41,27 @@ const SAMPLE = {
   dashboard_link: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://bewerbung.nordverkehr.xyz"}/dashboard`,
 };
 
+type KindFilter = "all" | "global" | KindKey;
+
+const KIND_FILTERS: { key: KindFilter; label: string; hint: string }[] = [
+  { key: "all", label: "Alle", hint: "Alle Bausteine" },
+  { key: "global", label: "Global", hint: "Bausteine, die bei jeder Bewerbungsart erscheinen" },
+  ...KIND_KEYS.map((k) => ({ key: k, label: KINDS[k].label, hint: `Was bei ${KINDS[k].noun}en zur Auswahl steht (eigene + globale)` })),
+];
+
+/** Wie die Auswahl im Nachrichteneditor: globale Bausteine gehören zu jeder Art. */
+function matchesKind(t: Pick<Template, "kinds">, f: KindFilter) {
+  if (f === "all") return true;
+  if (f === "global") return t.kinds.length === 0;
+  return t.kinds.length === 0 || t.kinds.includes(f);
+}
+
 export function TemplateManager({ templates: initial }: { templates: Template[] }) {
   const router = useRouter();
   const [templates, setTemplates] = useState(initial);
   const [category, setCategory] = useState<TemplateCategory>("EINGANG");
+  /** Ansicht: alle Bausteine, nur globale oder das, was bei einer Bewerbungsart erscheint (eigene + globale) */
+  const [kindFilter, setKindFilter] = useState<KindFilter>("all");
   const [editing, setEditing] = useState<Partial<Template> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -57,16 +74,22 @@ export function TemplateManager({ templates: initial }: { templates: Template[] 
     setTemplates(initial);
   }
 
-  const list = templates.filter((t) => t.category === category);
+  const visible = templates.filter((t) => matchesKind(t, kindFilter));
+  const list = visible.filter((t) => t.category === category);
 
   function onDragEnd(e: DragEndEvent) {
     if (!e.over || e.active.id === e.over.id) return;
     const oldIndex = list.findIndex((t) => t.id === e.active.id);
     const newIndex = list.findIndex((t) => t.id === e.over!.id);
     const moved = arrayMove(list, oldIndex, newIndex);
-    setTemplates((all) => [...all.filter((t) => t.category !== category), ...moved]);
+    // Ausgefilterte Bausteine behalten ihren Platz, die sichtbaren tauschen nur untereinander
+    const full = templates.filter((t) => t.category === category);
+    const ids = new Set(list.map((t) => t.id));
+    let j = 0;
+    const merged = full.map((t) => (ids.has(t.id) ? moved[j++] : t));
+    setTemplates((all) => [...all.filter((t) => t.category !== category), ...merged]);
     start(async () => {
-      await reorderTemplatesAction(moved.map((t) => t.id));
+      await reorderTemplatesAction(merged.map((t) => t.id));
       router.refresh();
     });
   }
@@ -94,6 +117,21 @@ export function TemplateManager({ templates: initial }: { templates: Template[] 
   return (
     <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
       <div className="space-y-4 min-w-0">
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Bewerbungsart">
+          <span className="text-xs text-muted mr-1">Art:</span>
+          {KIND_FILTERS.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              aria-pressed={kindFilter === f.key}
+              title={f.hint}
+              onClick={() => setKindFilter(f.key)}
+              className={`nv-pill transition-colors ${kindFilter === f.key ? "nv-pill-red" : "hover:text-fg"}`}
+            >
+              {f.label} <span className="text-faint">{templates.filter((t) => matchesKind(t, f.key)).length}</span>
+            </button>
+          ))}
+        </div>
         <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Kategorien">
           {CATEGORY_ORDER.map((c) => (
             <button
@@ -103,7 +141,7 @@ export function TemplateManager({ templates: initial }: { templates: Template[] 
               onClick={() => setCategory(c)}
               className={`nv-pill transition-colors ${category === c ? "nv-pill-red" : "hover:text-fg"}`}
             >
-              {CATEGORY_LABEL[c]} <span className="text-faint">{templates.filter((t) => t.category === c).length}</span>
+              {CATEGORY_LABEL[c]} <span className="text-faint">{visible.filter((t) => t.category === c).length}</span>
             </button>
           ))}
         </div>
@@ -130,7 +168,11 @@ export function TemplateManager({ templates: initial }: { templates: Template[] 
           </SortableContext>
         </DndContext>
         {list.length === 0 && <p className="text-sm text-muted">Noch keine Bausteine in dieser Kategorie.</p>}
-        <button type="button" className="nv-btn nv-btn-ghost" onClick={() => setEditing({ category, title: "", body: "", active: true, kinds: [] })}>
+        <button
+          type="button"
+          className="nv-btn nv-btn-ghost"
+          onClick={() => setEditing({ category, title: "", body: "", active: true, kinds: kindFilter === "all" || kindFilter === "global" ? [] : [kindFilter] })}
+        >
           <Plus size={16} aria-hidden /> Neuer Baustein
         </button>
       </div>
@@ -243,6 +285,7 @@ function SortableItem({ t, active, onEdit, onDelete }: { t: Template; active: bo
         <p className="text-sm font-medium flex items-center gap-2">
           {t.title}
           {!t.active && <span className="nv-pill !text-[0.65rem] !py-0">inaktiv</span>}
+          {t.kinds.length === 0 && <span className="nv-pill !text-[0.65rem] !py-0">Global</span>}
           {t.kinds.map((k) => (
             <span key={k} className="nv-pill !text-[0.65rem] !py-0">
               {KINDS[k as KindKey]?.label ?? k}

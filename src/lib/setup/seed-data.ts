@@ -170,7 +170,7 @@ export const KI_CONSENT_TEMPLATE_BODY =
 /**
  * Mitgelieferte Team-Bausteine (Wortwahl „Bewerbung als {position}“, Gespräch,
  * Probezeit). Whitelist und Beta haben für jede Kategorie eigene (kinds-seed.ts).
- * Für alle Arten bleibt nur die KI-Zustimmung.
+ * Für alle Arten gelten die KI-Zustimmung und GLOBAL_TEMPLATES.
  */
 export const TEAM_ONLY_TEMPLATE_TITLES = [
   "Bewerbung ist angekommen",
@@ -187,6 +187,63 @@ export const TEAM_ONLY_TEMPLATE_TITLES = [
   "Absage (freundlich)",
   "Absage – zu wenig Zeit",
   "Absage – Mindestalter",
+];
+
+/**
+ * Globale Bausteine – erscheinen bei jeder Bewerbungsart (kinds leer).
+ * Neutral formuliert („deine Bewerbung“), ohne Gespräch, Probezeit o. Ä.
+ */
+export const GLOBAL_TEMPLATES: { category: TemplateCategory; title: string; body: string }[] = [
+  {
+    category: "EINGANG",
+    title: "Danke für deine Geduld",
+    body: "Moin {name},\n\ngerade kommen bei uns sehr viele Bewerbungen rein – deshalb dauert es bei {bewerbungs_id} etwas länger. Du musst nichts weiter tun, wir melden uns hier im Portal und per DM. Den aktuellen Stand siehst du jederzeit unter {dashboard_link}.",
+  },
+  {
+    category: "RUECKFRAGE",
+    title: "Antworten etwas ausführlicher",
+    body: "Moin {name},\n\neinige deiner Antworten waren uns noch etwas zu knapp, um dich richtig einschätzen zu können:\n\n{grund}\n\nSchreib uns gern ein paar Sätze mehr dazu – einfach direkt im Portal unter „Meine Bewerbungen“ antworten.",
+  },
+  {
+    category: "RUECKFRAGE",
+    title: "Bitte dem Discord beitreten",
+    body: "Moin {name},\n\nwir haben gesehen, dass du gerade nicht auf unserem Discord bist. Alles Weitere zu deiner Bewerbung läuft aber über Discord – tritt bitte wieder bei: {discord_link}",
+  },
+  {
+    category: "RUECKFRAGE",
+    title: "Discord-DMs öffnen",
+    body: "Moin {name},\n\nunser Bot konnte dir keine Direktnachricht schicken. Damit du nichts verpasst: In Discord auf den Nordverkehr-Server rechtsklicken → „Privatsphäre-Einstellungen“ → „Direktnachrichten“ einschalten. Bis dahin findest du alles unter {dashboard_link}.",
+  },
+  {
+    category: "ERINNERUNG",
+    title: "Letzte Erinnerung",
+    body: "Moin {name},\n\nwir haben zu deiner Bewerbung {bewerbungs_id} noch nichts von dir gehört. Wenn bis in ein paar Tagen keine Antwort kommt, schließen wir sie. Du kannst dich danach natürlich jederzeit neu bewerben.",
+  },
+  {
+    category: "ABLEHNUNG",
+    title: "Absage – Angaben unvollständig",
+    body: "Moin {name},\n\ndanke für deine Bewerbung als {position}. Leider fehlen uns zu viele Angaben, um sie fair zu bewerten – auch auf Nachfrage kam nichts mehr.\n\nDu kannst dich ab dem **{sperrfrist}** gern nochmal bewerben, dann am besten mit ausführlicheren Antworten.",
+  },
+  {
+    category: "ABLEHNUNG",
+    title: "Absage – kopierte Antworten",
+    body: "Moin {name},\n\nbei deiner Bewerbung als {position} sind uns Antworten aufgefallen, die nicht in deinen eigenen Worten geschrieben sind. Uns ist wichtig, dich kennenzulernen – nicht einen fertigen Text.\n\nDeshalb können wir die Bewerbung so nicht annehmen. Ab dem **{sperrfrist}** kannst du dich wieder bewerben.",
+  },
+  {
+    category: "SONSTIGES",
+    title: "Danke für deine Nachricht",
+    body: "Moin {name},\n\ndanke für deine Nachricht – ist angekommen. Wir schauen sie uns an und melden uns hier im Portal.",
+  },
+  {
+    category: "SONSTIGES",
+    title: "Zurückziehen bestätigt",
+    body: "Moin {name},\n\nwir haben gesehen, dass du deine Bewerbung {bewerbungs_id} zurückgezogen hast – alles gut. Wenn du es dir anders überlegst, kannst du dich jederzeit wieder bewerben.",
+  },
+  {
+    category: "SONSTIGES",
+    title: "Stelle gerade geschlossen",
+    body: "Moin {name},\n\nfür {position} nehmen wir gerade keine neuen Bewerbungen an. Sobald die Stelle wieder offen ist, steht das im Portal – dort kannst du dich auch per DM benachrichtigen lassen.",
+  },
 ];
 
 export const TEMPLATES: { category: TemplateCategory; title: string; body: string; kinds?: string[] }[] = [

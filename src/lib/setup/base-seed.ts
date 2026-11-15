@@ -6,7 +6,7 @@
  * eindeutige Keys (Unique-Indizes), doppelte Anlage scheitert am Index.
  */
 import type { PrismaClient } from "@prisma/client";
-import { GENERAL_SECTIONS, POSITIONS, POSITION_COOLDOWNS, TEAM_ONLY_TEMPLATE_TITLES, TEMPLATES, type SeedSection } from "@/lib/setup/seed-data";
+import { GENERAL_SECTIONS, GLOBAL_TEMPLATES, POSITIONS, POSITION_COOLDOWNS, TEAM_ONLY_TEMPLATE_TITLES, TEMPLATES, type SeedSection } from "@/lib/setup/seed-data";
 import { markMigrationsDone, runMigrations } from "@/lib/setup/migrations";
 import { KIND_SEEDS } from "@/lib/setup/kinds-seed";
 
@@ -104,6 +104,7 @@ export async function seedBase(db: PrismaClient, log: (m: string) => void = () =
     });
     log(`✓ ${TEMPLATES.length} Nachrichtenbausteine`);
   }
+  await ensureGlobalTemplates(db);
   await seedKinds(db, log);
   return type;
 }
@@ -143,6 +144,18 @@ export async function seedKinds(db: PrismaClient, log: (m: string) => void = () 
   }
   await ensureKindTemplates(db);
   return created;
+}
+
+/** Globale Bausteine (für alle Bewerbungsarten) anlegen, die es (nach Titel) noch nicht gibt. */
+export async function ensureGlobalTemplates(db: PrismaClient) {
+  let n = 0;
+  for (const t of GLOBAL_TEMPLATES) {
+    if (await db.messageTemplate.findFirst({ where: { title: t.title }, select: { id: true } })) continue;
+    const last = await db.messageTemplate.aggregate({ _max: { sortOrder: true }, where: { category: t.category } });
+    await db.messageTemplate.create({ data: { ...t, kinds: [], sortOrder: (last._max.sortOrder ?? 0) + 1 } });
+    n++;
+  }
+  return n;
 }
 
 /** Bausteine für Whitelist und Beta anlegen, die es (nach Titel) noch nicht gibt. Gibt die Anzahl zurück. */

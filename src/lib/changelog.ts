@@ -85,6 +85,15 @@ export const versionLabel = (e: Pick<ChangelogEntry, "version">) => `Version ${e
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "v1.4",
+    version: "1.4",
+    date: "2026-11-15",
+    items: [
+      { kind: "neu", text: "**Globale Bausteine** – zehn neue Texte für alle Bewerbungsarten, z. B. „Discord-DMs öffnen“, „Bitte dem Discord beitreten“, „Letzte Erinnerung“, „Absage – kopierte Antworten“ und „Zurückziehen bestätigt“." },
+      { kind: "besser", text: "**Bausteine nach Art filtern** – unter „Nachrichtenbausteine“ oben Alle, Global, Team, Whitelist oder Beta wählen. Bei einer Art siehst du genau das, was im Nachrichteneditor zur Auswahl steht. Neue Bausteine gehören automatisch zur gewählten Art, globale tragen das Abzeichen „Global“." },
+    ],
+  },
+  {
     id: "v1.3",
     version: "1.3",
     date: "2026-11-14",
