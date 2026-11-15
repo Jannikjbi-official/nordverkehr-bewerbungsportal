@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import { useState, useTransition } from "react";
 import { CheckCircle } from "@phosphor-icons/react/ssr";
@@ -8,7 +7,6 @@ import { acknowledgeWithdrawalAction } from "@/app/actions/team";
 
 /** „Rückzug bestätigen“ – nimmt die Bewerbung aus dem Dashboard und informiert den Bewerber. */
 export function AckWithdrawalButton({ applicationId, size = "sm" }: { applicationId: string; size?: "sm" | "md" }) {
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   return (
@@ -27,7 +25,6 @@ export function AckWithdrawalButton({ applicationId, size = "sm" }: { applicatio
             setError(null);
             const r = await acknowledgeWithdrawalAction(applicationId);
             if (!r.ok) setError(r.error);
-            else router.refresh();
           })
         }
       >

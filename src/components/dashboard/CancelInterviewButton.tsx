@@ -1,13 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { cancelInterviewAction } from "@/app/actions/application";
 import { confirmDialog } from "@/components/ConfirmDialog";
 
 /** „Ich kann nicht“ – Bewerber sagt seinen Gesprächstermin ab. */
 export function CancelInterviewButton({ applicationId }: { applicationId: string }) {
-  const router = useRouter();
   const [pending, run] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -23,7 +21,6 @@ export function CancelInterviewButton({ applicationId }: { applicationId: string
     run(async () => {
       const r = await cancelInterviewAction(applicationId);
       if (!r.ok) return setError(r.error);
-      router.refresh();
     });
   }
 

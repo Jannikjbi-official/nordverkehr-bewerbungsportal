@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refresh } from "next/cache";
 import { db } from "@/lib/db";
 import { requireAdmin, requireUser } from "@/lib/auth/session";
 import { deliverNow } from "@/lib/discord/outbox-db";
@@ -14,8 +14,7 @@ export async function submitSuggestionAction(input: SuggestionInput): Promise<Ac
   const r = await createSuggestion(db, user, input);
   if (!r.ok) return r;
   if (r.jobIds.length) await deliverNow(r.jobIds);
-  revalidatePath("/ideen");
-  revalidatePath("/team/admin/ideen");
+  refresh();
   return { ok: true };
 }
 
@@ -26,8 +25,7 @@ export async function updateSuggestionAction(input: { id: string; status: string
   if (!r.ok) return r;
   await audit("suggestion.update", { actorId: user.id, targetType: "suggestion", targetId: input.id, meta: { status: input.status } });
   if (r.jobIds.length) await deliverNow(r.jobIds);
-  revalidatePath("/team/admin/ideen");
-  revalidatePath("/ideen");
+  refresh();
   return { ok: true };
 }
 
@@ -37,7 +35,6 @@ export async function deleteSuggestionAction(id: string): Promise<ActionResult> 
   if (typeof id !== "string" || id.length < 10 || id.length > 40) return { ok: false, error: "Ungültig." };
   await db.suggestion.deleteMany({ where: { id } });
   await audit("suggestion.delete", { actorId: user.id, targetType: "suggestion", targetId: id });
-  revalidatePath("/team/admin/ideen");
-  revalidatePath("/ideen");
+  refresh();
   return { ok: true };
 }

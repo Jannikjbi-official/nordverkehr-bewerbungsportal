@@ -1,14 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { BookmarkSimple, Plus, X } from "@phosphor-icons/react/ssr";
 import { deleteViewAction, saveViewAction } from "@/app/actions/team";
 
 /** Gespeicherte Ansichten: Filter mit einem Klick aufrufen, aktuelle Filter speichern. */
 export function SavedViews({ views, currentQuery }: { views: { name: string; query: string }[]; currentQuery: string }) {
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState("");
@@ -22,7 +20,6 @@ export function SavedViews({ views, currentQuery }: { views: { name: string; que
       if (!r.ok) return setError(r.error);
       setNaming(false);
       setName("");
-      router.refresh();
     });
   }
 
@@ -44,7 +41,6 @@ export function SavedViews({ views, currentQuery }: { views: { name: string; que
               onClick={() =>
                 start(async () => {
                   await deleteViewAction(v.name);
-                  router.refresh();
                 })
               }
             >

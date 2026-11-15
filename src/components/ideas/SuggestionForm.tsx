@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { SuggestionKind } from "@prisma/client";
 import { submitSuggestionAction } from "@/app/actions/suggestions";
@@ -11,7 +10,6 @@ const KINDS: SuggestionKind[] = ["IDEA", "FEEDBACK", "BUG"];
 
 /** Idee, Feedback oder Fehler einreichen. `initialKind`/`from` z. B. aus ?art=fehler&von=/team */
 export function SuggestionForm({ initialKind = "IDEA", from = "" }: { initialKind?: SuggestionKind; from?: string }) {
-  const router = useRouter();
   const [kind, setKind] = useState<SuggestionKind>(initialKind);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -59,7 +57,6 @@ export function SuggestionForm({ initialKind = "IDEA", from = "" }: { initialKin
             return;
           }
           setSent(true);
-          router.refresh();
         });
       }}
     >

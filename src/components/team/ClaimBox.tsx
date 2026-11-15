@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import { useState, useTransition } from "react";
 import { HandGrabbing, LockSimpleOpen, PushPin } from "@phosphor-icons/react/ssr";
@@ -20,7 +19,6 @@ interface Props {
  * Freigeben. Bewusst prominent – nicht in der Seitenleiste versteckt.
  */
 export function ClaimBox({ applicationId, me, claimedBy, claimedAgo }: Props) {
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const mine = claimedBy?.id === me.id;
@@ -30,7 +28,6 @@ export function ClaimBox({ applicationId, me, claimedBy, claimedAgo }: Props) {
       setError(null);
       const r = await claimAction(applicationId, action);
       if (!r.ok) setError(r.error);
-      else router.refresh();
     });
 
   return (

@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import { useState, useTransition } from "react";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
@@ -24,7 +23,6 @@ import type { QuestionType } from "@prisma/client";
 const TYPES = Object.keys(QUESTION_TYPE_LABEL) as QuestionType[];
 
 function useRun() {
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const run = (fn: () => Promise<{ ok: boolean; error?: string }>, after?: () => void) => {
@@ -34,7 +32,6 @@ function useRun() {
       if (!r.ok) setError(r.error ?? "Fehler");
       else {
         after?.();
-        router.refresh();
       }
     });
   };

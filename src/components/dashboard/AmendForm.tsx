@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { NotePencil } from "@phosphor-icons/react/ssr";
 import { amendAnswersAction } from "@/app/actions/application";
@@ -15,7 +14,6 @@ interface AmendableAnswer {
 
 /** Bewerber ergänzt/korrigiert Textantworten, solange das Team noch nicht draufgeschaut hat. */
 export function AmendForm({ applicationId, answers }: { applicationId: string; answers: AmendableAnswer[] }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [values, setValues] = useState<Record<string, string>>(Object.fromEntries(answers.map((a) => [a.id, a.value])));
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -53,7 +51,6 @@ export function AmendForm({ applicationId, answers }: { applicationId: string; a
           setMsg({ ok: true, text: r.data.changed ? `${r.data.changed} Antwort(en) aktualisiert.` : "Nichts geändert." });
           if (r.data.changed) {
             setOpen(false);
-            router.refresh();
           }
         });
       }}

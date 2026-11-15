@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import { useState, useTransition } from "react";
 import { ArrowClockwise, ArrowDown, PaperPlaneTilt } from "@phosphor-icons/react/ssr";
@@ -8,7 +7,6 @@ import { publishJobsPostAction, publishSpotlightAction } from "@/app/actions/adm
 
 /** Knöpfe zum Posten/Aktualisieren eines Stellenaufrufs (gesamt oder für eine Stelle). */
 export function JobsPostButtons({ posted, slug, compact }: { posted: boolean; slug?: string; compact?: boolean }) {
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -17,7 +15,6 @@ export function JobsPostButtons({ posted, slug, compact }: { posted: boolean; sl
       setResult(null);
       const r = slug ? await publishSpotlightAction(slug, mode) : await publishJobsPostAction(mode);
       setResult(r.ok ? { ok: true, text: r.data.message } : { ok: false, text: r.error });
-      router.refresh();
     });
 
   const size = compact ? "nv-btn-sm !py-1" : "nv-btn-sm";

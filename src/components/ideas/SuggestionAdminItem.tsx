@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { SuggestionStatus } from "@prisma/client";
 import { confirmDialog } from "@/components/ConfirmDialog";
@@ -11,7 +10,6 @@ const NOTIFY_ON: SuggestionStatus[] = ["PLANNED", "DONE", "DECLINED"];
 
 /** Admin: Status, Antwort an die Person, DM-Hinweis, Löschen. */
 export function SuggestionAdminItem({ id, status: initialStatus, adminNote, hasAuthor }: { id: string; status: SuggestionStatus; adminNote: string | null; hasAuthor: boolean }) {
-  const router = useRouter();
   const [status, setStatus] = useState<SuggestionStatus>(initialStatus);
   const [note, setNote] = useState(adminNote ?? "");
   const [notify, setNotify] = useState(true);
@@ -52,7 +50,6 @@ export function SuggestionAdminItem({ id, status: initialStatus, adminNote, hasA
               setMsg(null);
               const r = await updateSuggestionAction({ id, status, adminNote: note, notify });
               setMsg(r.ok ? { ok: true, text: willNotify ? "Gespeichert – DM ist raus." : "Gespeichert." } : { ok: false, text: r.error });
-              if (r.ok) router.refresh();
             })
           }
         >
@@ -72,8 +69,7 @@ export function SuggestionAdminItem({ id, status: initialStatus, adminNote, hasA
             if (!(await confirmDialog({ title: "Eintrag endgültig löschen?", body: "Zum Beispiel bei Spam oder doppelten Einträgen. Das lässt sich nicht rückgängig machen.", confirmLabel: "Löschen", tone: "danger" }))) return;
             run(async () => {
               const r = await deleteSuggestionAction(id);
-              if (r.ok) router.refresh();
-              else setMsg({ ok: false, text: r.error });
+              if (!r.ok) setMsg({ ok: false, text: r.error });
             });
           }}
         >

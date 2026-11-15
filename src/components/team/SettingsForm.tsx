@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { CheckCircle, FloppyDisk, XCircle } from "@phosphor-icons/react/ssr";
 import { saveSettingsAction } from "@/app/actions/admin";
@@ -31,7 +30,6 @@ const SAMPLE = {
 
 export function SettingsForm({ section, settings, env, spend, spendMicro }: Props) {
   const show = (sec: SettingsSection) => !section || section === sec;
-  const router = useRouter();
   const [s, setS] = useState<Settings>(settings);
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -52,7 +50,6 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
     start(async () => {
       const res = await saveSettingsAction(patch);
       setMsg(res.ok ? { ok: true, text: "Gespeichert." } : { ok: false, text: res.error });
-      if (res.ok) router.refresh();
     });
   }
 

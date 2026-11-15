@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { UserMinus } from "@phosphor-icons/react/ssr";
 import { markNoShowAction } from "@/app/actions/team";
@@ -8,7 +7,6 @@ import { confirmDialog } from "@/components/ConfirmDialog";
 
 /** Bewerber nicht zum Gespräch erschienen: Termin freigeben, Bewerber benachrichtigen, mitzählen. */
 export function NoShowButton({ applicationId, count }: { applicationId: string; count: number }) {
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   return (
@@ -31,7 +29,6 @@ export function NoShowButton({ applicationId, count }: { applicationId: string; 
           start(async () => {
             const r = await markNoShowAction(applicationId);
             if (!r.ok) return setError(r.error);
-            router.refresh();
           });
         }}
       >

@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refresh } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
@@ -36,7 +36,7 @@ export async function saveSettingsAction(patch: Record<string, unknown>): Promis
   const data = Object.fromEntries(Object.entries(parsed.data).filter(([k]) => k in patch)) as Partial<Settings>;
   await saveSettings(data, user.id);
   await audit("settings.update", { actorId: user.id, meta: { keys: Object.keys(data) } });
-  revalidatePath("/team/admin", "layout");
+  refresh();
   return { ok: true };
 }
 
@@ -104,8 +104,7 @@ export async function savePositionAction(input: z.input<typeof positionSchema>):
     saved = await db.position.create({ data: { ...data, typeId: type.id, sortOrder: (max._max.sortOrder ?? 0) + 1 } });
     await audit("position.create", { actorId: user.id, targetType: "position", targetId: saved.id });
   }
-  revalidatePath("/team/positionen");
-  revalidatePath("/");
+  refresh();
   refreshJobsAfter();
   if (saved.status === "OPEN" && before && before.status !== "OPEN") notifyOpenedAfter(saved);
   return { ok: true, data: { id: saved.id } };
@@ -121,8 +120,7 @@ export async function setPositionStatusAction(positionId: string, status: "OPEN"
   const saved = await db.position.update({ where: { id: positionId }, data: { status, ...clearStaleSchedule(status, before, new Date()) } });
   if (status === "OPEN" && before.status !== "OPEN") notifyOpenedAfter(saved);
   await audit("position.status", { actorId: user.id, targetType: "position", targetId: positionId, meta: { status } });
-  revalidatePath("/team/positionen");
-  revalidatePath("/");
+  refresh();
   refreshJobsAfter();
   return { ok: true };
 }
@@ -133,7 +131,7 @@ export async function deletePositionAction(positionId: string): Promise<ActionRe
   if (count > 0) return { ok: false, error: "Es gibt Bewerbungen auf diese Position. Setz sie stattdessen auf „Versteckt“." };
   await db.position.delete({ where: { id: positionId } });
   await audit("position.delete", { actorId: user.id, targetType: "position", targetId: positionId });
-  revalidatePath("/team/positionen");
+  refresh();
   refreshJobsAfter();
   return { ok: true };
 }
@@ -190,7 +188,7 @@ export async function duplicatePositionAction(positionId: string): Promise<Actio
     return p;
   });
   await audit("position.create", { actorId: user.id, targetType: "position", targetId: copy.id, meta: { duplicatedFrom: src.slug } });
-  revalidatePath("/team/positionen");
+  refresh();
   return { ok: true, data: { id: copy.id } };
 }
 
@@ -199,8 +197,7 @@ export async function reorderPositionsAction(ids: string[]): Promise<ActionResul
   const p = z.array(id).max(100).safeParse(ids);
   if (!p.success) return { ok: false, error: "Ungültig." };
   await db.$transaction(p.data.map((pid, i) => db.position.update({ where: { id: pid }, data: { sortOrder: i } })));
-  revalidatePath("/team/positionen");
-  revalidatePath("/");
+  refresh();
   return { ok: true };
 }
 
@@ -238,7 +235,7 @@ export async function saveSectionAction(input: z.input<typeof sectionSchema>): P
     });
   }
   await audit("form.update", { actorId: user.id, targetType: "section", targetId: saved.id });
-  revalidatePath("/team/positionen", "layout");
+  refresh();
   return { ok: true, data: { id: saved.id } };
 }
 
@@ -247,7 +244,7 @@ export async function deleteSectionAction(sectionId: string): Promise<ActionResu
   // Antworten bleiben erhalten (Snapshot); Fragen werden mit gelöscht
   await db.formSection.delete({ where: { id: sectionId } }).catch(() => null);
   await audit("form.update", { actorId: user.id, targetType: "section", targetId: sectionId, meta: { deleted: true } });
-  revalidatePath("/team/positionen", "layout");
+  refresh();
   return { ok: true };
 }
 
@@ -256,7 +253,7 @@ export async function reorderSectionsAction(ids: string[]): Promise<ActionResult
   const p = z.array(id).max(100).safeParse(ids);
   if (!p.success) return { ok: false, error: "Ungültig." };
   await db.$transaction(p.data.map((sid, i) => db.formSection.update({ where: { id: sid }, data: { sortOrder: i } })));
-  revalidatePath("/team/positionen", "layout");
+  refresh();
   return { ok: true };
 }
 
@@ -331,7 +328,7 @@ export async function saveQuestionAction(input: z.input<typeof questionSchema>):
     saved = await db.question.create({ data: { ...data, key, sortOrder: (max._max.sortOrder ?? 0) + 1 } });
   }
   await audit("form.update", { actorId: user.id, targetType: "question", targetId: saved.id });
-  revalidatePath("/team/positionen", "layout");
+  refresh();
   return { ok: true, data: { id: saved.id } };
 }
 
@@ -340,7 +337,7 @@ export async function archiveQuestionAction(questionId: string): Promise<ActionR
   const { user } = await requireAdmin();
   await db.question.update({ where: { id: questionId }, data: { archived: true } }).catch(() => null);
   await audit("form.update", { actorId: user.id, targetType: "question", targetId: questionId, meta: { archived: true } });
-  revalidatePath("/team/positionen", "layout");
+  refresh();
   return { ok: true };
 }
 
@@ -349,7 +346,7 @@ export async function reorderQuestionsAction(ids: string[]): Promise<ActionResul
   const p = z.array(id).max(200).safeParse(ids);
   if (!p.success) return { ok: false, error: "Ungültig." };
   await db.$transaction(p.data.map((qid, i) => db.question.update({ where: { id: qid }, data: { sortOrder: i } })));
-  revalidatePath("/team/positionen", "layout");
+  refresh();
   return { ok: true };
 }
 
@@ -391,7 +388,7 @@ export async function runDailyTasksAction(): Promise<ActionResult<{ message: str
   await requireAdmin();
   const { runDailyTasksNow } = await import("@/lib/due-tasks");
   const r = await runDailyTasksNow();
-  revalidatePath("/team", "layout");
+  refresh();
   const failed = r.steps.filter((s) => !s.ok).map((s) => s.name);
   const text = `${r.steps.length - failed.length}/${r.steps.length} Aufgaben erledigt, ${r.delivered} Nachricht(en) zugestellt.`;
   return failed.length ? { ok: false, error: `${text} Nicht geklappt: ${failed.join(", ")} (Details im Server-Log).` } : { ok: true, data: { message: text } };
@@ -451,7 +448,7 @@ export async function setupInteractionsAction(): Promise<ActionResult<{ message:
   }
   await saveSettings({ "discord.claimButton": true }, user.id);
   await audit("settings.update", { actorId: user.id, meta: { interactionsEndpoint: url } });
-  revalidatePath("/team/admin", "layout");
+  refresh();
   // Slash-Befehl /bewerbung gleich mit registrieren (läuft über dieselbe URL)
   const cmd = await registerStatusCommand(token);
   return {
@@ -511,7 +508,7 @@ export async function flushOutboxAction(): Promise<ActionResult<{ message: strin
   const { runOutbox, releaseStuckJobs } = await import("@/lib/discord/outbox-db");
   await releaseStuckJobs(2);
   const n = await runOutbox({ limit: 25 });
-  revalidatePath("/team/admin", "layout");
+  refresh();
   return { ok: true, data: { message: n ? `${n} Zustellung(en) verarbeitet.` : "Nichts fällig." } };
 }
 
@@ -544,7 +541,7 @@ export async function resetApplicationsAction(input: z.input<typeof resetSchema>
       const { runOutbox } = await import("@/lib/discord/outbox-db");
       await runOutbox({ ids: [job] }).catch(() => {});
     }
-    revalidatePath("/team", "layout");
+    refresh();
     return { ok: true, data: { message: `${counts.applications} Bewerbungen gelöscht (dazu ${counts.answers} Antworten, ${counts.messages} Nachrichten, ${counts.uploads} Bilder).` } };
   } catch (err) {
     console.error("[reset]", err);
@@ -563,7 +560,7 @@ export async function publishJobsPostAction(mode: "new" | "update"): Promise<Act
     const r = await publishJobsPost(db, { mode, createIfMissing: true });
     if (!r.ok) return { ok: false, error: `Discord: ${r.error}` };
     await audit("settings.update", { actorId: user.id, meta: { jobsPost: r.action } });
-    revalidatePath("/team/positionen");
+    refresh();
     return { ok: true, data: { message: r.action === "updated" ? "Stellenaufruf aktualisiert." : "Stellenaufruf gepostet." } };
   } catch (err) {
     return { ok: false, error: `Discord: ${err instanceof Error ? err.message : String(err)}` };
@@ -579,7 +576,7 @@ export async function publishSpotlightAction(slug: string, mode: "new" | "update
     const r = await publishSpotlight(db, slug, { mode, createIfMissing: true });
     if (!r.ok) return { ok: false, error: r.error };
     await audit("settings.update", { actorId: user.id, meta: { spotlight: slug, action: r.action } });
-    revalidatePath("/team/positionen");
+    refresh();
     return { ok: true, data: { message: r.action === "updated" ? "Einzelaufruf aktualisiert." : "Einzelaufruf gepostet." } };
   } catch (err) {
     return { ok: false, error: `Discord: ${err instanceof Error ? err.message : String(err)}` };
@@ -627,8 +624,7 @@ export async function createTestApplicationsAction(input: z.input<typeof testSch
       }
     });
   }
-  revalidatePath("/team/admin", "layout");
-  revalidatePath("/team/bewerbungen");
+  refresh();
   const extra = [p.data.postToDiscord && "Discord-Posts", p.data.runAi && "KI-Einordnung"].filter(Boolean).join(" und ");
   return {
     ok: true,
@@ -683,8 +679,7 @@ export async function deleteTestApplicationsAction(): Promise<ActionResult<{ mes
   const { deleteTestApplications } = await import("@/lib/setup/test-applications");
   const r = await deleteTestApplications(db);
   await audit("data.test", { actorId: user.id, meta: { deleted: r.applications, users: r.users } });
-  revalidatePath("/team/admin", "layout");
-  revalidatePath("/team/bewerbungen");
+  refresh();
   return { ok: true, data: { message: `${r.applications} Testbewerbung${r.applications === 1 ? "" : "en"} und ${r.users} Testbewerber gelöscht.` } };
 }
 
@@ -710,9 +705,7 @@ export async function importConfigAction(json: string, dryRun: boolean): Promise
     const report = await importConfig(db, p.data, { dryRun, actorId: user.id });
     if (!dryRun) {
       await audit("settings.import", { actorId: user.id, meta: { ...report, skipped: report.skipped.length } });
-      revalidatePath("/team/admin", "layout");
-      revalidatePath("/team/positionen");
-      revalidatePath("/team/bausteine");
+      refresh();
       refreshJobsAfter();
     }
     return { ok: true, data: { report } };
@@ -737,9 +730,7 @@ export async function publishChangelogNowAction(): Promise<ActionResult<{ messag
   const { publishChangelogNow } = await import("@/lib/discord/changelog-post");
   const run = await publishChangelogNow(db, user.id);
   await audit("settings.update", { actorId: user.id, meta: { changelog: "published_now", posts: run.posted.length, edited: run.edited } });
-  revalidatePath("/team/changelog");
-  revalidatePath("/team/admin", "layout");
-  revalidatePath("/team");
+  refresh();
   return changelogRunResult(run, "Veröffentlicht. Alle Versionen sind schon in Discord (oder Changelog-Posts sind aus).", "Veröffentlicht. ");
 }
 
@@ -764,7 +755,7 @@ export async function createRoundAction(input: z.input<typeof roundSchema>): Pro
   if (endsAt <= startsAt) return { ok: false, error: "Das Ende muss nach dem Start liegen." };
   const round = await db.applicationRound.create({ data: { name: p.data.name, positionId: p.data.positionId, startsAt, endsAt, target: p.data.target, createdById: user.id } });
   await audit("settings.update", { actorId: user.id, meta: { round: round.id, name: round.name } });
-  revalidatePath("/team/runden");
+  refresh();
   return { ok: true };
 }
 
@@ -773,7 +764,7 @@ export async function deleteRoundAction(roundId: string): Promise<ActionResult> 
   if (!/^[a-z0-9]{10,40}$/i.test(roundId)) return { ok: false, error: "Ungültig." };
   await db.applicationRound.deleteMany({ where: { id: roundId } });
   await audit("settings.update", { actorId: user.id, meta: { roundDeleted: roundId } });
-  revalidatePath("/team/runden");
+  refresh();
   return { ok: true };
 }
 

@@ -52,7 +52,6 @@ export function RatingPanel({
   // KI bewertet nur die Standard-Kriterien – bei eigenem Bogen ohne KI-Spalte
   const standard = criteria === STANDARD_CRITERIA || criteria.every((c) => !c.key.startsWith("p_"));
   const aiOverall = aiScores ? summarizeRatings([{ scores: aiScores }]).overall : null;
-  const router = useRouter();
   const [scores, setScores] = useState<Scores>(mine);
   const [note, setNote] = useState(myNote ?? "");
   const [pending, start] = useTransition();
@@ -65,7 +64,6 @@ export function RatingPanel({
       const clean = Object.fromEntries(Object.entries(scores).filter((e): e is [string, number] => typeof e[1] === "number"));
       const r = await rateAction({ applicationId, scores: clean, note });
       setMsg(r.ok ? { ok: true, text: "Gespeichert." } : { ok: false, text: r.error });
-      if (r.ok) router.refresh();
     });
   }
 
@@ -193,7 +191,6 @@ function AiBlock({
         setError(null);
         const r = await overrideAiConsentAction(applicationId);
         if (!r.ok) setError(r.error);
-        else router.refresh();
       });
     };
     return (
@@ -228,7 +225,6 @@ function AiBlock({
       setError(null);
       const r = await rescoreAction(applicationId);
       if (!r.ok) setError(r.error);
-      else router.refresh();
     });
   return (
     <div className="rounded-xl border border-line bg-surface-2/40 p-3 space-y-2" data-testid="ai-rating">

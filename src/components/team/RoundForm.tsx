@@ -1,13 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { createRoundAction, deleteRoundAction } from "@/app/actions/admin";
 import { confirmDialog } from "@/components/ConfirmDialog";
 
 /** Neue Bewerbungsrunde anlegen (Admins). */
 export function RoundForm({ positions }: { positions: { id: string; title: string }[] }) {
-  const router = useRouter();
   const [name, setName] = useState("");
   const [positionId, setPositionId] = useState("");
   const [startsAt, setStartsAt] = useState("");
@@ -22,7 +20,6 @@ export function RoundForm({ positions }: { positions: { id: string; title: strin
       if (!r.ok) return setError(r.error);
       setName("");
       setTarget("");
-      router.refresh();
     });
   return (
     <div className="nv-card p-5 space-y-3">
@@ -56,7 +53,6 @@ export function RoundForm({ positions }: { positions: { id: string; title: strin
 }
 
 export function DeleteRoundButton({ id, name }: { id: string; name: string }) {
-  const router = useRouter();
   const [pending, start] = useTransition();
   return (
     <button
@@ -67,7 +63,6 @@ export function DeleteRoundButton({ id, name }: { id: string; name: string }) {
         if (!(await confirmDialog({ title: `„${name}“ löschen?`, body: "Nur die Runde verschwindet – Bewerbungen bleiben unverändert.", confirmLabel: "Löschen", tone: "danger" }))) return;
         start(async () => {
           await deleteRoundAction(id);
-          router.refresh();
         });
       }}
     >

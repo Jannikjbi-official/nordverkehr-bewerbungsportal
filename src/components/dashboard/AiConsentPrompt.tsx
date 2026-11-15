@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { CheckCircle, Robot, XCircle } from "@phosphor-icons/react/ssr";
 import { answerAiConsentAction } from "@/app/actions/application";
@@ -11,7 +10,6 @@ import { answerAiConsentAction } from "@/app/actions/application";
  * mit der Entscheidung, die sich jederzeit ändern lässt.
  */
 export function AiConsentPrompt({ applicationId, answer }: { applicationId: string; answer: "granted" | "denied" | null }) {
-  const router = useRouter();
   const dialog = useRef<HTMLDialogElement>(null);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +30,6 @@ export function AiConsentPrompt({ applicationId, answer }: { applicationId: stri
       if (!r.ok) setError(r.error);
       else {
         setOpen(false);
-        router.refresh();
       }
     });
   }

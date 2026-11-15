@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { CalendarCheck } from "@phosphor-icons/react/ssr";
 import { bookSlotAction } from "@/app/actions/application";
@@ -34,7 +33,6 @@ export function SlotPicker({
   /** Termin liegt noch in der Zukunft → „Ich kann nicht“ anbieten */
   canCancel?: boolean;
 }) {
-  const router = useRouter();
   const [open, setOpen] = useState(!current);
   const [pending, run] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +52,6 @@ export function SlotPicker({
       const r = await bookSlotAction(applicationId, s.id);
       if (!r.ok) return setError(r.error);
       setOpen(false);
-      router.refresh();
     });
   }
 

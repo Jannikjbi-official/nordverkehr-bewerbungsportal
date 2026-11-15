@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Star } from "@phosphor-icons/react/ssr";
 import { submitFeedbackAction } from "@/app/actions/application";
@@ -9,7 +8,6 @@ const LABELS = ["", "Gar nicht gut", "Eher nicht gut", "Okay", "Gut", "Richtig g
 
 /** Kurze Umfrage nach der Entscheidung: 1–5 Sterne + optionaler Kommentar. */
 export function FeedbackForm({ applicationId }: { applicationId: string }) {
-  const router = useRouter();
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [pending, run] = useTransition();
@@ -26,7 +24,6 @@ export function FeedbackForm({ applicationId }: { applicationId: string }) {
         run(async () => {
           const r = await submitFeedbackAction({ applicationId, rating, comment: comment || undefined });
           if (!r.ok) setError(r.error);
-          else router.refresh();
         });
       }}
     >

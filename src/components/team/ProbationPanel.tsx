@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { decideProbationAction, mentorFeedbackAction, setMentorAction } from "@/app/actions/team";
 import { confirmDialog } from "@/components/ConfirmDialog";
@@ -32,7 +31,6 @@ export function ProbationPanel({
   /** 14 Tage nach der Annahme – Rückmeldung fällig */
   feedbackDue: boolean;
 }) {
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState("");
@@ -41,7 +39,6 @@ export function ProbationPanel({
       setError(null);
       const r = await fn();
       if (!r.ok) setError(r.error ?? "Fehler");
-      else router.refresh();
     });
 
   async function decide(decision: "PASSED" | "EXTEND" | "END") {

@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { CalendarX } from "@phosphor-icons/react/ssr";
 
@@ -23,7 +22,6 @@ export function AwayForm({
   help: string;
   save: (date: string | null) => Promise<{ ok: boolean; error?: string }>;
 }) {
-  const router = useRouter();
   const active = !!until && new Date(until).getTime() > nowMs;
   const [value, setValue] = useState(active ? toInput(until) : "");
   const [pending, start] = useTransition();
@@ -36,7 +34,6 @@ export function AwayForm({
       const r = await save(date);
       if (!r.ok) return setError(r.error ?? "Hat nicht geklappt.");
       if (!date) setValue("");
-      router.refresh();
     });
 
   return (

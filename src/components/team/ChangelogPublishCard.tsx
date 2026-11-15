@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Megaphone } from "@phosphor-icons/react/ssr";
 import { publishChangelogNowAction } from "@/app/actions/admin";
@@ -9,7 +8,6 @@ import { confirmDialog } from "@/components/ConfirmDialog";
 
 /** Admin-Übersicht: Stand des Changelogs, sofort veröffentlichen, Uhrzeit ändern. */
 export function ChangelogPublishCard({ status, version, timeLabel }: { status: "none" | "pending" | "published"; version: string | null; timeLabel: string }) {
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   return (
@@ -36,7 +34,6 @@ export function ChangelogPublishCard({ status, version, timeLabel }: { status: "
               start(async () => {
                 const r = await publishChangelogNowAction();
                 setMsg(r.ok ? { ok: true, text: r.data.message } : { ok: false, text: r.error });
-                router.refresh();
               });
             }}
           >

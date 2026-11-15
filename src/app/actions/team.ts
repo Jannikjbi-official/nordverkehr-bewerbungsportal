@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refresh } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireAdmin, requireTeam } from "@/lib/auth/session";
@@ -59,8 +59,7 @@ export async function changeStatusAction(input: z.input<typeof statusSchema>): P
   try {
     const { jobIds } = await changeStatus({ ...p.data, actorId: user.id });
     await kick(jobIds);
-    revalidatePath(`/team/bewerbungen/${p.data.applicationId}`);
-    revalidatePath("/team/bewerbungen");
+    refresh();
     return { ok: true };
   } catch (err) {
     return fail(err);
@@ -109,7 +108,7 @@ export async function setInterviewAction(input: z.input<typeof interviewSchema>)
   await audit("application.interview", { actorId: user.id, targetType: "application", targetId: app.id, meta: { at: p.data.at } });
   const { syncInterviewLater } = await import("@/lib/team/interview-sync");
   await syncInterviewLater(app.id);
-  revalidatePath(`/team/bewerbungen/${app.id}`);
+  refresh();
   return { ok: true };
 }
 
@@ -131,7 +130,7 @@ export async function voteAction(applicationId: string, value: "PRO" | "CONTRA" 
     });
   }
   await audit("application.vote", { actorId: user.id, targetType: "application", targetId: applicationId, meta: { value } });
-  revalidatePath(`/team/bewerbungen/${applicationId}`);
+  refresh();
   return { ok: true };
 }
 
@@ -161,7 +160,7 @@ export async function createSlotsAction(input: z.input<typeof slotSchema>): Prom
     data: times.map((startsAt) => ({ startsAt, durationMin: p.data.durationMin, note: p.data.note || null, createdById: user.id, applicationId: null, bookedAt: null })),
   });
   await audit("slot.create", { actorId: user.id, meta: { count: times.length, start: p.data.start.toISOString() } });
-  revalidatePath("/team/termine");
+  refresh();
   return { ok: true, data: { count: times.length } };
 }
 
@@ -186,7 +185,7 @@ export async function deleteSlotAction(slotId: string): Promise<ActionResult> {
     return { ok: true };
   }
   await audit("slot.delete", { actorId: user.id, meta: { at: slot.startsAt.toISOString() } });
-  revalidatePath("/team/termine");
+  refresh();
   return { ok: true };
 }
 
@@ -262,7 +261,7 @@ export async function rateAction(input: z.input<typeof ratingSchema>): Promise<A
   await audit("application.rating", { actorId: user.id, targetType: "application", targetId: p.data.applicationId, meta: { scores } });
   // Offene Zweitmeinung erledigt
   if (Object.keys(scores).length) await db.reviewRequest.updateMany({ where: { applicationId: p.data.applicationId, userId: user.id, doneAt: null }, data: { doneAt: new Date() } });
-  revalidatePath(`/team/bewerbungen/${p.data.applicationId}`);
+  refresh();
   return { ok: true };
 }
 
@@ -333,7 +332,7 @@ export async function requestSecondOpinionAction(applicationId: string, targetUs
     { applicationId: app.id },
   );
   await kick([job.id]);
-  revalidatePath(`/team/bewerbungen/${app.id}`);
+  refresh();
   return { ok: true, data: { name: target.globalName || target.username } };
 }
 
@@ -353,8 +352,7 @@ export async function setImprovementTipAction(applicationId: string, tip: string
   if (!app || app.status !== "REJECTED") return { ok: false, error: "Tipps gibt es nur bei abgelehnten Bewerbungen." };
   await db.application.update({ where: { id: applicationId }, data: { improvementTip: text || null } });
   await audit("application.tip", { actorId: user.id, targetType: "application", targetId: applicationId });
-  revalidatePath(`/team/bewerbungen/${applicationId}`);
-  revalidatePath(`/dashboard/${applicationId}`);
+  refresh();
   return { ok: true };
 }
 
@@ -375,7 +373,7 @@ export async function saveViewAction(name: string, query: string): Promise<Actio
   const me = await db.user.findUnique({ where: { id: user.id }, select: { savedViews: true } });
   const views = upsertView(readViews(me?.savedViews), { name: p.data.name, query: clean });
   await db.user.update({ where: { id: user.id }, data: { savedViews: views } });
-  revalidatePath("/team/bewerbungen");
+  refresh();
   return { ok: true };
 }
 
@@ -384,7 +382,7 @@ export async function deleteViewAction(name: string): Promise<ActionResult> {
   const { readViews } = await import("@/lib/team/saved-views");
   const me = await db.user.findUnique({ where: { id: user.id }, select: { savedViews: true } });
   await db.user.update({ where: { id: user.id }, data: { savedViews: readViews(me?.savedViews).filter((v) => v.name !== name) } });
-  revalidatePath("/team/bewerbungen");
+  refresh();
   return { ok: true };
 }
 
@@ -405,7 +403,7 @@ export async function setFollowUpAction(applicationId: string, day: string, note
     db.followUpReminder.deleteMany({ where: { applicationId, userId: user.id, sentAt: null } }),
     db.followUpReminder.create({ data: { applicationId, userId: user.id, dueAt, note: text } }),
   ]);
-  revalidatePath(`/team/bewerbungen/${applicationId}`);
+  refresh();
   return { ok: true };
 }
 
@@ -414,7 +412,7 @@ export async function clearFollowUpAction(id: string): Promise<ActionResult> {
   const { user } = await requireTeam();
   if (typeof id !== "string" || id.length > 40) return { ok: false, error: "Ungültig." };
   await db.followUpReminder.deleteMany({ where: { id, userId: user.id } });
-  revalidatePath("/team");
+  refresh();
   return { ok: true };
 }
 
@@ -440,7 +438,7 @@ export async function toggleReviewCheckAction(applicationId: string, item: strin
     await db.reviewCheck.deleteMany({ where: { applicationId, item } });
   }
   await audit("application.review_check", { actorId: user.id, targetType: "application", targetId: applicationId, meta: { item: item.slice(0, 80), done } });
-  revalidatePath(`/team/bewerbungen/${applicationId}`);
+  refresh();
   return { ok: true };
 }
 
@@ -506,7 +504,7 @@ export async function addCommentAction(input: z.input<typeof commentSchema>): Pr
     const job = await postToThread(app, `💬 **${esc(user.globalName || user.username)}** (Portal): ${esc(body)}`, { kind: "comment", url: `${publicEnv.appUrl}/team/bewerbungen/${app.id}` });
     if (job) await kick([job]);
   }
-  revalidatePath(`/team/bewerbungen/${p.data.applicationId}`);
+  refresh();
   return { ok: true };
 }
 
@@ -516,7 +514,7 @@ export async function deleteCommentAction(commentId: string): Promise<ActionResu
   if (!c) return { ok: false, error: "Nicht gefunden." };
   if (c.authorId !== user.id && !access.isAdmin) return { ok: false, error: "Nur eigene Kommentare." };
   await db.comment.delete({ where: { id: c.id } });
-  revalidatePath(`/team/bewerbungen/${c.applicationId}`);
+  refresh();
   return { ok: true };
 }
 
@@ -578,10 +576,10 @@ export async function sendMessageAction(input: z.input<typeof messageSchema>): P
           where: { id: p.data.applicationId },
           data: { aiConsentRequestedAt: new Date(), aiConsentAnswer: null, aiConsentAnsweredAt: null },
         });
-        revalidatePath(`/dashboard/${p.data.applicationId}`);
+        refresh();
       }
     }
-    revalidatePath(`/team/bewerbungen/${p.data.applicationId}`);
+    refresh();
     return { ok: true, data: { missing: res.missing } };
   } catch (err) {
     return fail(err);
@@ -602,8 +600,7 @@ export async function claimAction(applicationId: string, action: "claim" | "rele
   try {
     const r = await setClaim({ applicationId, actor: user, action });
     await kick(r.jobIds);
-    revalidatePath(`/team/bewerbungen/${applicationId}`);
-    revalidatePath("/team/bewerbungen");
+    refresh();
     return { ok: true };
   } catch (err) {
     return fail(err);
@@ -623,7 +620,7 @@ export async function retryDeliveryAction(messageId: string): Promise<ActionResu
     db.message.update({ where: { id: messageId }, data: { deliveryStatus: "PENDING", deliveryError: null } }),
   ]);
   await kick([job.id]);
-  revalidatePath("/team/bewerbungen");
+  refresh();
   return { ok: true };
 }
 
@@ -657,7 +654,7 @@ export async function saveTemplateAction(input: z.input<typeof templateSchema>):
     saved = await db.messageTemplate.create({ data: { ...data, sortOrder: (max._max.sortOrder ?? 0) + 1, createdById: user.id } });
     await audit("template.create", { actorId: user.id, targetType: "template", targetId: saved.id });
   }
-  revalidatePath("/team/bausteine");
+  refresh();
   return { ok: true, data: { id: saved.id } };
 }
 
@@ -670,7 +667,7 @@ export async function deleteTemplateAction(templateId: string): Promise<ActionRe
   if (!id.safeParse(templateId).success) return { ok: false, error: "Ungültig." };
   await db.messageTemplate.delete({ where: { id: templateId } }).catch(() => null);
   await audit("template.delete", { actorId: user.id, targetType: "template", targetId: templateId });
-  revalidatePath("/team/bausteine");
+  refresh();
   return { ok: true };
 }
 
@@ -684,7 +681,7 @@ export async function reorderTemplatesAction(ids: string[]): Promise<ActionResul
   if (!p.success) return { ok: false, error: "Ungültig." };
   await db.$transaction(p.data.map((tid, i) => db.messageTemplate.update({ where: { id: tid }, data: { sortOrder: i } })));
   await audit("template.reorder", { actorId: user.id, targetType: "template" });
-  revalidatePath("/team/bausteine");
+  refresh();
   return { ok: true };
 }
 
@@ -696,7 +693,7 @@ export async function addNoteAction(subjectId: string, body: string): Promise<Ac
   if (!p.success) return { ok: false, error: "Notiz ist leer oder zu lang." };
   await db.userNote.create({ data: { subjectId, authorId: user.id, body: p.data.body } });
   await audit("user.note", { actorId: user.id, targetType: "user", targetId: subjectId });
-  revalidatePath(`/team/nutzer/${subjectId}`);
+  refresh();
   return { ok: true };
 }
 
@@ -706,7 +703,7 @@ export async function deleteNoteAction(noteId: string): Promise<ActionResult> {
   if (!n) return { ok: false, error: "Nicht gefunden." };
   if (n.authorId !== user.id && !access.isAdmin) return { ok: false, error: "Nur eigene Notizen." };
   await db.userNote.delete({ where: { id: noteId } });
-  revalidatePath(`/team/nutzer/${n.subjectId}`);
+  refresh();
   return { ok: true };
 }
 
@@ -734,7 +731,7 @@ export async function banUserAction(input: z.input<typeof banSchema>): Promise<A
     },
   });
   await audit("user.ban", { actorId: user.id, targetType: "user", targetId: p.data.subjectId, meta: { days: p.data.days } });
-  revalidatePath(`/team/nutzer/${p.data.subjectId}`);
+  refresh();
   return { ok: true };
 }
 
@@ -747,7 +744,7 @@ export async function liftBanAction(banId: string): Promise<ActionResult> {
   const ban = await db.userBan.update({ where: { id: banId }, data: { liftedAt: new Date(), liftedById: user.id } }).catch(() => null);
   if (!ban) return { ok: false, error: "Nicht gefunden." };
   await audit("user.unban", { actorId: user.id, targetType: "user", targetId: ban.subjectId });
-  revalidatePath(`/team/nutzer/${ban.subjectId}`);
+  refresh();
   return { ok: true };
 }
 
@@ -758,7 +755,7 @@ export async function deleteApplicationAction(applicationId: string): Promise<Ac
   if (!app) return { ok: false, error: "Nicht gefunden." };
   await db.application.delete({ where: { id: app.id } }); // inkl. Bilder (Cascade)
   await audit("application.delete", { actorId: user.id, targetType: "application", targetId: app.id, meta: { publicId: app.publicId } });
-  revalidatePath("/team/bewerbungen");
+  refresh();
   return { ok: true };
 }
 
@@ -777,7 +774,7 @@ export async function retagAction(applicationId: string): Promise<ActionResult<{
     await assertAiAllowed(user.id, await getSettings());
     const tags = await tagApplication(applicationId, { actorId: user.id, force: true });
     if (!tags) return { ok: false, error: "KI ist deaktiviert oder das Budget ist aufgebraucht." };
-    revalidatePath(`/team/bewerbungen/${applicationId}`);
+    refresh();
     return { ok: true, data: { tags } };
   } catch (err) {
     if (err instanceof AiError) return { ok: false, error: err.message };
@@ -814,7 +811,7 @@ export async function rescoreAction(applicationId: string): Promise<ActionResult
     await assertAiAllowed(user.id, await getSettings());
     const r = await scoreApplication(applicationId, { actorId: user.id, force: true });
     if (!r) return { ok: false, error: "KI-Punkte gehen nur bei neuen Bewerbungen (Einwilligung) und wenn die KI an ist und Budget hat." };
-    revalidatePath(`/team/bewerbungen/${applicationId}`);
+    refresh();
     return { ok: true };
   } catch (err) {
     if (err instanceof AiError) return { ok: false, error: err.message };
@@ -837,8 +834,7 @@ export async function acknowledgeWithdrawalAction(applicationId: string): Promis
   try {
     const r = await acknowledgeWithdrawal({ applicationId, actor: user });
     await kick(r.jobIds);
-    revalidatePath("/team");
-    revalidatePath(`/team/bewerbungen/${applicationId}`);
+    refresh();
     return { ok: true };
   } catch (err) {
     return fail(err);
@@ -878,7 +874,7 @@ export async function toggleInterviewCheckAction(applicationId: string, question
     await db.interviewCheck.deleteMany({ where: { applicationId, question } });
   }
   await audit("application.protocol", { actorId: user.id, targetType: "application", targetId: applicationId, meta: { check: question.slice(0, 80), done } });
-  revalidatePath(`/team/bewerbungen/${applicationId}`);
+  refresh();
   return { ok: true };
 }
 
@@ -895,7 +891,7 @@ export async function addInterviewNoteAction(input: z.input<typeof noteSchema>):
   }
   const note = await db.interviewNote.create({ data: { applicationId: p.data.applicationId, question: p.data.question, body: p.data.body, authorId: user.id } });
   await audit("application.protocol", { actorId: user.id, targetType: "application", targetId: p.data.applicationId, meta: { note: note.id, fazit: p.data.question === "" } });
-  revalidatePath(`/team/bewerbungen/${p.data.applicationId}`);
+  refresh();
   return { ok: true };
 }
 
@@ -908,7 +904,7 @@ export async function deleteInterviewNoteAction(noteId: string): Promise<ActionR
   if (note.authorId !== user.id && !access?.isAdmin) return { ok: false, error: "Nur eigene Notizen (oder als Admin)." };
   await db.interviewNote.delete({ where: { id: noteId } });
   await audit("application.protocol", { actorId: user.id, targetType: "application", targetId: note.applicationId, meta: { deleted: noteId } });
-  revalidatePath(`/team/bewerbungen/${note.applicationId}`);
+  refresh();
   return { ok: true };
 }
 
@@ -930,7 +926,7 @@ export async function addInterviewQuestionsAction(applicationId: string, text: s
   // push ist atomar – gleichzeitige Ergänzungen gehen nicht verloren
   await db.application.update({ where: { id: applicationId }, data: { interviewExtraQuestions: { push: lines } } });
   await audit("application.protocol", { actorId: user.id, targetType: "application", targetId: applicationId, meta: { questionsAdded: lines.length } });
-  revalidatePath(`/team/bewerbungen/${applicationId}`);
+  refresh();
   return { ok: true, data: { added: lines.length } };
 }
 
@@ -995,7 +991,7 @@ export async function markNoShowAction(applicationId: string): Promise<ActionRes
   await kick(jobIds);
   const { syncInterviewLater } = await import("@/lib/team/interview-sync");
   await syncInterviewLater(app.id);
-  revalidatePath(`/team/bewerbungen/${app.id}`);
+  refresh();
   return { ok: true };
 }
 
@@ -1037,8 +1033,7 @@ export async function decideProbationAction(applicationId: string, decision: "PA
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Hat nicht geklappt." };
   }
-  revalidatePath(`/team/bewerbungen/${applicationId}`);
-  revalidatePath("/team/verzeichnis");
+  refresh();
   return { ok: true };
 }
 
@@ -1061,8 +1056,7 @@ export async function setMentorAction(applicationId: string, mentorId: string | 
   const res = await db.application.updateMany({ where: { id: applicationId, status: "ACCEPTED" }, data: { mentorId, mentorRemindedAt: null } });
   if (!res.count) return { ok: false, error: "Nur bei angenommenen Bewerbungen." };
   await audit("application.onboarding", { actorId: user.id, targetType: "application", targetId: applicationId, meta: { mentorId } });
-  revalidatePath(`/team/bewerbungen/${applicationId}`);
-  revalidatePath("/team/verzeichnis");
+  refresh();
   return { ok: true };
 }
 
@@ -1082,6 +1076,6 @@ export async function mentorFeedbackAction(applicationId: string, rating: "good"
     const job = await botLog(`🆘 Pate meldet bei einem neuen Teammitglied „braucht Hilfe“ – bitte reinschauen`, { applicationId, tone: "warn", url: `${publicEnv.appUrl}/team/bewerbungen/${applicationId}` });
     if (job) await kick([job]);
   }
-  revalidatePath(`/team/bewerbungen/${applicationId}`);
+  refresh();
   return { ok: true };
 }

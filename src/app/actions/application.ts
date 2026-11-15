@@ -1,7 +1,7 @@
 "use server";
 
 import { after } from "next/server";
-import { revalidatePath } from "next/cache";
+import { refresh } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { publicEnv } from "@/lib/env";
@@ -135,7 +135,7 @@ export async function submitApplicationAction(
       // KI-Punkte für den Bewertungsbogen (nur Einschätzung)
       if (claimedAt) await scoreClaimed(res.applicationId, claimedAt);
     });
-    revalidatePath("/dashboard");
+    refresh();
     return { ok: true, data: { applicationId: res.applicationId, publicId: res.publicId } };
   } catch (err) {
     if (err instanceof UserFacingError) return { ok: false, error: err.message, fieldErrors: err.fieldErrors };
@@ -158,7 +158,7 @@ export async function bookSlotAction(applicationId: string, slotId: string): Pro
     console.error("[slot]", e);
     return { ok: false, error: "Buchen hat nicht geklappt. Versuch es nochmal." };
   }
-  revalidatePath(`/dashboard/${applicationId}`);
+  refresh();
   return { ok: true };
 }
 
@@ -171,7 +171,7 @@ export async function cancelInterviewAction(applicationId: string): Promise<Acti
   const { cancelInterviewByApplicant } = await import("@/lib/team/slots");
   const r = await cancelInterviewByApplicant(db, { applicationId, userId: user.id });
   if (!r.ok) return { ok: false, error: r.error };
-  revalidatePath(`/dashboard/${applicationId}`);
+  refresh();
   return { ok: true };
 }
 
@@ -190,7 +190,7 @@ export async function submitFeedbackAction(input: z.input<typeof feedbackSchema>
     return { ok: false, error: "Du hast für diese Bewerbung schon Feedback gegeben. Danke!" };
   }
   await audit("application.feedback", { actorId: user.id, targetType: "application", targetId: app.id, meta: { rating: p.data.rating } });
-  revalidatePath(`/dashboard/${app.id}`);
+  refresh();
   return { ok: true };
 }
 
@@ -199,8 +199,7 @@ export async function setNotifyPositionsAction(on: boolean): Promise<ActionResul
   const user = await requireUser();
   await db.user.update({ where: { id: user.id }, data: { notifyNewPositions: on === true } });
   await audit("user.notify", { actorId: user.id, targetType: "user", targetId: user.id, meta: { on: on === true } });
-  revalidatePath("/konto");
-  revalidatePath("/dashboard");
+  refresh();
   return { ok: true };
 }
 
@@ -209,7 +208,7 @@ export async function setDigestOptOutAction(optOut: boolean): Promise<ActionResu
   const user = await requireUser();
   await db.user.update({ where: { id: user.id }, data: { digestOptOut: optOut === true } });
   await audit("user.digest", { actorId: user.id, targetType: "user", targetId: user.id, meta: { optOut: optOut === true } });
-  revalidatePath("/konto");
+  refresh();
   return { ok: true };
 }
 
@@ -222,7 +221,7 @@ export async function setTeamAwayAction(until: string | null): Promise<ActionRes
   if (date && (date.getTime() <= Date.now() || date.getTime() > Date.now() + 61 * 86_400_000)) return { ok: false, error: "Höchstens 60 Tage im Voraus." };
   await db.user.update({ where: { id: user.id }, data: { awayUntil: date } });
   await audit("user.digest", { actorId: user.id, targetType: "user", targetId: user.id, meta: { awayUntil: until } });
-  revalidatePath("/konto");
+  refresh();
   return { ok: true };
 }
 
@@ -240,7 +239,7 @@ export async function deleteDraftAction(draftId: string): Promise<ActionResult> 
   const user = await requireUser();
   if (!idSchema.safeParse(draftId).success) return { ok: false, error: "Ungültig." };
   await db.application.deleteMany({ where: { id: draftId, userId: user.id, status: "DRAFT" } });
-  revalidatePath("/dashboard");
+  refresh();
   return { ok: true };
 }
 
@@ -284,7 +283,7 @@ export async function withdrawApplicationAction(applicationId: string, reason?: 
     { applicationId: app.id, tone: inReview ? "warn" : "default", url: `${publicEnv.appUrl}/team/bewerbungen/${app.id}` },
   );
   if (job) await deliverNow([job]);
-  revalidatePath(`/dashboard/${app.id}`);
+  refresh();
   return { ok: true };
 }
 
@@ -304,7 +303,7 @@ export async function replyToTeamAction(input: z.input<typeof replySchema>): Pro
     await maybeAutoReply(r.messageId).catch((e) => console.error("[autoreply]", e));
   });
   if (r.jobIds.length) await deliverNow(r.jobIds);
-  revalidatePath(`/dashboard/${r.applicationId}`);
+  refresh();
   return { ok: true };
 }
 
@@ -437,7 +436,7 @@ export async function amendAnswersAction(input: z.input<typeof amendSchema>): Pr
     const { tagApplication } = await import("@/lib/ai/tagging");
     await tagApplication(app.id).catch((e) => console.error("[ai-tags]", e));
   });
-  revalidatePath(`/dashboard/${app.id}`);
+  refresh();
   return { ok: true, data: { changed: changes.length } };
 }
 
@@ -450,7 +449,7 @@ export async function createCalendarTokenAction(): Promise<ActionResult<{ url: s
   const token = newCalendarToken();
   await db.user.update({ where: { id: user.id }, data: { calendarToken: token } });
   await audit("user.calendar", { actorId: user.id, targetType: "user", targetId: user.id });
-  revalidatePath("/konto");
+  refresh();
   return { ok: true, data: { url: `${publicEnv.appUrl}/api/calendar/${token}.ics` } };
 }
 
@@ -485,7 +484,7 @@ export async function setApplicantAwayAction(applicationId: string, untilDate: s
     { applicationId: app.id, url: `${publicEnv.appUrl}/team/bewerbungen/${app.id}` },
   );
   if (job) await deliverNow([job]);
-  revalidatePath(`/dashboard/${app.id}`);
+  refresh();
   return { ok: true };
 }
 
@@ -523,8 +522,7 @@ export async function answerAiConsentAction(applicationId: string, allow: boolea
     { applicationId: app.id, url: `${publicEnv.appUrl}/team/bewerbungen/${app.id}` },
   );
   if (job) await deliverNow([job]);
-  revalidatePath(`/dashboard/${app.id}`);
-  revalidatePath(`/team/bewerbungen/${app.id}`);
+  refresh();
   return { ok: true };
 }
 
@@ -542,7 +540,7 @@ export async function toggleDeadlineReminderAction(positionId: string, on: boole
       create: { userId: user.id, positionId },
       update: { sentAt: null },
     });
-    revalidatePath(`/positionen/${pos.slug}`);
+    refresh();
   } else {
     await db.deadlineReminder.deleteMany({ where: { userId: user.id, positionId } });
   }

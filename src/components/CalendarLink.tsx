@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { CalendarPlus, Copy } from "@phosphor-icons/react/ssr";
 import { createCalendarTokenAction } from "@/app/actions/application";
@@ -8,7 +7,6 @@ import { confirmDialog } from "@/components/ConfirmDialog";
 
 /** Kalender-Abo (Gesprächstermine als .ics) – Link anzeigen, kopieren, neu erzeugen. */
 export function CalendarLink({ url: initial }: { url: string | null }) {
-  const router = useRouter();
   const [url, setUrl] = useState(initial);
   const [copied, setCopied] = useState(false);
   const [pending, start] = useTransition();
@@ -19,7 +17,6 @@ export function CalendarLink({ url: initial }: { url: string | null }) {
       const r = await createCalendarTokenAction();
       if (!r.ok) return setError(r.error);
       setUrl(r.data.url);
-      router.refresh();
     });
   return (
     <div className="space-y-2">

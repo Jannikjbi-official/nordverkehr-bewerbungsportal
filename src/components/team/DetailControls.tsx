@@ -1,7 +1,6 @@
 "use client";
 
 import type { KindKey } from "@/lib/kinds";
-import { useRouter } from "next/navigation";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import { useRef, useState, useTransition } from "react";
 import { mentionQueryAt } from "@/lib/team/mentions";
@@ -26,7 +25,6 @@ import { Select } from "@/components/Select";
 import type { ApplicationStatus } from "@prisma/client";
 
 function useAction() {
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const run = (fn: () => Promise<{ ok: boolean; error?: string }>, after?: () => void) => {
@@ -36,7 +34,6 @@ function useAction() {
       if (!res.ok) setError(res.error ?? "Fehler");
       else {
         after?.();
-        router.refresh();
       }
     });
   };

@@ -1,13 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Bell, BellSlash } from "@phosphor-icons/react/ssr";
 import { setNotifyPositionsAction } from "@/app/actions/application";
 
 /** „Bei neuen Stellen per DM benachrichtigen“ an/aus. */
 export function NotifyToggle({ on, compact }: { on: boolean; compact?: boolean }) {
-  const router = useRouter();
   const [value, setValue] = useState(on);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +15,6 @@ export function NotifyToggle({ on, compact }: { on: boolean; compact?: boolean }
       const r = await setNotifyPositionsAction(!value);
       if (!r.ok) return setError(r.error);
       setValue(!value);
-      router.refresh();
     });
   return (
     <div className="space-y-1">

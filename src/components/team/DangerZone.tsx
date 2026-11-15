@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Trash, WarningOctagon } from "@phosphor-icons/react/ssr";
 import { resetApplicationsAction } from "@/app/actions/admin";
@@ -11,7 +10,6 @@ import { HelpLink } from "@/components/team/HelpLink";
  * den Bestätigungssatz exakt eintippen. Der Knopf bleibt bis dahin gesperrt.
  */
 export function DangerZone({ counts, phrase }: { counts: { all: number; drafts: number; submitted: number }; phrase: string }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState("");
   const [resetNumbering, setResetNumbering] = useState(false);
@@ -54,7 +52,6 @@ export function DangerZone({ counts, phrase }: { counts: { all: number; drafts: 
               if (r.ok) {
                 setOpen(false);
                 setTyped("");
-                router.refresh();
               }
             });
           }}

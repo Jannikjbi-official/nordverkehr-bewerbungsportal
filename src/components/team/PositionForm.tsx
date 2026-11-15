@@ -110,7 +110,6 @@ export function PositionForm({ position, applicationCount = 0 }: { position: Pos
       if (!res.ok) return setError(res.error);
       setSaved(true);
       if (!p.id) router.push(`/team/positionen/${res.data.id}`);
-      else router.refresh();
     });
   }
 

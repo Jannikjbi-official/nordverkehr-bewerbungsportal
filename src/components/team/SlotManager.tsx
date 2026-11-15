@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { CalendarPlus, Trash } from "@phosphor-icons/react/ssr";
 import { createSlotsAction, deleteSlotAction } from "@/app/actions/team";
@@ -8,7 +7,6 @@ import { confirmDialog } from "@/components/ConfirmDialog";
 
 /** Neue freie Termine anlegen: Start, Anzahl, Dauer, Pause. */
 export function SlotCreator() {
-  const router = useRouter();
   const [start, setStart] = useState("");
   const [count, setCount] = useState(4);
   const [duration, setDuration] = useState(30);
@@ -35,7 +33,6 @@ export function SlotCreator() {
         run(async () => {
           const r = await createSlotsAction({ start: new Date(start).toISOString(), count, durationMin: duration, gapMin: gap, note: note || undefined });
           setMsg(r.ok ? { ok: true, text: `${r.data.count} Termin(e) angelegt.` } : { ok: false, text: r.error });
-          if (r.ok) router.refresh();
         });
       }}
     >
@@ -84,7 +81,6 @@ export function SlotCreator() {
 }
 
 export function DeleteSlotButton({ slotId, booked }: { slotId: string; booked: boolean }) {
-  const router = useRouter();
   const [pending, run] = useTransition();
   const [error, setError] = useState<string | null>(null);
   return (
@@ -101,7 +97,6 @@ export function DeleteSlotButton({ slotId, booked }: { slotId: string; booked: b
           run(async () => {
             const r = await deleteSlotAction(slotId);
             if (!r.ok) setError(r.error);
-            else router.refresh();
           });
         }}
       >

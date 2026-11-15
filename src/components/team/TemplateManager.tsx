@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import { Select } from "@/components/Select";
 import { useState, useTransition } from "react";
@@ -57,7 +56,6 @@ function matchesKind(t: Pick<Template, "kinds">, f: KindFilter) {
 }
 
 export function TemplateManager({ templates: initial }: { templates: Template[] }) {
-  const router = useRouter();
   const [templates, setTemplates] = useState(initial);
   const [category, setCategory] = useState<TemplateCategory>("EINGANG");
   /** Ansicht: alle Bausteine, nur globale oder das, was bei einer Bewerbungsart erscheint (eigene + globale) */
@@ -90,7 +88,6 @@ export function TemplateManager({ templates: initial }: { templates: Template[] 
     setTemplates((all) => [...all.filter((t) => t.category !== category), ...merged]);
     start(async () => {
       await reorderTemplatesAction(merged.map((t) => t.id));
-      router.refresh();
     });
   }
 
@@ -109,7 +106,6 @@ export function TemplateManager({ templates: initial }: { templates: Template[] 
       if (!res.ok) setError(res.error);
       else {
         setEditing(null);
-        router.refresh();
       }
     });
   }
@@ -159,7 +155,6 @@ export function TemplateManager({ templates: initial }: { templates: Template[] 
                     if (!(await confirmDialog({ title: "Baustein löschen?", body: `„${t.title}“ wird gelöscht.`, confirmLabel: "Löschen", tone: "danger" }))) return;
                     start(async () => {
                       await deleteTemplateAction(t.id);
-                      router.refresh();
                     });
                   }}
                 />

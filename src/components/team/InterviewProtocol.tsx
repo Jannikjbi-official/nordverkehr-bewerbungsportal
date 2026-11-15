@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { CheckSquare, NotePencil, Plus, Square, Trash } from "@phosphor-icons/react/ssr";
 import { addInterviewNoteAction, addInterviewQuestionsAction, deleteInterviewNoteAction, toggleInterviewCheckAction } from "@/app/actions/team";
@@ -10,7 +9,6 @@ import type { Protocol, ProtocolNote } from "@/lib/team/interview";
 const fmt = (iso: string) => new Intl.DateTimeFormat("de-DE", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Berlin" }).format(new Date(iso));
 
 function useRun() {
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const run = (fn: () => Promise<{ ok: boolean; error?: string }>, after?: () => void) => {
@@ -19,7 +17,6 @@ function useRun() {
       const r = await fn();
       if (!r.ok) return setError(r.error ?? "Fehler");
       after?.();
-      router.refresh();
     });
   };
   return { pending, error, run };

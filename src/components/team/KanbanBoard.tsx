@@ -3,7 +3,6 @@
 import { kindOf, type KindKey } from "@/lib/kinds";
 import Link from "next/link";
 import { confirmDialog } from "@/components/ConfirmDialog";
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
   DndContext,
@@ -46,7 +45,6 @@ export interface BoardItem {
 }
 
 export function KanbanBoard({ items: initial }: { items: BoardItem[] }) {
-  const router = useRouter();
   const [items, setItems] = useState(initial);
   const [dragging, setDragging] = useState<BoardItem | null>(null);
   const [message, setMessage] = useState<{ tone: "ok" | "err"; text: string; href?: string } | null>(null);
@@ -88,7 +86,6 @@ export function KanbanBoard({ items: initial }: { items: BoardItem[] }) {
           text: `${item.name}: ${STATUS_LABEL[to]}. Denk an eine Nachricht an den Bewerber.`,
           href: `/team/bewerbungen/${item.id}?status=${to}#nachricht`,
         });
-        router.refresh();
       }
     });
   }

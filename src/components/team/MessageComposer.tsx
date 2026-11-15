@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { createPortal } from "react-dom";
@@ -48,7 +47,6 @@ interface Props {
 }
 
 export function MessageComposer({ applicationId, publicId, templates, vars, suggested, statusTargets, sender, followUp = { reminderDays: 0, closeDays: 7 } }: Props) {
-  const router = useRouter();
   const textarea = useRef<HTMLTextAreaElement>(null);
   const [category, setCategory] = useState<TemplateCategory>(suggested[0] ?? "EINGANG");
   const [title, setTitle] = useState(DEFAULT_TITLE);
@@ -151,7 +149,6 @@ export function MessageComposer({ applicationId, publicId, templates, vars, sugg
         setExpectReply(false);
         setExpectTouched(false);
         setSent(true);
-        router.refresh();
       }
     });
   }

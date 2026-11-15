@@ -1,12 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { setDigestOptOutAction } from "@/app/actions/application";
 
 /** Teammitglieder: persönliche Morgen-DM mit den eigenen offenen Punkten an/aus. */
 export function DigestToggle({ on, globallyOff }: { on: boolean; globallyOff: boolean }) {
-  const router = useRouter();
   const [value, setValue] = useState(on);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -16,7 +14,6 @@ export function DigestToggle({ on, globallyOff }: { on: boolean; globallyOff: bo
       const r = await setDigestOptOutAction(!next);
       if (!r.ok) return setError(r.error);
       setValue(next);
-      router.refresh();
     });
   return (
     <div className="space-y-1">

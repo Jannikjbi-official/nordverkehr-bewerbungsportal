@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { confirmDialog } from "@/components/ConfirmDialog";
 import { Select } from "@/components/Select";
 import { useState, useTransition } from "react";
@@ -8,7 +7,6 @@ import { Trash } from "@phosphor-icons/react/ssr";
 import { addNoteAction, banUserAction, deleteNoteAction, liftBanAction } from "@/app/actions/team";
 
 function useRun() {
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const run = (fn: () => Promise<{ ok: boolean; error?: string }>, after?: () => void) => {
@@ -18,7 +16,6 @@ function useRun() {
       if (!r.ok) setError(r.error ?? "Fehler");
       else {
         after?.();
-        router.refresh();
       }
     });
   };

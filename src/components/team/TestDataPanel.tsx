@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { CheckCircle, Flask, Trash, WarningCircle } from "@phosphor-icons/react/ssr";
 import { createTestApplicationsAction, deleteTestApplicationsAction } from "@/app/actions/admin";
@@ -14,7 +13,6 @@ interface Scenario {
 
 /** Admin: Testbewerbungen pro Stelle und Szenario anlegen bzw. alle wieder löschen. */
 export function TestDataPanel({ positions, scenarios, existing }: { positions: { id: string; title: string; status: string }[]; scenarios: Scenario[]; existing: number }) {
-  const router = useRouter();
   const [pos, setPos] = useState<string[]>(positions.filter((p) => p.status !== "HIDDEN").map((p) => p.id));
   const [sc, setSc] = useState<string[]>(scenarios.map((s) => s.key));
   const [postToDiscord, setPostToDiscord] = useState(false);
@@ -29,7 +27,6 @@ export function TestDataPanel({ positions, scenarios, existing }: { positions: {
       setResult(null);
       const r = await fn();
       setResult(r.ok ? { ok: true, text: r.data.message } : { ok: false, text: r.error });
-      if (r.ok) router.refresh();
     });
 
   return (
