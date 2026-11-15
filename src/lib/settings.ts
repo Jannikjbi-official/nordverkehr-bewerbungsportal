@@ -77,6 +77,8 @@ export const settingsSchema = z.object({
   /** Phase 2 (Bewerbungsgespräch) erst ab diesem Team-Schnitt im Bewertungsbogen (0 = keine Hürde) */
   /** Anonyme Erstbewertung: Name, Avatar und Discord-Daten erst nach der eigenen Bewertung zeigen */
   "rating.anonymousFirst": bool(false),
+  /** Standard-Prüfliste fürs Team (pro Stelle überschreibbar) */
+  "review.checklist": z.string().max(2000).default(["Alter plausibel", "Bann-Liste geprüft", "Discord-Name passt zu den Regeln", "Antworten in eigenen Worten"].join("\n")),
   "interview.minStars": z.coerce.number().min(0).max(5).default(3),
   /** Rückfrage mit Frist: Erinnerung an den Bewerber nach X Tagen ohne Antwort (0 = aus) */
   "followup.reminderDays": z.coerce.number().int().min(0).max(30).default(3),

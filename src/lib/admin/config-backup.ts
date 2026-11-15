@@ -62,6 +62,7 @@ export const backupSchema = z.object({
       seats: z.number().int().nullable().optional(),
       nickPrefix: z.string().max(12).nullable().optional(),
       quizDrawCount: z.number().int().nullable().optional(),
+      reviewChecklist: z.array(str(120)).max(15).optional(),
     }),
   ).max(50),
   sections: z.array(
@@ -125,6 +126,7 @@ export async function exportConfig(db: PrismaClient): Promise<Backup> {
       seats: p.seats ?? null,
       nickPrefix: p.nickPrefix ?? null,
       quizDrawCount: p.quizDrawCount ?? null,
+      reviewChecklist: p.reviewChecklist ?? [],
     })),
     sections: sections.map((s) => ({
       key: s.key,

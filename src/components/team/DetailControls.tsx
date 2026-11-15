@@ -11,6 +11,7 @@ import {
   changeStatusAction,
   deleteCommentAction,
   requestSecondOpinionAction,
+  toggleReviewCheckAction,
   setFollowUpAction,
   clearFollowUpAction,
   setImprovementTipAction,
@@ -451,5 +452,45 @@ export function FollowUpDone({ id }: { id: string }) {
     <button type="button" className="nv-btn nv-btn-ghost nv-btn-sm shrink-0" disabled={pending} onClick={() => run(() => clearFollowUpAction(id))}>
       Erledigt
     </button>
+  );
+}
+
+/** Prüfliste: Punkte abhaken, mit Name und Zeit. */
+export function ReviewChecklist({ applicationId, items }: { applicationId: string; items: { item: string; by: string | null; at: string | null }[] }) {
+  const { pending, error, run } = useAction();
+  const done = items.filter((i) => i.at).length;
+  return (
+    <div className="space-y-2" data-testid="review-checklist">
+      <p className="nv-mono flex items-center justify-between gap-2">
+        Prüfliste{" "}
+        <span className={`tabular-nums normal-case tracking-normal ${done === items.length ? "text-[var(--tone-success)]" : "text-muted"}`}>
+          {done}/{items.length}
+        </span>
+      </p>
+      <ul className="space-y-1.5">
+        {items.map((i) => (
+          <li key={i.item}>
+            <label className="flex cursor-pointer items-start gap-2.5 text-sm">
+              <input
+                type="checkbox"
+                className="nv-check mt-0.5"
+                checked={!!i.at}
+                disabled={pending}
+                onChange={(e) => run(() => toggleReviewCheckAction(applicationId, i.item, e.target.checked))}
+              />
+              <span className="min-w-0">
+                <span className={i.at ? "text-fg-2 line-through decoration-[var(--nv-faint)]" : ""}>{i.item}</span>
+                {i.at && (
+                  <span className="block text-[0.7rem] text-muted">
+                    {i.by ?? "Gelöscht"} · {new Date(i.at).toLocaleDateString("de-DE", { day: "numeric", month: "short", timeZone: "Europe/Berlin" })}
+                  </span>
+                )}
+              </span>
+            </label>
+          </li>
+        ))}
+      </ul>
+      {error && <p className="nv-error text-xs">{error}</p>}
+    </div>
   );
 }

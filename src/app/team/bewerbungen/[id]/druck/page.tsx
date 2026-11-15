@@ -47,6 +47,7 @@ async function PrintView({ params, searchParams }: PageProps<"/team/bewerbungen/
       statusChanges: { include: { actor: { select: { globalName: true, username: true } } }, orderBy: { createdAt: "asc" } },
       interviewNotes: { include: { author: { select: { globalName: true, username: true } } }, orderBy: { createdAt: "asc" } },
       interviewChecks: { include: { checkedBy: { select: { globalName: true, username: true } } } },
+      reviewChecks: { include: { checkedBy: { select: { globalName: true, username: true } } }, orderBy: { checkedAt: "asc" } },
     },
   });
   if (!app || app.status === "DRAFT") notFound();
@@ -202,6 +203,19 @@ async function PrintView({ params, searchParams }: PageProps<"/team/bewerbungen/
                     ))}
                   </div>
                 )}
+              </section>
+            )}
+
+            {app.reviewChecks.length > 0 && (
+              <section className="nv-print-avoid border-t border-line pt-4">
+                <h2 className="font-semibold text-base mb-2">Prüfliste (intern)</h2>
+                <ul className="space-y-1">
+                  {app.reviewChecks.map((c) => (
+                    <li key={c.id}>
+                      ✓ {c.item} <span className="text-muted">– {who(c.checkedBy)} · {formatDay(c.checkedAt)}</span>
+                    </li>
+                  ))}
+                </ul>
               </section>
             )}
 

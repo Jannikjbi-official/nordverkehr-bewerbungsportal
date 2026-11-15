@@ -163,6 +163,7 @@ model User {
   suggestionsHandled Suggestion[]       @relation("SuggestionHandler")
   deadlineReminders  DeadlineReminder[]
   followUps          FollowUpReminder[]
+  reviewChecks       ReviewCheck[]      @relation("ReviewCheckAuthor")
 }
 
 /// Allgemeine Angaben eines Bewerbers (einmal ausgefüllt, für weitere Bewerbungen wiederverwendet).
@@ -247,6 +248,8 @@ model Position {
   quizDrawCount        Int?
   /// Vorlage fürs Gesprächsprotokoll (leer = Standard aus den Einstellungen)
   interviewQuestions   String[]        @default([])
+  /// Prüfliste fürs Team (eine Zeile pro Punkt, leer = Standard aus den Einstellungen)
+  reviewChecklist      String[]        @default([])
   /// Vier-Augen-Prinzip: Annahme erst ab so vielen Pro-Stimmen (null = aus)
   minProVotes          Int?
   /// Vier-Augen-Prinzip: Annahme nur durch Admins
@@ -449,6 +452,7 @@ model Application {
   ratings         Rating[]
   reviewRequests  ReviewRequest[]
   followUps       FollowUpReminder[]
+  reviewChecks    ReviewCheck[]
   slot            InterviewSlot?
   feedback        Feedback?
   interviewNotes  InterviewNote[]
@@ -822,4 +826,17 @@ model FollowUpReminder {
 
   @@index([userId, sentAt])
   @@index([dueAt, sentAt])
+}
+
+/// Prüfliste: abgehakte Punkte pro Bewerbung (z. B. „Bann-Liste geprüft“)
+model ReviewCheck {
+  id            String      @id @default(cuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  item          String
+  checkedById   String?
+  checkedBy     User?       @relation("ReviewCheckAuthor", fields: [checkedById], references: [id], onDelete: SetNull)
+  checkedAt     DateTime    @default(now())
+
+  @@unique([applicationId, item])
 }

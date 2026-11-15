@@ -35,6 +35,7 @@ export type AuditAction =
   | "application.comment"
   | "application.second_opinion"
   | "application.tip"
+  | "application.review_check"
   | "application.message"
   | "application.delete"
   | "application.export"
@@ -122,6 +123,7 @@ export const AUDIT_LABELS: Record<string, string> = {
   "application.comment": "Kommentar",
   "application.second_opinion": "Zweitmeinung angefordert",
   "application.tip": "Tipp fürs nächste Mal gespeichert",
+  "application.review_check": "Prüfliste abgehakt",
   "application.message": "Nachricht gesendet",
   "application.delete": "Bewerbung gelöscht",
   "application.export": "Bewerbung exportiert",

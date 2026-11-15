@@ -436,6 +436,11 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
         </label>
         <textarea id="iv-q" className="nv-input text-sm !min-h-40" maxLength={3000} value={s["interview.defaultQuestions"]} onChange={(e) => set("interview.defaultQuestions", e.target.value)} />
         <p className="nv-help mt-1">Notizen hängen am Fragetext – benennst du eine Frage um, bleiben alte Notizen unter „Weitere Notizen“ sichtbar.</p>
+        <label htmlFor="rv-chk" className="nv-field-label mt-4 block">
+          Standard-Prüfliste fürs Team (ein Punkt pro Zeile)
+        </label>
+        <textarea id="rv-chk" className="nv-input text-sm !min-h-28" maxLength={2000} value={s["review.checklist"]} onChange={(e) => set("review.checklist", e.target.value)} />
+        <p className="nv-help mt-1">Steht in jeder Bewerbung zum Abhaken (wer, wann). Pro Stelle überschreibbar unter Positionen.</p>
       </Card>
       )}
 

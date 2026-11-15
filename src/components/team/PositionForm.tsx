@@ -29,6 +29,7 @@ interface PositionData {
   quizMinScore: number | null;
   quizDrawCount: number | null;
   interviewQuestions: string[];
+  reviewChecklist: string[];
   minProVotes: number | null;
   requireAdminApproval: boolean;
   teamRoleIds: string[];
@@ -64,6 +65,7 @@ const EMPTY: PositionData = {
   quizMinScore: null,
   quizDrawCount: null,
   interviewQuestions: [],
+  reviewChecklist: [],
   minProVotes: null,
   requireAdminApproval: false,
   teamRoleIds: [],
@@ -88,6 +90,7 @@ export function PositionForm({ position, applicationCount = 0 }: { position: Pos
   const [p, setP] = useState<PositionData>(position ?? EMPTY);
   const [tasks, setTasks] = useState((position?.tasks ?? []).join("\n"));
   const [ivq, setIvq] = useState((position?.interviewQuestions ?? []).join("\n"));
+  const [chk, setChk] = useState((position?.reviewChecklist ?? []).join("\n"));
   const [crit, setCrit] = useState((position?.ratingCriteria ?? []).join("\n"));
   const [reqs, setReqs] = useState((position?.requirements ?? []).join("\n"));
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +106,7 @@ export function PositionForm({ position, applicationCount = 0 }: { position: Pos
   function save() {
     setError(null);
     start(async () => {
-      const res = await savePositionAction({ ...p, tasks: lines(tasks), requirements: lines(reqs), interviewQuestions: lines(ivq), ratingCriteria: lines(crit), acceptRoleId: p.acceptRoleId || null, nickPrefix: p.nickPrefix?.trim() || null });
+      const res = await savePositionAction({ ...p, tasks: lines(tasks), requirements: lines(reqs), interviewQuestions: lines(ivq), reviewChecklist: lines(chk), ratingCriteria: lines(crit), acceptRoleId: p.acceptRoleId || null, nickPrefix: p.nickPrefix?.trim() || null });
       if (!res.ok) return setError(res.error);
       setSaved(true);
       if (!p.id) router.push(`/team/positionen/${res.data.id}`);
@@ -165,6 +168,13 @@ export function PositionForm({ position, applicationCount = 0 }: { position: Pos
           </label>
           <textarea id="p-ivq" className="nv-input text-sm" rows={4} placeholder="Leer = Standard-Fragen aus den Einstellungen" value={ivq} onChange={(e) => { setIvq(e.target.value); setSaved(false); }} />
           <p className="nv-help mt-1">Nur für das Team: erscheinen im Reiter „Gespräch“ der Bewerbung zum Abhaken, mit Notizen pro Frage.</p>
+        </div>
+        <div className="sm:col-span-2">
+          <label htmlFor="p-chk" className="nv-field-label">
+            Prüfliste fürs Team (ein Punkt pro Zeile)
+          </label>
+          <textarea id="p-chk" className="nv-input text-sm" rows={4} placeholder="Leer = Standard-Prüfliste aus den Einstellungen" value={chk} onChange={(e) => { setChk(e.target.value); setSaved(false); }} />
+          <p className="nv-help mt-1">Erscheint in jeder Bewerbung zum Abhaken (wer, wann) – z. B. „Bann-Liste geprüft“.</p>
         </div>
         <div className="sm:col-span-2">
           <label htmlFor="p-crit" className="nv-field-label">

@@ -91,6 +91,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     items: [
       { kind: "neu", text: "**KI-Zustimmung per Knopf** – schickt das Team den Baustein „KI-Einschätzung – Zustimmung“, bekommt der Bewerber im Portal ein Fenster mit „Erlauben“ und „Ablehnen“. Das Team sieht die Antwort bei der KI-Einschätzung und im Bot-Log. Ablehnen gilt immer, vorhandene KI-Punkte werden dann gelöscht." },
       { kind: "neu", text: "**Globale Bausteine** – zehn neue Texte für alle Bewerbungsarten, z. B. „Discord-DMs öffnen“, „Bitte dem Discord beitreten“, „Letzte Erinnerung“, „Absage – kopierte Antworten“ und „Zurückziehen bestätigt“." },
+      { kind: "neu", text: "**Prüfliste** – in jeder Bewerbung Punkte wie „Bann-Liste geprüft“ zum Abhaken, mit Name und Datum, auch in der PDF. Standard unter Admin → Bewerbungen & Ablauf, pro Stelle anpassbar." },
       { kind: "neu", text: "**Wiedervorlage** – in jeder laufenden Bewerbung „Erinnere mich“ mit Datum und Notiz. Am Tag kommt eine DM, und die Bewerbung steht in der Team-Übersicht unter „Deine Wiedervorlagen“, bis du sie als erledigt markierst." },
       { kind: "neu", text: "**Als App installieren** – das Portal lässt sich auf den Startbildschirm legen (Handy: „Zum Home-Bildschirm“) und startet dann ohne Browserleiste." },
       { kind: "neu", text: "**Lesbarkeit** – unten auf jeder Seite: „Größere Schrift“ und „Mehr Kontrast“, gespeichert auf deinem Gerät." },

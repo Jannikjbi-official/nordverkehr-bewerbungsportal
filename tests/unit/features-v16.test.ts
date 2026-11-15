@@ -177,3 +177,12 @@ describe("Fehler-Alarm", async () => {
     expect(cleanPath("/dashboard#x")).toBe("/dashboard");
   });
 });
+
+describe("Prüfliste", async () => {
+  const { checklistFor } = await import("@/lib/team/review-checklist");
+  it("eigene Liste der Stelle vor Standard, ohne Leerzeilen und Doppelte", () => {
+    expect(checklistFor({ reviewChecklist: [] }, "A\n\nB\nA")).toEqual(["A", "B"]);
+    expect(checklistFor({ reviewChecklist: [" X ", "", "Y"] }, "A\nB")).toEqual(["X", "Y"]);
+    expect(checklistFor({}, "")).toEqual([]);
+  });
+});

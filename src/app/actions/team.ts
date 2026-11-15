@@ -418,6 +418,32 @@ export async function clearFollowUpAction(id: string): Promise<ActionResult> {
   return { ok: true };
 }
 
+/** Punkt der Prüfliste abhaken bzw. zurücknehmen. Nur Punkte, die zur Prüfliste der Stelle gehören. */
+export async function toggleReviewCheckAction(applicationId: string, item: string, done: boolean): Promise<ActionResult> {
+  const { user, access } = await requireTeam();
+  {
+    const denied = await guardApp(user, access, applicationId);
+    if (denied) return denied;
+  }
+  const app = await db.application.findUnique({ where: { id: applicationId }, select: { position: { select: { reviewChecklist: true } } } });
+  if (!app || typeof item !== "string") return { ok: false, error: "Ungültig." };
+  const { checklistFor } = await import("@/lib/team/review-checklist");
+  const { getSettings } = await import("@/lib/settings");
+  if (!checklistFor(app.position, (await getSettings())["review.checklist"]).includes(item)) return { ok: false, error: "Dieser Punkt steht nicht (mehr) auf der Prüfliste." };
+  if (done) {
+    try {
+      await db.reviewCheck.upsert({ where: { applicationId_item: { applicationId, item } }, create: { applicationId, item, checkedById: user.id }, update: {} });
+    } catch (e) {
+      if ((e as { code?: string }).code !== "P2002") throw e;
+    }
+  } else {
+    await db.reviewCheck.deleteMany({ where: { applicationId, item } });
+  }
+  await audit("application.review_check", { actorId: user.id, targetType: "application", targetId: applicationId, meta: { item: item.slice(0, 80), done } });
+  revalidatePath(`/team/bewerbungen/${applicationId}`);
+  return { ok: true };
+}
+
 const commentSchema = z.object({ applicationId: id, body: z.string().trim().min(1).max(3000) });
 
 export async function addCommentAction(input: z.input<typeof commentSchema>): Promise<ActionResult> {

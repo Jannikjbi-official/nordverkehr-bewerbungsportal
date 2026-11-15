@@ -12,6 +12,7 @@ import {
   CommentBox,
   FollowUp,
   ImprovementTip,
+  ReviewChecklist,
   SecondOpinion,
   DeleteCommentButton,
   InterviewForm,
@@ -62,6 +63,7 @@ import type { ApplicationStatus } from "@prisma/client";
 import { isAiConfigured } from "@/lib/ai/config";
 import { nowMs } from "@/lib/time";
 import { todayBerlin } from "@/lib/changelog";
+import { checklistFor } from "@/lib/team/review-checklist";
 
 export const metadata: Metadata = { title: "Bewerbung" };
 
@@ -219,7 +221,8 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
   const wantsFollowUps = showProtocol && app.status === "INTERVIEW";
   const qIds = app.answers.map((a) => a.questionId).filter((x): x is string => !!x);
   const uploadIds = app.answers.flatMap((a) => (a.type === "FILE" && Array.isArray(a.value) ? (a.value as string[]) : []));
-  const [peers, minRows, mentionable, existingUploadRows, myFollowUp] = await Promise.all([
+  const checklist = checklistFor(app.position, settings["review.checklist"]);
+  const [peers, minRows, mentionable, existingUploadRows, myFollowUp, reviewChecks] = await Promise.all([
     db.application.findMany({
       where: { positionId: app.positionId, id: { not: app.id }, status: { in: ["SUBMITTED", "IN_REVIEW", "INTERVIEW"] } },
       orderBy: { submittedAt: "asc" },
@@ -233,6 +236,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
       .then((rows) => rows.map((u) => ({ id: u.id, username: u.username, name: u.globalName || u.username }))),
     uploadIds.length ? db.upload.findMany({ where: { id: { in: uploadIds } }, select: { id: true } }) : Promise.resolve([]),
     db.followUpReminder.findFirst({ where: { applicationId: app.id, userId: me.id, sentAt: null }, select: { id: true, dueAt: true, note: true } }),
+    db.reviewCheck.findMany({ where: { applicationId: app.id }, select: { item: true, checkedAt: true, checkedBy: { select: { globalName: true, username: true } } } }),
   ]);
   const existingUploads = new Set(existingUploadRows.map((u) => u.id));
   const mins = new Map(minRows.map((q) => [q.id, q.minLength]));
@@ -616,6 +620,18 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
             )}
             <HelpLink id="status" label="Was bedeuten die Status?" />
             {app.status === "REJECTED" && <ImprovementTip applicationId={app.id} tip={app.improvementTip} />}
+            {checklist.length > 0 && (
+              <>
+                <div className="nv-divider" />
+                <ReviewChecklist
+                  applicationId={app.id}
+                  items={checklist.map((item) => {
+                    const c = reviewChecks.find((r) => r.item === item);
+                    return { item, by: c ? (c.checkedBy?.globalName || c.checkedBy?.username || null) : null, at: c?.checkedAt.toISOString() ?? null };
+                  })}
+                />
+              </>
+            )}
             {["SUBMITTED", "IN_REVIEW", "INTERVIEW"].includes(app.status) && <MuteControl applicationId={app.id} until={app.mutedUntil?.toISOString() ?? null} nowMs={nowMs()} />}
             <div className="nv-divider" />
             {["SUBMITTED", "IN_REVIEW", "INTERVIEW"].includes(app.status) && (
