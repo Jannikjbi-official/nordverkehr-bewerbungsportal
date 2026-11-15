@@ -10,6 +10,7 @@ import { DiscordMarkdown } from "@/components/DiscordMarkdown";
 import { ChatAvatar, ChatRoleBadge, personName } from "@/components/ChatParticipant";
 import {
   CommentBox,
+  SecondOpinion,
   DeleteCommentButton,
   InterviewForm,
   RetryDeliveryButton,
@@ -86,6 +87,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
       slot: { select: { id: true } },
       feedback: true,
       ratings: { include: { user: { select: { globalName: true, username: true } } }, orderBy: { createdAt: "asc" } },
+      reviewRequests: { where: { doneAt: null }, include: { user: { select: { globalName: true, username: true } } }, orderBy: { createdAt: "asc" } },
       comments: { include: { author: { select: { globalName: true, username: true, discordId: true, avatar: true } } }, orderBy: { createdAt: "asc" } },
       messages: { include: { author: { select: { globalName: true, username: true, discordId: true, avatar: true, isAdmin: true, isTeam: true } } }, orderBy: { createdAt: "asc" } },
       statusChanges: { include: { actor: { select: { globalName: true, username: true } } }, orderBy: { createdAt: "asc" } },
@@ -151,6 +153,8 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
   const aiEnabled = settings["ai.enabled"] && isAiConfigured();
   const myRating = app.ratings.find((r) => r.userId === me.id);
   const criteria = criteriaFor(app.position);
+  // Zweitmeinung: Wer gefragt wurde, sieht die anderen Bewertungen erst nach der eigenen
+  const blindRating = app.reviewRequests.some((r) => r.userId === me.id) && !Object.keys(cleanScores(myRating?.scores, criteria)).length;
   // Schnitt inkl. Bewertungen von vor einem Wechsel auf eigene Kriterien (Panel zeigt nur die aktuellen Kriterien)
   const ratingSummary = summarizeRatings(app.ratings, withLegacy(criteria));
   // Phase 2 (Gespräch) erst ab X Sternen Team-Schnitt
@@ -211,7 +215,7 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
   // Vergleich (andere laufende Bewerbungen derselben Stelle) und Mindestlängen für Nachfragen – parallel
   const wantsFollowUps = showProtocol && app.status === "INTERVIEW";
   const qIds = app.answers.map((a) => a.questionId).filter((x): x is string => !!x);
-  const [peers, minRows] = await Promise.all([
+  const [peers, minRows, mentionable] = await Promise.all([
     db.application.findMany({
       where: { positionId: app.positionId, id: { not: app.id }, status: { in: ["SUBMITTED", "IN_REVIEW", "INTERVIEW"] } },
       orderBy: { submittedAt: "asc" },
@@ -219,6 +223,10 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
       select: { id: true, publicId: true, user: { select: { globalName: true, username: true } } },
     }),
     wantsFollowUps ? db.question.findMany({ where: { id: { in: qIds } }, select: { id: true, minLength: true } }) : Promise.resolve([]),
+    // Für @Erwähnungen in Kommentaren
+    db.user
+      .findMany({ where: { isTeam: true, id: { not: me.id } }, select: { id: true, username: true, globalName: true }, orderBy: { username: "asc" }, take: 200 })
+      .then((rows) => rows.map((u) => ({ id: u.id, username: u.username, name: u.globalName || u.username }))),
   ]);
   const mins = new Map(minRows.map((q) => [q.id, q.minLength]));
   // Nachfragen aus der Bewerbung (knappe Antworten, Quizfehler) – nur solange das Gespräch noch ansteht
@@ -657,10 +665,18 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
               bot={bot}
               isAdmin={access.isAdmin}
               consentGrantedAt={app.aiConsentAnswer === "granted" ? (app.aiConsentAnsweredAt?.toISOString() ?? null) : null}
+              blind={blindRating}
               raters={app.ratings
                 .filter((r) => r.userId !== me.id || Object.keys(cleanScores(r.scores, criteria)).length)
                 .map((r) => ({ name: r.user.globalName || r.user.username, avg: summarizeRatings([r], withLegacy(criteria)).overall }))}
             />
+                    {["SUBMITTED", "IN_REVIEW", "INTERVIEW"].includes(app.status) && (
+                      <SecondOpinion
+                        applicationId={app.id}
+                        members={mentionable.filter((m) => !app.ratings.some((r) => r.userId === m.id) && !app.reviewRequests.some((r) => r.userId === m.id))}
+                        open={app.reviewRequests.map((r) => ({ name: r.user.globalName || r.user.username, at: r.createdAt.toISOString() }))}
+                      />
+                    )}
                     <div className="nv-divider" />
                     <p className="nv-mono flex items-center justify-between gap-2">
                       Abstimmung <HelpLink id="abstimmung" label="Wofür?" />
@@ -691,11 +707,21 @@ async function Detail({ params, searchParams }: PageProps<"/team/bewerbungen/[id
                     </p>
                     {(c.authorId === me.id || access.isAdmin) && <DeleteCommentButton commentId={c.id} />}
                   </div>
-                  <p className="mt-0.5 whitespace-pre-wrap text-fg-2">{c.body}</p>
+                  <p className="mt-0.5 whitespace-pre-wrap text-fg-2">
+                    {c.body.split(/(@[a-z0-9._]{2,32})/gi).map((part, i) =>
+                      i % 2 ? (
+                        <span key={i} className="text-red-text font-medium">
+                          {part}
+                        </span>
+                      ) : (
+                        part
+                      ),
+                    )}
+                  </p>
                 </li>
               ))}
             </ul>
-            <CommentBox applicationId={app.id} />
+            <CommentBox applicationId={app.id} members={mentionable} />
                   </div>
                 ),
               },

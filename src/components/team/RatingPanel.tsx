@@ -31,6 +31,7 @@ export function RatingPanel({
   isAdmin = false,
   criteria = STANDARD_CRITERIA,
   consentGrantedAt = null,
+  blind = false,
 }: {
   applicationId: string;
   /** Kriterien der Stelle (eigener Bogen oder Standard) */
@@ -44,6 +45,8 @@ export function RatingPanel({
   isAdmin?: boolean;
   /** Bewerber hat die KI-Einschätzung im Portal-Pop-up erlaubt (ISO) */
   consentGrantedAt?: string | null;
+  /** Zweitmeinung: Team-Schnitt, KI und andere Bewertungen ausblenden, bis selbst bewertet wurde */
+  blind?: boolean;
 }) {
   const aiScores = ai.kind === "scores" ? ai.scores : null;
   // KI bewertet nur die Standard-Kriterien – bei eigenem Bogen ohne KI-Spalte
@@ -68,6 +71,12 @@ export function RatingPanel({
 
   return (
     <div className="space-y-3">
+      {blind && (
+        <p className="rounded-xl border border-red-line bg-red-soft/40 p-3 text-xs text-fg-2" data-testid="rating-blind">
+          <strong className="text-fg">Du wurdest um eine Zweitmeinung gebeten.</strong> Bewerte zuerst selbst – danach siehst du Team-Schnitt, KI und die anderen Bewertungen.
+        </p>
+      )}
+      {!blind && (
       <div className="flex items-baseline justify-between gap-2">
         <p className="text-sm text-muted">
           Team-Schnitt{summary.raters ? ` (${summary.raters} ${summary.raters === 1 ? "Bewertung" : "Bewertungen"})` : ""}
@@ -77,6 +86,7 @@ export function RatingPanel({
           <span className="text-sm text-muted"> / 5</span>
         </p>
       </div>
+      )}
       <ul className="space-y-1">
         {criteria.map((c) => {
           const val = scores[c.key] ?? 0;
@@ -102,6 +112,7 @@ export function RatingPanel({
                   </button>
                 ))}
               </span>
+              {blind ? <span /> : (
               <span className="flex items-center justify-end gap-1.5 text-[0.7rem] text-muted tabular-nums min-w-[4.5rem]">
                 {aiScores && standard && (
                   <span className="nv-pill nv-tone-info !py-0 !px-1.5 cursor-help" title={ai.kind === "scores" ? (ai.reasons[c.key as CriterionKey] ?? "Ohne Begründung") : undefined}>
@@ -110,11 +121,12 @@ export function RatingPanel({
                 )}
                 <span title="Schnitt des Teams">Ø {formatScore(team.avg)}</span>
               </span>
+              )}
             </li>
           );
         })}
       </ul>
-      <AiBlock applicationId={applicationId} ai={ai} overall={aiOverall} bot={bot} isAdmin={isAdmin} consentGrantedAt={consentGrantedAt} />
+      {!blind && <AiBlock applicationId={applicationId} ai={ai} overall={aiOverall} bot={bot} isAdmin={isAdmin} consentGrantedAt={consentGrantedAt} />}
       <textarea
         className="nv-input text-sm !min-h-12"
         rows={2}
@@ -129,7 +141,7 @@ export function RatingPanel({
         </button>
         {msg && <span className={`text-xs ${msg.ok ? "text-muted" : "nv-error"}`}>{msg.text}</span>}
       </div>
-      {raters.length > 0 && (
+      {!blind && raters.length > 0 && (
         <ul className="space-y-1 text-xs text-muted border-t border-line pt-2">
           {raters.map((r, i) => (
             <li key={i} className="flex justify-between gap-2">

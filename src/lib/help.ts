@@ -133,7 +133,19 @@ export const HELP: HelpSection[] = [
       {
         id: "bewertungsbogen",
         term: "Bewertungsbogen",
-        text: "Jedes Teammitglied vergibt pro Kriterium 1–5 Sterne (Kommunikation, Erfahrung, Szenarien, Motivation, Verfügbarkeit, Teamfit). Ein Kriterium darf offen bleiben, ein zweiter Klick auf denselben Stern nimmt ihn zurück. Oben steht der **Schnitt des Teams**, unten der Schnitt jedes Einzelnen. Ist die KI aktiv, steht neben jedem Kriterium außerdem ein blaues **„KI 4“** – Maus drüber zeigt die Begründung, unter „KI-Einschätzung“ stehen alle Gründe und ein kurzes Fazit. Die KI-Punkte zählen **nicht** zum Team-Schnitt und gibt es nur für Bewerbungen ab dem 12.11.2026 (Einwilligung). Findet der Schutzfilter einen Manipulationsversuch, vergibt die KI keine Punkte. Admins können pro Stelle **eigene Kriterien** festlegen (Positionen → Stelle → „Eigener Bewertungsbogen“) – dann gibt es keine KI-Punkte. Alle Punkte sind eine Orientierung – entschieden wird im Gespräch und in der Abstimmung.",
+        text: "Jedes Teammitglied vergibt pro Kriterium 1–5 Sterne (Kommunikation, Erfahrung, Szenarien, Motivation, Verfügbarkeit, Teamfit). Ein Kriterium darf offen bleiben, ein zweiter Klick auf denselben Stern nimmt ihn zurück. Oben steht der **Schnitt des Teams**, unten der Schnitt jedes Einzelnen. Ist die KI aktiv, steht neben jedem Kriterium außerdem ein blaues **„KI 4“** – Maus drüber zeigt die Begründung, unter „KI-Einschätzung“ stehen alle Gründe und ein kurzes Fazit. Die KI-Punkte zählen **nicht** zum Team-Schnitt und gibt es nur für Bewerbungen ab dem 12.11.2026 (Einwilligung). Findet der Schutzfilter einen Manipulationsversuch, vergibt die KI keine Punkte. Admins können pro Stelle **eigene Kriterien** festlegen (Positionen → Stelle → „Eigener Bewertungsbogen“) – dann gibt es keine KI-Punkte. Alle Punkte sind eine Orientierung – entschieden wird im Gespräch und in der Abstimmung. Ältere Bewerbungen: Mit dem Baustein „KI-Einschätzung – Zustimmung“ bekommt der Bewerber im Portal Knöpfe zum **Erlauben** oder **Ablehnen** – die Antwort steht dann unter „KI-Einschätzung“.",
+      },
+      {
+        id: "zweitmeinung",
+        term: "Zweitmeinung",
+        short: "Jemand anderen aus dem Team um eine unbeeinflusste Bewertung bitten.",
+        text: "Unter dem Bewertungsbogen: eine bestimmte Person oder **zufällig** jemanden wählen, der für die Stelle zuständig, nicht abwesend ist und noch nicht bewertet hat. Die Person bekommt eine DM und sieht Team-Schnitt, KI-Punkte und die anderen Bewertungen erst, **nachdem sie selbst bewertet hat** – so bleibt ihr Blick unbeeinflusst.",
+      },
+      {
+        id: "erwaehnungen",
+        term: "@Erwähnungen",
+        short: "In Kommentaren @name schreiben – die Person bekommt eine DM.",
+        text: "In internen Kommentaren `@` tippen: Darüber erscheinen passende Teammitglieder zum Antippen. Erwähnte Personen (höchstens fünf pro Kommentar) bekommen eine DM mit dem Kommentar und einem Link zur Bewerbung.",
       },
       {
         id: "gespraech",

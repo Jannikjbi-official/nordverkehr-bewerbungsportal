@@ -3,12 +3,14 @@
 import type { KindKey } from "@/lib/kinds";
 import { useRouter } from "next/navigation";
 import { confirmDialog } from "@/components/ConfirmDialog";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
+import { mentionQueryAt } from "@/lib/team/mentions";
 import { ArrowClockwise, CalendarPlus, MinusCircle, ThumbsDown, ThumbsUp, Trash } from "@phosphor-icons/react/ssr";
 import {
   addCommentAction,
   changeStatusAction,
   deleteCommentAction,
+  requestSecondOpinionAction,
   retryDeliveryAction,
   setInterviewAction,
   voteAction,
@@ -153,7 +155,8 @@ export function VotePanel({
               onClick={() => run(() => voteAction(applicationId, active ? null : o.v))}
               className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs transition-colors ${active ? o.tone : "border-line text-muted hover:text-fg hover:border-line-strong"}`}
             >
-              {o.icon}
+              {/* Auf schmalen Handys ohne Symbol, damit „Enthaltung“ ganz passt */}
+              <span className="hidden min-[420px]:inline-flex">{o.icon}</span>
               <span className="truncate">{o.label}</span>
               <span className="font-display tabular-nums text-fg">{count}</span>
             </button>
@@ -174,9 +177,26 @@ export function VotePanel({
   );
 }
 
-export function CommentBox({ applicationId }: { applicationId: string }) {
+export function CommentBox({ applicationId, members = [] }: { applicationId: string; members?: { username: string; name: string }[] }) {
   const { pending, error, run } = useAction();
   const [body, setBody] = useState("");
+  // @Erwähnung: angefangener Name vor dem Cursor → Vorschläge
+  const [query, setQuery] = useState<string | null>(null);
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const suggestions =
+    query === null ? [] : members.filter((m) => m.username.toLowerCase().startsWith(query) || m.name.toLowerCase().startsWith(query)).slice(0, 6);
+  function insert(username: string) {
+    const el = ref.current;
+    const caret = el?.selectionStart ?? body.length;
+    const before = body.slice(0, caret).replace(/@[a-z0-9._]*$/i, `@${username} `);
+    const next = before + body.slice(caret);
+    setBody(next);
+    setQuery(null);
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(before.length, before.length);
+    });
+  }
   return (
     <form
       onSubmit={(e) => {
@@ -188,14 +208,37 @@ export function CommentBox({ applicationId }: { applicationId: string }) {
       <label htmlFor="comment" className="sr-only">
         Interner Kommentar
       </label>
+      {suggestions.length > 0 && (
+        <ul className="flex flex-wrap gap-1.5" aria-label="Teammitglied erwähnen" data-testid="mention-suggestions">
+          {suggestions.map((m) => (
+            <li key={m.username}>
+              <button type="button" className="nv-pill hover:text-fg" onMouseDown={(e) => e.preventDefault()} onClick={() => insert(m.username)}>
+                @{m.username}
+                {m.name !== m.username && <span className="text-faint"> · {m.name}</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
       <textarea
         id="comment"
         className="nv-input !min-h-20 text-sm"
         rows={3}
         maxLength={3000}
-        placeholder="Interner Kommentar – sieht nur das Team"
+        ref={ref}
+        placeholder="Interner Kommentar – sieht nur das Team. Mit @name erwähnen."
         value={body}
-        onChange={(e) => setBody(e.target.value)}
+        onChange={(e) => {
+          setBody(e.target.value);
+          setQuery(mentionQueryAt(e.target.value, e.target.selectionStart ?? e.target.value.length));
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") setQuery(null);
+          if ((e.key === "Enter" || e.key === "Tab") && suggestions.length) {
+            e.preventDefault();
+            insert(suggestions[0].username);
+          }
+        }}
       />
       <div className="flex justify-end">
         <button className="nv-btn nv-btn-ghost nv-btn-sm" disabled={pending || !body.trim()}>
@@ -267,5 +310,59 @@ export function RetryDeliveryButton({ messageId }: { messageId: string }) {
       </button>
       {error && <span className="nv-error ml-2">{error}</span>}
     </>
+  );
+}
+
+/** Zweitmeinung anfordern: bestimmte Person oder zufällig – bekommt eine DM, bewertet „blind“. */
+export function SecondOpinion({
+  applicationId,
+  members,
+  open,
+}: {
+  applicationId: string;
+  members: { id: string; name: string }[];
+  open: { name: string; at: string }[];
+}) {
+  const { pending, error, run } = useAction();
+  const [target, setTarget] = useState<string>("random");
+  const [done, setDone] = useState<string | null>(null);
+  return (
+    <div className="space-y-2 rounded-xl border border-line p-3" data-testid="second-opinion">
+      <p className="text-xs font-medium">Zweitmeinung anfordern</p>
+      {open.length > 0 && (
+        <p className="text-xs text-muted">
+          Wartet auf: {open.map((o) => o.name).join(", ")}
+        </p>
+      )}
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Select
+          ariaLabel="Wen fragen?"
+          size="sm"
+          className="sm:flex-1 min-w-0"
+          value={target}
+          onChange={setTarget}
+          options={[{ value: "random", label: "Zufällig (verfügbar & zuständig)" }, ...members.map((m) => ({ value: m.id, label: m.name }))]}
+        />
+        <button
+          type="button"
+          className="nv-btn nv-btn-ghost nv-btn-sm w-full sm:w-auto"
+          disabled={pending}
+          onClick={() =>
+            run(
+              async () => {
+                const r = await requestSecondOpinionAction(applicationId, target);
+                if (r.ok) setDone(r.data.name);
+                return r;
+              },
+              () => setTarget("random"),
+            )
+          }
+        >
+          {pending ? "Fragt …" : "Anfragen"}
+        </button>
+      </div>
+      {done && <p className="text-xs text-[var(--tone-success)]">{done} wurde per DM gefragt.</p>}
+      {error && <p className="nv-error text-xs">{error}</p>}
+    </div>
   );
 }

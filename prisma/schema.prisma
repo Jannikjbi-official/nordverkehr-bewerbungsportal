@@ -152,6 +152,8 @@ model User {
   aiUsage            AiUsage[]
   profile            ApplicantProfile?
   ratings            Rating[]
+  reviewRequests     ReviewRequest[]   @relation("ReviewRequestUser")
+  reviewRequestsSent ReviewRequest[]   @relation("ReviewRequestBy")
   slotsCreated       InterviewSlot[]   @relation("SlotCreator")
   interviewNotes     InterviewNote[]   @relation("InterviewNoteAuthor")
   interviewChecks    InterviewCheck[]  @relation("InterviewCheckAuthor")
@@ -436,6 +438,7 @@ model Application {
   comments        Comment[]
   messages        Message[]
   ratings         Rating[]
+  reviewRequests  ReviewRequest[]
   slot            InterviewSlot?
   feedback        Feedback?
   interviewNotes  InterviewNote[]
@@ -761,4 +764,21 @@ model Suggestion {
 
   @@index([status, createdAt])
   @@index([authorId])
+}
+
+/// Zweitmeinung: Ein Teammitglied wird gebeten, eine Bewerbung zu bewerten (sieht die anderen Bewertungen erst danach)
+model ReviewRequest {
+  id            String      @id @default(cuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User        @relation("ReviewRequestUser", fields: [userId], references: [id], onDelete: Cascade)
+  requestedById String?
+  requestedBy   User?       @relation("ReviewRequestBy", fields: [requestedById], references: [id], onDelete: SetNull)
+  createdAt     DateTime    @default(now())
+  /// Gesetzt, sobald die Person bewertet hat
+  doneAt        DateTime?
+
+  @@index([applicationId])
+  @@index([userId, doneAt])
 }

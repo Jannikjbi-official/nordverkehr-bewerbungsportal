@@ -260,8 +260,81 @@ export async function rateAction(input: z.input<typeof ratingSchema>): Promise<A
     });
   }
   await audit("application.rating", { actorId: user.id, targetType: "application", targetId: p.data.applicationId, meta: { scores } });
+  // Offene Zweitmeinung erledigt
+  if (Object.keys(scores).length) await db.reviewRequest.updateMany({ where: { applicationId: p.data.applicationId, userId: user.id, doneAt: null }, data: { doneAt: new Date() } });
   revalidatePath(`/team/bewerbungen/${p.data.applicationId}`);
   return { ok: true };
+}
+
+/**
+ * Zweitmeinung anfordern: ein bestimmtes oder zufälliges Teammitglied (zuständig für die Stelle,
+ * nicht abwesend, hat noch nicht bewertet) bekommt eine DM. Es sieht die anderen Bewertungen
+ * erst, nachdem es selbst bewertet hat.
+ */
+export async function requestSecondOpinionAction(applicationId: string, targetUserId: string | "random"): Promise<ActionResult<{ name: string }>> {
+  const { user, access } = await requireTeam();
+  {
+    const j = await juniorDenied(user, access);
+    if (j) return j;
+  }
+  {
+    const denied = await guardApp(user, access, applicationId);
+    if (denied) return denied;
+  }
+  if (targetUserId !== "random" && !id.safeParse(targetUserId).success) return { ok: false, error: "Ungültig." };
+  const rl = await rateLimit(`second-opinion:${user.id}`, 20, 3600);
+  if (!rl.ok) return { ok: false, error: "Zu viele Anfragen in kurzer Zeit." };
+  const app = await db.application.findUnique({
+    where: { id: applicationId },
+    select: {
+      id: true,
+      publicId: true,
+      status: true,
+      position: { select: { title: true, teamRoleIds: true } },
+      ratings: { select: { userId: true } },
+      reviewRequests: { where: { doneAt: null }, select: { userId: true } },
+    },
+  });
+  if (!app || !["SUBMITTED", "IN_REVIEW", "INTERVIEW"].includes(app.status)) return { ok: false, error: "Nur bei laufenden Bewerbungen." };
+  const { canSeePosition } = await import("@/lib/team/visibility");
+  const excluded = new Set([user.id, ...app.ratings.map((r) => r.userId), ...app.reviewRequests.map((r) => r.userId)]);
+  const now = new Date();
+  const candidates = (
+    await db.user.findMany({
+      where: { isTeam: true, ...(targetUserId === "random" ? {} : { id: targetUserId }) },
+      select: { id: true, discordId: true, username: true, globalName: true, roleIds: true, isAdmin: true, awayUntil: true },
+      take: 300,
+    })
+  ).filter((u) => !excluded.has(u.id) && !(u.awayUntil && u.awayUntil > now) && canSeePosition({ isAdmin: u.isAdmin, roleIds: u.roleIds }, app.position));
+  if (!candidates.length)
+    return {
+      ok: false,
+      error: targetUserId === "random" ? "Niemand verfügbar – alle haben schon bewertet, sind abwesend oder nicht zuständig." : "Diese Person hat schon bewertet, wurde schon gefragt, ist abwesend oder nicht zuständig.",
+    };
+  const target = candidates[Math.floor(Math.random() * candidates.length)];
+  await db.reviewRequest.create({ data: { applicationId: app.id, userId: target.id, requestedById: user.id } });
+  await audit("application.second_opinion", { actorId: user.id, targetType: "application", targetId: app.id, meta: { userId: target.id } });
+  const { enqueue } = await import("@/lib/discord/outbox-db");
+  const { buildApplicantMessage } = await import("@/lib/messages/embed");
+  const { publicEnv } = await import("@/lib/env");
+  const job = await enqueue(
+    {
+      type: "DM",
+      discordUserId: target.discordId,
+      purpose: "team_reminder",
+      message: buildApplicantMessage({
+        title: "Zweitmeinung gefragt",
+        body: `**${user.globalName || user.username}** bittet dich um eine Bewertung von **${app.publicId}** (${app.position.title}).\n\nDie Bewertungen der anderen siehst du erst, wenn du selbst bewertet hast – so bleibt dein Blick unbeeinflusst.`,
+        publicId: app.publicId,
+        statusUrl: `${publicEnv.appUrl}/team/bewerbungen/${app.id}#bewertung`,
+        buttonLabel: "Jetzt bewerten",
+      }),
+    },
+    { applicationId: app.id },
+  );
+  await kick([job.id]);
+  revalidatePath(`/team/bewerbungen/${app.id}`);
+  return { ok: true, data: { name: target.globalName || target.username } };
 }
 
 const commentSchema = z.object({ applicationId: id, body: z.string().trim().min(1).max(3000) });
@@ -276,6 +349,46 @@ export async function addCommentAction(input: z.input<typeof commentSchema>): Pr
   }
   await db.comment.create({ data: { applicationId: p.data.applicationId, authorId: user.id, body: p.data.body } });
   await audit("application.comment", { actorId: user.id, targetType: "application", targetId: p.data.applicationId });
+  // @Erwähnungen: erwähnte Teammitglieder bekommen eine DM mit Link
+  {
+    const { parseMentions } = await import("@/lib/team/mentions");
+    const names = parseMentions(p.data.body);
+    if (names.length) {
+      const [targets, app] = await Promise.all([
+        db.user.findMany({
+          where: { isTeam: true, id: { not: user.id }, OR: names.map((n) => ({ username: { equals: n, mode: "insensitive" as const } })) },
+          select: { discordId: true },
+        }),
+        db.application.findUnique({ where: { id: p.data.applicationId }, select: { id: true, publicId: true, position: { select: { title: true } } } }),
+      ]);
+      if (targets.length && app) {
+        const { enqueue } = await import("@/lib/discord/outbox-db");
+        const { buildApplicantMessage } = await import("@/lib/messages/embed");
+        const { publicEnv } = await import("@/lib/env");
+        const excerpt = p.data.body.length > 600 ? `${p.data.body.slice(0, 600)} …` : p.data.body;
+        const jobs: string[] = [];
+        for (const t of targets) {
+          const job = await enqueue(
+            {
+              type: "DM",
+              discordUserId: t.discordId,
+              purpose: "team_reminder",
+              message: buildApplicantMessage({
+                title: "Du wurdest erwähnt",
+                body: `**${user.globalName || user.username}** hat dich in einem Kommentar zu **${app.publicId}** (${app.position.title}) erwähnt:\n\n> ${excerpt.replace(/\n/g, "\n> ")}`,
+                publicId: app.publicId,
+                statusUrl: `${publicEnv.appUrl}/team/bewerbungen/${app.id}#kommentare`,
+                buttonLabel: "Bewerbung öffnen",
+              }),
+            },
+            { applicationId: app.id },
+          );
+          jobs.push(job.id);
+        }
+        await kick(jobs);
+      }
+    }
+  }
   // In den Discord-Thread der Bewerbung spiegeln (falls eingerichtet)
   const app = await db.application.findUnique({ where: { id: p.data.applicationId }, select: { id: true, discordThreadId: true } });
   if (app?.discordThreadId) {

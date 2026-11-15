@@ -51,3 +51,25 @@ describe("Wartungsmodus (#107)", () => {
     expect(s["maintenance.message"].length).toBeGreaterThan(10);
   });
 });
+
+describe("@Erwähnungen (#97)", async () => {
+  const { parseMentions, mentionQueryAt, MAX_MENTIONS } = await import("@/lib/team/mentions");
+  it("erkennt Benutzernamen, eindeutig und klein", () => {
+    expect(parseMentions("@Jonas.hh schau mal, @lea_nord auch. @jonas.hh")).toEqual(["jonas.hh", "lea_nord"]);
+  });
+  it("ignoriert E-Mails und doppelte @", () => {
+    expect(parseMentions("mail an a@b.de und @@x")).toEqual([]);
+  });
+  it("Satzzeichen am Ende gehören nicht zum Namen", () => {
+    expect(parseMentions("danke @kim.")).toEqual(["kim"]);
+  });
+  it("höchstens MAX_MENTIONS", () => {
+    expect(parseMentions("@aa @bb @cc @dd @ee @ff @gg")).toHaveLength(MAX_MENTIONS);
+  });
+  it("Vorschläge nur direkt nach @", () => {
+    expect(mentionQueryAt("hallo @jo", 9)).toBe("jo");
+    expect(mentionQueryAt("hallo @", 7)).toBe("");
+    expect(mentionQueryAt("hallo @jo du", 12)).toBeNull();
+    expect(mentionQueryAt("a@b", 3)).toBeNull();
+  });
+});

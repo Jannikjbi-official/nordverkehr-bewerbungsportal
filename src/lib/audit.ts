@@ -33,6 +33,7 @@ export type AuditAction =
   | "user.digest"
   | "user.calendar"
   | "application.comment"
+  | "application.second_opinion"
   | "application.message"
   | "application.delete"
   | "application.export"
@@ -118,6 +119,7 @@ export const AUDIT_LABELS: Record<string, string> = {
   "user.digest": "Morgen-DM an/aus",
   "user.calendar": "Kalender-Link erzeugt",
   "application.comment": "Kommentar",
+  "application.second_opinion": "Zweitmeinung angefordert",
   "application.message": "Nachricht gesendet",
   "application.delete": "Bewerbung gelöscht",
   "application.export": "Bewerbung exportiert",
