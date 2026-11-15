@@ -548,3 +548,17 @@ export async function toggleDeadlineReminderAction(positionId: string, on: boole
   }
   return { ok: true };
 }
+
+/** Frage zur Stelle an die KI (nur aus dem Stellentext beantwortet). */
+export async function askPositionAction(positionId: string, question: string): Promise<ActionResult<{ answer: string }>> {
+  const user = await requireUser();
+  if (!idSchema.safeParse(positionId).success || typeof question !== "string") return { ok: false, error: "Ungültig." };
+  const position = await db.position.findUnique({
+    where: { id: positionId },
+    select: { title: true, tagline: true, description: true, tasks: true, requirements: true, minAge: true, cooldownDays: true, closesAt: true, status: true, type: { select: { key: true, active: true } } },
+  });
+  if (!position || position.status === "HIDDEN" || !position.type.active) return { ok: false, error: "Stelle nicht gefunden." };
+  const { answerPositionQuestion } = await import("@/lib/ai/position-qa");
+  const r = await answerPositionQuestion(user.id, position, question);
+  return r.ok ? { ok: true, data: { answer: r.answer } } : r;
+}

@@ -11,6 +11,7 @@ import { getSettings } from "@/lib/settings";
 import { effectiveMinAge } from "@/lib/applications/rules";
 import { NotifyToggle } from "@/components/NotifyToggle";
 import { DeadlineReminderToggle } from "@/components/DeadlineReminderToggle";
+import { PositionQa } from "@/components/PositionQa";
 import { deadlineLabel } from "@/lib/positions/deadline";
 import { db } from "@/lib/db";
 import { kindOf } from "@/lib/kinds";
@@ -68,6 +69,11 @@ async function PositionDetail({ params }: Pick<PageProps<"/positionen/[slug]">, 
               <ListCard icon={<ListChecks size={20} aria-hidden />} title={isTeam ? "Deine Aufgaben" : "So läuft's"} items={position.tasks} />
               <ListCard icon={<Target size={20} aria-hidden />} title="Was du mitbringst" items={position.requirements} />
             </div>
+            {settings["ai.enabled"] && settings["ai.positionQaEnabled"] && (
+              <Suspense fallback={null}>
+                <QaBox positionId={position.id} slug={position.slug} />
+              </Suspense>
+            )}
           </div>
 
           <aside
@@ -88,7 +94,7 @@ async function PositionDetail({ params }: Pick<PageProps<"/positionen/[slug]">, 
               <p className="mt-2 text-xs text-muted">
                 Bewerbungen bis {formatDay(position.closesAt)} möglich.
                 {deadlineLabel(position.closesAt) && (
-                  <span className="ml-1.5 nv-pill nv-tone-warn !text-[0.7rem] !py-0" data-testid="deadline-label">
+                  <span className="mt-1.5 flex w-fit nv-pill nv-tone-warn !text-[0.7rem] !py-0" data-testid="deadline-label">
                     {deadlineLabel(position.closesAt)}
                   </span>
                 )}
@@ -245,4 +251,9 @@ function PositionSkeleton() {
       </div>
     </Container>
   );
+}
+
+async function QaBox({ positionId, slug }: { positionId: string; slug: string }) {
+  const user = await getCurrentUser();
+  return <PositionQa positionId={positionId} loggedIn={!!user} loginHref={`/login?callbackUrl=${encodeURIComponent(`/positionen/${slug}`)}`} />;
 }

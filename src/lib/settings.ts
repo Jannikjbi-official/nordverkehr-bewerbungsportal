@@ -217,6 +217,9 @@ export const settingsSchema = z.object({
   "ai.autoScoreEnabled": bool(true),
 
   "ai.autoReplyEnabled": bool(false),
+  /** Fragen zur Stelle: KI beantwortet Fragen auf der Stellenseite nur aus dem Stellentext (eingeloggt, mit Tageslimit) */
+  "ai.positionQaEnabled": bool(false),
+  "ai.positionQaPerUserPerDay": z.coerce.number().int().min(1).max(50).default(8),
   /** Team gilt als offline, wenn niemand in den letzten X Minuten im Team-Bereich aktiv war */
   "ai.autoReplyOfflineMinutes": z.coerce.number().int().min(1).max(1440).default(15),
   "ai.autoReplyMaxInputChars": z.coerce.number().int().min(50).max(2000).default(800),

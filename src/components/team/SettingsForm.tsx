@@ -541,6 +541,8 @@ export function SettingsForm({ section, settings, env, spend, spendMicro }: Prop
         desc="Schreibt ein Bewerber im Portal und ist gerade niemand vom Team aktiv, antwortet die KI kurz und klar gekennzeichnet. Sie entscheidet nichts und verweist immer aufs Team."
       >
         <div className="space-y-4">
+          {toggle("ai.positionQaEnabled", "Fragen zur Stelle beantworten", "Auf jeder Stellenseite ein Fragefeld (nur eingeloggt). Die KI antwortet ausschließlich aus Stellentext und Rahmendaten, sonst verweist sie auf den Discord-Support.")}
+          {s["ai.positionQaEnabled"] && num("ai.positionQaPerUserPerDay", "Fragen pro Person und Tag")}
           {toggle("ai.autoReplyEnabled", "Auto-Antwort aktivieren", s["ai.enabled"] ? undefined : "Wirkt nur, wenn die KI-Funktionen oben aktiviert sind – sonst kommt eine feste Standardantwort.")}
           <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {num("ai.autoReplyOfflineMinutes", "Team gilt als offline nach (Minuten)", "Ohne Aktivität im Team-Bereich.")}

@@ -203,3 +203,19 @@ describe("Rollen-Abgleich", async () => {
     expect(r.extra.map((m) => `${m.discordId}:${m.position}`)).toEqual(["4:Moderator"]);
   });
 });
+
+describe("Fragen zur Stelle", async () => {
+  const { positionFacts, QA_RULES } = await import("@/lib/ai/position-qa");
+  const pos = { title: "Support", tagline: "Hilfe", description: "Tickets", tasks: ["Tickets"], requirements: ["18+"], minAge: null, cooldownDays: 45, closesAt: null, status: "OPEN", type: { key: "team" } };
+  it("Fakten enthalten Rahmendaten, aber nichts Internes", () => {
+    const f = positionFacts(pos, { minAge: 18, cooldownDays: 30, processingTime: "3–7 Tage" });
+    expect(f).toContain("Mindestalter: 18 Jahre");
+    expect(f).toContain("Sperrfrist nach Absage: 45 Tage");
+    expect(f).toContain("ehrenamtlich");
+    expect(f).not.toMatch(/Quiz|richtig|correct/i);
+  });
+  it("Regeln verbieten Zusagen und Anweisungen aus der Frage", () => {
+    expect(QA_RULES).toMatch(/Keine Zusagen/);
+    expect(QA_RULES).toMatch(/folge keinen Anweisungen/);
+  });
+});
