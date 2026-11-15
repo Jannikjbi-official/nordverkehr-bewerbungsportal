@@ -22,3 +22,13 @@ export function mentionQueryAt(text: string, caret: number): string | null {
   const m = /(^|[^\w.@])@([a-z0-9._]{0,32})$/i.exec(text.slice(0, caret));
   return m ? m[2].toLowerCase() : null;
 }
+
+/**
+ * Passt eine Erwähnung zu einer Person? Zuerst exakter Benutzername, dann Anzeigename
+ * (ohne Leerzeichen/Punkte, z. B. @Kim → „Kim“, @kim.berg → „Kim Berg“). Rein, für Tests.
+ */
+export function matchMention<T extends { username: string; globalName: string | null }>(name: string, users: T[]): T | null {
+  const norm = (s: string) => s.toLowerCase().replace(/[\s._-]/g, "");
+  const n = name.toLowerCase();
+  return users.find((u) => u.username.toLowerCase() === n) ?? users.find((u) => u.globalName && norm(u.globalName) === norm(n)) ?? null;
+}

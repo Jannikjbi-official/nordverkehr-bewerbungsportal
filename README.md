@@ -111,7 +111,6 @@ npm run dev                   # http://localhost:3000
 - Neon von Hand oder ein anderes Postgres: `DATABASE_URL` (bei Neon die „pooled“ Verbindung) und für Migrationen `DATABASE_URL_UNPOOLED` („direct“).
 - **Schema:** `npm run build` spielt ausstehende Migrationen aus `prisma/migrations` automatisch ein (`prisma migrate deploy`) – auf Vercel bei jedem Deploy.
 - **Ersteinrichtung:** Beim ersten Aufruf einer leeren Datenbank legt das Portal Basisdaten (Positionen, Fragen, Bausteine – ohne Demo-Bewerbungen) selbst an. Alternativ einmalig: `SEED_DEMO=false npm run db:seed`.
-- **Umzug von MongoDB:** Solange `DATABASE_URL_MONGODB_URI` gesetzt ist, zeigt der Admin-Bereich die Karte „Daten aus MongoDB übernehmen“ – einmal ausführen, danach die alte Variable entfernen.
 
 ### 3. Umgebungsvariablen
 

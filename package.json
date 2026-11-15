@@ -22,8 +22,7 @@
     "db:migrate-questions": "tsx scripts/migrate-questions.mts",
     "db:test-migration": "tsx scripts/test-migration.mts",
     "db:test-workflow": "node --conditions=react-server --import tsx scripts/test-workflow.mts",
-    "db:test-features": "node --conditions=react-server --import tsx scripts/test-features.mts",
-    "db:test-mongo-import": "node --conditions=react-server --import tsx scripts/test-mongo-import.mts"
+    "db:test-features": "node --conditions=react-server --import tsx scripts/test-features.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",
@@ -36,7 +35,6 @@
     "@prisma/client": "^6.19.3",
     "discord-api-types": "^0.38.58",
     "discord.js": "^14.28.1",
-    "mongodb": "^6.22.0",
     "next": "16.4.6",
     "next-auth": "^5.0.0-beta.32",
     "pg": "^8.23.1",
@@ -55,7 +53,6 @@
     "embedded-postgres": "17.11.0-beta.19",
     "eslint": "^9",
     "eslint-config-next": "16.4.6",
-    "mongodb-memory-server": "^11.3.0",
     "prisma": "^6.19.3",
     "tailwindcss": "4.3.3",
     "tsx": "^4.23.15",

@@ -291,3 +291,18 @@ describe("Team-Bausteine", async () => {
   });
 });
 const TEMPLATES_MOD = await import("@/lib/setup/seed-data");
+
+describe("@Erwähnungen: Benutzer- oder Anzeigename", async () => {
+  const { matchMention } = await import("@/lib/team/mentions");
+  const users = [
+    { id: "1", username: "kim.k", globalName: "Kim" },
+    { id: "2", username: "jannikjbi", globalName: "Jannik Berg" },
+  ];
+  it("exakter Benutzername zuerst, sonst Anzeigename (ohne Leerzeichen/Punkte)", () => {
+    expect(matchMention("kim.k", users)?.id).toBe("1");
+    expect(matchMention("kim", users)?.id).toBe("1");
+    expect(matchMention("jannik.berg", users)?.id).toBe("2");
+    expect(matchMention("jannikjbi", users)?.id).toBe("2");
+    expect(matchMention("niemand", users)).toBeNull();
+  });
+});

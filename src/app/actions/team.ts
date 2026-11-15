@@ -444,7 +444,7 @@ export async function toggleReviewCheckAction(applicationId: string, item: strin
 
 const commentSchema = z.object({ applicationId: id, body: z.string().trim().min(1).max(3000) });
 
-export async function addCommentAction(input: z.input<typeof commentSchema>): Promise<ActionResult> {
+export async function addCommentAction(input: z.input<typeof commentSchema>): Promise<ActionResult<{ notified: string[]; unknown: string[]; failed: string[] }>> {
   const { user, access } = await requireTeam();
   const p = commentSchema.safeParse(input);
   if (!p.success) return { ok: false, error: "Kommentar ist leer oder zu lang." };
@@ -454,30 +454,43 @@ export async function addCommentAction(input: z.input<typeof commentSchema>): Pr
   }
   await db.comment.create({ data: { applicationId: p.data.applicationId, authorId: user.id, body: p.data.body } });
   await audit("application.comment", { actorId: user.id, targetType: "application", targetId: p.data.applicationId });
-  // @Erwähnungen: erwähnte Teammitglieder bekommen eine DM mit Link
+  // @Erwähnungen: erwähnte Teammitglieder bekommen eine DM mit Link (Benutzer- oder Anzeigename)
+  const mention = { notified: [] as string[], unknown: [] as string[], failed: [] as string[] };
   {
-    const { parseMentions } = await import("@/lib/team/mentions");
+    const { parseMentions, matchMention } = await import("@/lib/team/mentions");
     const names = parseMentions(p.data.body);
     if (names.length) {
-      const [targets, app] = await Promise.all([
+      const [candidates, app] = await Promise.all([
         db.user.findMany({
-          where: { isTeam: true, id: { not: user.id }, OR: names.map((n) => ({ username: { equals: n, mode: "insensitive" as const } })) },
-          select: { discordId: true },
+          where: {
+            id: { not: user.id },
+            OR: names.flatMap((n) => [{ username: { equals: n, mode: "insensitive" as const } }, { globalName: { contains: n.replace(/[._]/g, " ").split(" ")[0], mode: "insensitive" as const } }]),
+          },
+          select: { id: true, discordId: true, username: true, globalName: true, isTeam: true, isAdmin: true },
+          take: 50,
         }),
         db.application.findUnique({ where: { id: p.data.applicationId }, select: { id: true, publicId: true, position: { select: { title: true } } } }),
       ]);
+      const targets: typeof candidates = [];
+      for (const n of names) {
+        const hit = matchMention(n, candidates);
+        if (!hit || !(hit.isTeam || hit.isAdmin)) mention.unknown.push(n);
+        else if (!targets.some((t) => t.id === hit.id)) targets.push(hit);
+      }
       if (targets.length && app) {
         const { enqueue } = await import("@/lib/discord/outbox-db");
         const { buildApplicantMessage } = await import("@/lib/messages/embed");
         const { publicEnv } = await import("@/lib/env");
         const excerpt = p.data.body.length > 600 ? `${p.data.body.slice(0, 600)} …` : p.data.body;
-        const jobs: string[] = [];
+        const jobs: { id: string; name: string }[] = [];
         for (const t of targets) {
           const job = await enqueue(
             {
               type: "DM",
               discordUserId: t.discordId,
               purpose: "team_reminder",
+              // Erwähnung ist eine direkte Bitte – auch nachts sofort
+              ignoreNight: true,
               message: buildApplicantMessage({
                 title: "Du wurdest erwähnt",
                 body: `**${user.globalName || user.username}** hat dich in einem Kommentar zu **${app.publicId}** (${app.position.title}) erwähnt:\n\n> ${excerpt.replace(/\n/g, "\n> ")}`,
@@ -488,9 +501,16 @@ export async function addCommentAction(input: z.input<typeof commentSchema>): Pr
             },
             { applicationId: app.id },
           );
-          jobs.push(job.id);
+          jobs.push({ id: job.id, name: t.globalName || t.username });
         }
-        await kick(jobs);
+        await kick(jobs.map((j) => j.id));
+        const done = await db.outboxJob.findMany({ where: { id: { in: jobs.map((j) => j.id) } }, select: { id: true, status: true, result: true } });
+        for (const j of jobs) {
+          const d = done.find((x) => x.id === j.id);
+          const closed = (d?.result as { dmClosed?: string } | null)?.dmClosed === "true";
+          if (d?.status === "FAILED" || closed) mention.failed.push(j.name);
+          else mention.notified.push(j.name);
+        }
       }
     }
   }
@@ -505,7 +525,7 @@ export async function addCommentAction(input: z.input<typeof commentSchema>): Pr
     if (job) await kick([job]);
   }
   refresh();
-  return { ok: true };
+  return { ok: true, data: mention };
 }
 
 export async function deleteCommentAction(commentId: string): Promise<ActionResult> {

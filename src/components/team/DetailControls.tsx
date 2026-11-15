@@ -183,6 +183,7 @@ export function CommentBox({ applicationId, members = [] }: { applicationId: str
   const [body, setBody] = useState("");
   // @Erwähnung: angefangener Name vor dem Cursor → Vorschläge
   const [query, setQuery] = useState<string | null>(null);
+  const [info, setInfo] = useState<{ ok: boolean; text: string } | null>(null);
   const ref = useRef<HTMLTextAreaElement>(null);
   const suggestions =
     query === null ? [] : members.filter((m) => m.username.toLowerCase().startsWith(query) || m.name.toLowerCase().startsWith(query)).slice(0, 6);
@@ -202,7 +203,22 @@ export function CommentBox({ applicationId, members = [] }: { applicationId: str
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        run(() => addCommentAction({ applicationId, body }), () => setBody(""));
+        setInfo(null);
+        run(
+          async () => {
+            const r = await addCommentAction({ applicationId, body });
+            if (r.ok) {
+              const { notified, unknown, failed } = r.data;
+              const parts: string[] = [];
+              if (notified.length) parts.push(`✓ DM an ${notified.join(", ")}`);
+              if (failed.length) parts.push(`DM an ${failed.join(", ")} ging nicht raus (DMs geschlossen?)`);
+              if (unknown.length) parts.push(`@${unknown.join(", @")} nicht gefunden – nur Teammitglieder, die sich schon einmal im Portal angemeldet haben`);
+              setInfo(parts.length ? { ok: !failed.length && !unknown.length, text: parts.join(" · ") } : null);
+            }
+            return r;
+          },
+          () => setBody(""),
+        );
       }}
       className="space-y-2"
     >
@@ -246,6 +262,10 @@ export function CommentBox({ applicationId, members = [] }: { applicationId: str
           {pending ? "Speichert …" : "Kommentieren"}
         </button>
       </div>
+      {query !== null && members.length === 0 && (
+        <p className="text-xs text-muted">Noch keine anderen Teammitglieder im Portal – erwähnen geht, sobald sie sich einmal angemeldet haben.</p>
+      )}
+      {info && <p className={`text-xs ${info.ok ? "text-[var(--tone-success)]" : "text-[var(--tone-warn)]"}`} data-testid="mention-info">{info.text}</p>}
       {error && <p className="nv-error">{error}</p>}
     </form>
   );
